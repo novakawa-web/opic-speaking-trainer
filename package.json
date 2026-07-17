@@ -10,13 +10,14 @@
     "test:backup": "node --experimental-strip-types scripts/verify-backup.mjs",
     "test:my-answers": "node --experimental-strip-types scripts/verify-my-answers.mjs",
     "test:memos": "node --experimental-strip-types scripts/verify-card-memos.mjs",
+    "test:personal-memos": "node --experimental-strip-types scripts/verify-personal-memos.mjs",
     "test:passages": "node --experimental-strip-types scripts/verify-saved-passages.mjs",
     "test:recorder": "node --experimental-strip-types scripts/verify-audio-recorder.mjs",
     "test:shadowing": "node --experimental-strip-types scripts/verify-shadowing-player.mjs",
     "test:ui-session": "node --experimental-strip-types scripts/verify-ui-session.mjs",
     "test:tsv": "node --experimental-strip-types scripts/verify-tsv.mjs",
     "test:pwa": "node scripts/verify-pwa.mjs",
-    "test:all": "npm run test:backup && npm run test:my-answers && npm run test:memos && npm run test:passages && npm run test:recorder && npm run test:shadowing && npm run test:ui-session && npm run test:tsv",
+    "test:all": "npm run test:backup && npm run test:my-answers && npm run test:memos && npm run test:personal-memos && npm run test:passages && npm run test:recorder && npm run test:shadowing && npm run test:ui-session && npm run test:tsv",
     "preview": "vite preview --base /opic-speaking-trainer/"
   },
   "dependencies": {

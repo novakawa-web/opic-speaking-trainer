@@ -8,6 +8,10 @@ import type {
 import type { MyAnswers } from "../utils/myAnswerStorage";
 import type { SavedPassageDataset } from "../utils/savedPassageStorage";
 import {
+  getPinnedPersonalMemoCount,
+  type PersonalMemoDataset,
+} from "../utils/personalMemoStorage";
+import {
   getMemoCount,
   type CardMemos,
 } from "../utils/cardMemoStorage";
@@ -32,6 +36,7 @@ type BackupManagerProps = {
   myAnswers: MyAnswers;
   cardMemos: CardMemos;
   savedPassages: SavedPassageDataset;
+  personalMemos: PersonalMemoDataset;
 };
 
 function localBackupFileName(date = new Date()) {
@@ -77,6 +82,7 @@ export function BackupManager({
   myAnswers,
   cardMemos,
   savedPassages,
+  personalMemos,
 }: BackupManagerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState("");
@@ -94,6 +100,7 @@ export function BackupManager({
   const currentMyAnswerCount = Object.keys(myAnswers).length;
   const currentMemoCount = getMemoCount(cardMemos);
   const currentSavedPassageCount = savedPassages.passages.length;
+  const currentPersonalMemoCount = personalMemos.memos.length;
   const backup = preview?.backup ?? null;
   const restoreDisabled =
     !backup || !preview?.canRestore || !restoreConfirmed || isRestoring;
@@ -108,6 +115,7 @@ export function BackupManager({
       myAnswers,
       cardMemos,
       savedPassages,
+      personalMemos,
     );
   }
 
@@ -121,7 +129,8 @@ export function BackupManager({
       `전체 백업을 만들었습니다: 카드 ${currentBackup.summary.cardCount}장, ` +
         `상태 ${currentBackup.summary.statusCount}개, 시도 ${currentBackup.summary.attemptCount}건, ` +
         `나만의 답변 ${currentBackup.summary.myAnswerCount}개, 메모 ${currentBackup.summary.memoCount}개, ` +
-        `저장 지문 ${currentBackup.summary.savedPassageCount}개`,
+        `저장 지문 ${currentBackup.summary.savedPassageCount}개, ` +
+        `개인 메모 ${currentBackup.summary.personalMemoCount}개`,
     );
   }
 
@@ -321,6 +330,14 @@ export function BackupManager({
                 <div>
                   <dt>저장 지문</dt>
                   <dd>{currentSavedPassageCount} → <strong>{backup.summary.savedPassageCount}</strong></dd>
+                </div>
+                <div>
+                  <dt>개인 학습 메모</dt>
+                  <dd>{currentPersonalMemoCount} → <strong>{backup.summary.personalMemoCount}</strong></dd>
+                </div>
+                <div>
+                  <dt>고정 개인 메모</dt>
+                  <dd>{getPinnedPersonalMemoCount(personalMemos)} → <strong>{backup.summary.pinnedPersonalMemoCount}</strong></dd>
                 </div>
                 <div>
                   <dt>설정</dt>

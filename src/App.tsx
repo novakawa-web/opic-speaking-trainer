@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "./components/AppHeader";
 import { BackupManager } from "./components/BackupManager";
 import { MemoSearch } from "./components/MemoSearch";
+import {
+  PersonalMemoLibrary,
+  PersonalMemoSummary,
+} from "./components/PersonalMemoManager";
 import { CardDataManager } from "./components/CardDataManager";
 import { CardDetail } from "./components/CardDetail";
 import { CardList } from "./components/CardList";
@@ -78,8 +82,23 @@ import {
   clearShadowingPlayerSession,
   readShadowingPlayerSession,
 } from "./utils/uiSessionStorage";
+import {
+  clearPersonalMemoEditorSession,
+  createEmptyPersonalMemoEditorSession,
+  createPersonalMemo,
+  deletePersonalMemo,
+  readPersonalMemoEditorSession,
+  readPersonalMemoDataset,
+  readPersonalMemoLibrarySession,
+  restorePersonalMemo,
+  savePersonalMemoEditorSession,
+  savePersonalMemoLibrarySession,
+  togglePersonalMemoPinned,
+  updatePersonalMemo,
+  type PersonalMemo,
+} from "./utils/personalMemoStorage";
 
-type View = "list" | "detail" | "drill" | "shadowing";
+type View = "list" | "detail" | "drill" | "shadowing" | "personalMemos";
 type CardNavigationSource = "manual" | "auto";
 
 function shuffleCardIds(sourceCards: OpicCard[]) {
@@ -155,7 +174,11 @@ function App() {
     readInitialNavigationState(initialCardState.cards),
   );
   const [theme, setTheme] = useState(readInitialTheme);
-  const [view, setView] = useState<View>(initialNavigation.view);
+  const [view, setView] = useState<View>(() =>
+    initialNavigation.view === "list" && readPersonalMemoLibrarySession()
+      ? "personalMemos"
+      : initialNavigation.view,
+  );
   const [drillReturnView, setDrillReturnView] = useState<"list" | "detail">(
     initialNavigation.drillReturnView,
   );
@@ -184,6 +207,9 @@ function App() {
   const [cardMemos, setCardMemos] = useState(readCardMemos);
   const [savedPassageDataset, setSavedPassageDataset] = useState(
     readSavedPassageDataset,
+  );
+  const [personalMemoDataset, setPersonalMemoDataset] = useState(
+    readPersonalMemoDataset,
   );
   const [memoFocus, setMemoFocus] = useState<{ cardId: string; memoId: string } | null>(null);
   const [studyAttempts, setStudyAttempts] = useState(readStudyAttempts);
@@ -341,7 +367,7 @@ function App() {
         ? shadowingReturnView === "detail"
           ? "detail"
           : "home"
-        : view === "list"
+        : view === "list" || view === "personalMemos"
           ? "home"
           : view;
     saveNavigationSession({
@@ -622,6 +648,69 @@ function App() {
     );
   }
 
+  function openPersonalMemos(startNew = false) {
+    savePersonalMemoLibrarySession(true);
+    if (startNew) {
+      savePersonalMemoEditorSession(createEmptyPersonalMemoEditorSession());
+    }
+    setSelectedCardId(null);
+    setView("personalMemos");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function closePersonalMemos() {
+    savePersonalMemoLibrarySession(false);
+    clearPersonalMemoEditorSession();
+    setView("list");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function requestClosePersonalMemos() {
+    const draft = readPersonalMemoEditorSession();
+    if (
+      draft?.dirty &&
+      !window.confirm("저장하지 않은 개인 학습 메모가 있습니다. 변경 내용을 버릴까요?")
+    ) {
+      return;
+    }
+    closePersonalMemos();
+  }
+
+  function addPersonalMemo(title: string, content: string) {
+    setPersonalMemoDataset((current) =>
+      createPersonalMemo(current, title, content).dataset,
+    );
+  }
+
+  function editPersonalMemo(memoId: string, title: string, content: string) {
+    setPersonalMemoDataset((current) =>
+      updatePersonalMemo(current, memoId, title, content).dataset,
+    );
+  }
+
+  function pinPersonalMemo(memoId: string) {
+    setPersonalMemoDataset((current) =>
+      togglePersonalMemoPinned(current, memoId),
+    );
+  }
+
+  function removePersonalMemo(memoId: string) {
+    const result = deletePersonalMemo(personalMemoDataset, memoId);
+    setPersonalMemoDataset(result.dataset);
+    return result.deletedMemo
+      ? { memo: result.deletedMemo, index: result.index }
+      : null;
+  }
+
+  function undoPersonalMemoDelete(deleted: {
+    memo: PersonalMemo;
+    index: number;
+  }) {
+    setPersonalMemoDataset((current) =>
+      restorePersonalMemo(current, deleted.memo, deleted.index),
+    );
+  }
+
   function openMemoCard(cardId: string, memoId: string) {
     const card = cardCatalog.find((candidate) => candidate.id === cardId);
     if (!card) return;
@@ -711,6 +800,28 @@ function App() {
           window.scrollTo({ top: 0, behavior: "auto" });
         }}
       />
+    );
+  }
+
+  if (view === "personalMemos") {
+    return (
+      <div className="app-shell">
+        <AppHeader
+          theme={theme}
+          studyTitle="개인 학습 메모"
+          onBack={requestClosePersonalMemos}
+          onToggleTheme={toggleTheme}
+        />
+        <PersonalMemoLibrary
+          dataset={personalMemoDataset}
+          onBack={closePersonalMemos}
+          onCreate={addPersonalMemo}
+          onUpdate={editPersonalMemo}
+          onTogglePinned={pinPersonalMemo}
+          onDelete={removePersonalMemo}
+          onRestore={undoPersonalMemoDelete}
+        />
+      </div>
     );
   }
 
@@ -895,6 +1006,12 @@ function App() {
           onOpenCard={openMemoCard}
         />
 
+        <PersonalMemoSummary
+          dataset={personalMemoDataset}
+          onOpenLibrary={() => openPersonalMemos(false)}
+          onStartNew={() => openPersonalMemos(true)}
+        />
+
         <CardDataManager
           cards={cardCatalog}
           storageWarning={cardStorageWarning}
@@ -908,6 +1025,7 @@ function App() {
           myAnswers={myAnswers}
           cardMemos={cardMemos}
           savedPassages={savedPassageDataset}
+          personalMemos={personalMemoDataset}
         />
       </main>
 
