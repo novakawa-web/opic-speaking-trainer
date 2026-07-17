@@ -1,0 +1,309 @@
+export const SAVED_PASSAGES_STORAGE_KEY = "opic-saved-passages";
+export const SAVED_PASSAGE_EDITOR_SESSION_KEY =
+  "opic-saved-passage-editor-session";
+export const SAVED_PASSAGE_LIBRARY_OPEN_SESSION_KEY =
+  "opic-saved-passage-library-open";
+export const SAVED_PASSAGE_DATASET_VERSION = 1;
+export const SAVED_PASSAGE_TITLE_MAX_LENGTH = 100;
+export const SAVED_PASSAGE_TEXT_MAX_LENGTH = 20_000;
+
+const blockedKeys = new Set(["__proto__", "constructor", "prototype"]);
+
+export type SavedPassage = {
+  id: string;
+  title: string;
+  text: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SavedPassageDataset = {
+  version: 1;
+  passages: SavedPassage[];
+};
+
+export type SavedPassageEditorSession = {
+  mode: "new" | "edit";
+  passageId: string | null;
+  titleDraft: string;
+  textDraft: string;
+  dirty: boolean;
+};
+
+export const EMPTY_SAVED_PASSAGE_DATASET: SavedPassageDataset = {
+  version: SAVED_PASSAGE_DATASET_VERSION,
+  passages: [],
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isSafeId(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.trim().length > 0 &&
+    !blockedKeys.has(value)
+  );
+}
+
+function isIsoDate(value: unknown): value is string {
+  return typeof value === "string" && Number.isFinite(Date.parse(value));
+}
+
+export function isSavedPassage(value: unknown): value is SavedPassage {
+  if (!isRecord(value)) return false;
+  return (
+    isSafeId(value.id) &&
+    typeof value.title === "string" &&
+    value.title.trim().length > 0 &&
+    value.title.trim().length <= SAVED_PASSAGE_TITLE_MAX_LENGTH &&
+    typeof value.text === "string" &&
+    value.text.trim().length > 0 &&
+    value.text.trim().length <= SAVED_PASSAGE_TEXT_MAX_LENGTH &&
+    isIsoDate(value.createdAt) &&
+    isIsoDate(value.updatedAt)
+  );
+}
+
+export function normalizeSavedPassage(value: SavedPassage): SavedPassage {
+  return {
+    id: value.id,
+    title: value.title.trim(),
+    text: value.text.trim(),
+    createdAt: value.createdAt,
+    updatedAt: value.updatedAt,
+  };
+}
+
+export function normalizeSavedPassageDataset(
+  value: unknown,
+): SavedPassageDataset {
+  if (
+    !isRecord(value) ||
+    value.version !== SAVED_PASSAGE_DATASET_VERSION ||
+    !Array.isArray(value.passages)
+  ) {
+    return { ...EMPTY_SAVED_PASSAGE_DATASET, passages: [] };
+  }
+  const seen = new Set<string>();
+  const passages = value.passages.flatMap((candidate) => {
+    if (!isSavedPassage(candidate) || seen.has(candidate.id)) return [];
+    seen.add(candidate.id);
+    return [normalizeSavedPassage(candidate)];
+  });
+  return { version: SAVED_PASSAGE_DATASET_VERSION, passages };
+}
+
+export function sortSavedPassages(passages: SavedPassage[]) {
+  return [...passages].sort(
+    (left, right) =>
+      Date.parse(right.updatedAt) - Date.parse(left.updatedAt) ||
+      left.title.localeCompare(right.title),
+  );
+}
+
+export function readSavedPassageDataset(): SavedPassageDataset {
+  try {
+    return normalizeSavedPassageDataset(
+      JSON.parse(localStorage.getItem(SAVED_PASSAGES_STORAGE_KEY) ?? "null"),
+    );
+  } catch {
+    return { ...EMPTY_SAVED_PASSAGE_DATASET, passages: [] };
+  }
+}
+
+export function saveSavedPassageDataset(dataset: SavedPassageDataset) {
+  const normalized = normalizeSavedPassageDataset(dataset);
+  try {
+    localStorage.setItem(SAVED_PASSAGES_STORAGE_KEY, JSON.stringify(normalized));
+  } catch {
+    // The caller keeps the current in-memory data if storage is unavailable.
+  }
+  return normalized;
+}
+
+export function createSavedPassageId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `passage-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function isValidSavedPassageInput(title: string, text: string) {
+  const normalizedTitle = title.trim();
+  const normalizedText = text.trim();
+  return (
+    normalizedTitle.length > 0 &&
+    normalizedTitle.length <= SAVED_PASSAGE_TITLE_MAX_LENGTH &&
+    normalizedText.length > 0 &&
+    normalizedText.length <= SAVED_PASSAGE_TEXT_MAX_LENGTH
+  );
+}
+
+export function addSavedPassage(
+  dataset: SavedPassageDataset,
+  title: string,
+  text: string,
+  now = new Date(),
+  id = createSavedPassageId(),
+) {
+  if (!isSafeId(id) || !isValidSavedPassageInput(title, text)) {
+    throw new Error("제목과 본문을 확인해 주세요.");
+  }
+  if (dataset.passages.some((passage) => passage.id === id)) {
+    throw new Error("이미 존재하는 저장 지문 ID입니다.");
+  }
+  const timestamp = now.toISOString();
+  const passage: SavedPassage = {
+    id,
+    title: title.trim(),
+    text: text.trim(),
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  const nextDataset = saveSavedPassageDataset({
+    version: SAVED_PASSAGE_DATASET_VERSION,
+    passages: [passage, ...dataset.passages],
+  });
+  return { dataset: nextDataset, passage };
+}
+
+export function updateSavedPassage(
+  dataset: SavedPassageDataset,
+  passageId: string,
+  title: string,
+  text: string,
+  now = new Date(),
+) {
+  if (!isValidSavedPassageInput(title, text)) {
+    throw new Error("제목과 본문을 확인해 주세요.");
+  }
+  let updatedPassage: SavedPassage | null = null;
+  const passages = dataset.passages.map((passage) => {
+    if (passage.id !== passageId) return passage;
+    updatedPassage = {
+      ...passage,
+      title: title.trim(),
+      text: text.trim(),
+      updatedAt: now.toISOString(),
+    };
+    return updatedPassage;
+  });
+  if (!updatedPassage) throw new Error("수정할 저장 지문을 찾지 못했습니다.");
+  const nextDataset = saveSavedPassageDataset({
+    version: SAVED_PASSAGE_DATASET_VERSION,
+    passages,
+  });
+  return { dataset: nextDataset, passage: updatedPassage as SavedPassage };
+}
+
+export function deleteSavedPassage(
+  dataset: SavedPassageDataset,
+  passageId: string,
+) {
+  const index = dataset.passages.findIndex((passage) => passage.id === passageId);
+  if (index < 0) return { dataset, deleted: null, index: -1 };
+  const deleted = dataset.passages[index];
+  const nextDataset = saveSavedPassageDataset({
+    version: SAVED_PASSAGE_DATASET_VERSION,
+    passages: dataset.passages.filter((passage) => passage.id !== passageId),
+  });
+  return { dataset: nextDataset, deleted, index };
+}
+
+export function restoreSavedPassage(
+  dataset: SavedPassageDataset,
+  passage: SavedPassage,
+  index: number,
+) {
+  if (!isSavedPassage(passage)) return dataset;
+  const withoutDuplicate = dataset.passages.filter(
+    (candidate) => candidate.id !== passage.id,
+  );
+  const nextIndex = Math.min(Math.max(index, 0), withoutDuplicate.length);
+  const passages = [...withoutDuplicate];
+  passages.splice(nextIndex, 0, normalizeSavedPassage(passage));
+  return saveSavedPassageDataset({
+    version: SAVED_PASSAGE_DATASET_VERSION,
+    passages,
+  });
+}
+
+export function parseSavedPassageEditorSession(raw: string | null) {
+  if (!raw) return null;
+  try {
+    const value = JSON.parse(raw) as unknown;
+    if (
+      !isRecord(value) ||
+      (value.mode !== "new" && value.mode !== "edit") ||
+      typeof value.titleDraft !== "string" ||
+      value.titleDraft.length > SAVED_PASSAGE_TITLE_MAX_LENGTH ||
+      typeof value.textDraft !== "string" ||
+      value.textDraft.length > SAVED_PASSAGE_TEXT_MAX_LENGTH ||
+      typeof value.dirty !== "boolean"
+    ) {
+      return null;
+    }
+    const passageId = value.mode === "edit" && isSafeId(value.passageId)
+      ? value.passageId
+      : null;
+    if (value.mode === "edit" && !passageId) return null;
+    return {
+      mode: value.mode,
+      passageId,
+      titleDraft: value.titleDraft,
+      textDraft: value.textDraft,
+      dirty: value.dirty,
+    } satisfies SavedPassageEditorSession;
+  } catch {
+    return null;
+  }
+}
+
+export function readSavedPassageEditorSession() {
+  try {
+    return parseSavedPassageEditorSession(
+      sessionStorage.getItem(SAVED_PASSAGE_EDITOR_SESSION_KEY),
+    );
+  } catch {
+    return null;
+  }
+}
+
+export function saveSavedPassageEditorSession(
+  session: SavedPassageEditorSession,
+) {
+  try {
+    sessionStorage.setItem(
+      SAVED_PASSAGE_EDITOR_SESSION_KEY,
+      JSON.stringify(session),
+    );
+  } catch {
+    // The editor can continue in memory.
+  }
+}
+
+export function clearSavedPassageEditorSession() {
+  try {
+    sessionStorage.removeItem(SAVED_PASSAGE_EDITOR_SESSION_KEY);
+  } catch {
+    // Ignore unavailable session storage.
+  }
+}
+
+export function readSavedPassageLibraryOpen() {
+  try {
+    return sessionStorage.getItem(SAVED_PASSAGE_LIBRARY_OPEN_SESSION_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function saveSavedPassageLibraryOpen(open: boolean) {
+  try {
+    sessionStorage.setItem(SAVED_PASSAGE_LIBRARY_OPEN_SESSION_KEY, String(open));
+  } catch {
+    // The compact library can still work with in-memory state.
+  }
+}

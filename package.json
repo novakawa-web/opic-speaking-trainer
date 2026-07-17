@@ -1,0 +1,34 @@
+{
+  "name": "opic-speaking-trainer",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "postbuild": "node scripts/create-spa-fallback.mjs",
+    "test:backup": "node --experimental-strip-types scripts/verify-backup.mjs",
+    "test:my-answers": "node --experimental-strip-types scripts/verify-my-answers.mjs",
+    "test:memos": "node --experimental-strip-types scripts/verify-card-memos.mjs",
+    "test:passages": "node --experimental-strip-types scripts/verify-saved-passages.mjs",
+    "test:recorder": "node --experimental-strip-types scripts/verify-audio-recorder.mjs",
+    "test:shadowing": "node --experimental-strip-types scripts/verify-shadowing-player.mjs",
+    "test:ui-session": "node --experimental-strip-types scripts/verify-ui-session.mjs",
+    "test:tsv": "node --experimental-strip-types scripts/verify-tsv.mjs",
+    "test:pwa": "node scripts/verify-pwa.mjs",
+    "test:all": "npm run test:backup && npm run test:my-answers && npm run test:memos && npm run test:passages && npm run test:recorder && npm run test:shadowing && npm run test:ui-session && npm run test:tsv",
+    "preview": "vite preview --base /opic-speaking-trainer/"
+  },
+  "dependencies": {
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "latest",
+    "typescript": "latest",
+    "vite": "latest",
+    "vite-plugin-pwa": "^1.3.0"
+  }
+}

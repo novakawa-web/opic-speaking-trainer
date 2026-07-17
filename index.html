@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      (() => {
+        const root = document.documentElement;
+        const storageKey = "opic-theme-mode";
+        let theme = "light";
+
+        root.dataset.themeInitializing = "";
+
+        try {
+          const storedTheme = localStorage.getItem(storageKey);
+          if (storedTheme === "dark" || storedTheme === "light") {
+            theme = storedTheme;
+          }
+        } catch {
+          // 저장소를 사용할 수 없으면 앱의 기본값인 light를 유지합니다.
+        }
+
+        root.dataset.theme = theme;
+        root.style.colorScheme = theme;
+      })();
+    </script>
+    <style>
+      html,
+      body,
+      #root {
+        min-height: 100%;
+        margin: 0;
+        background-color: #f3f5f8;
+        color-scheme: light;
+      }
+
+      html[data-theme="dark"],
+      html[data-theme="dark"] body,
+      html[data-theme="dark"] #root {
+        background-color: #0d1422;
+        color-scheme: dark;
+      }
+
+      html[data-theme-initializing],
+      html[data-theme-initializing] *,
+      html[data-theme-initializing] *::before,
+      html[data-theme-initializing] *::after {
+        transition: none !important;
+      }
+    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#172c51" />
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
+    <link rel="apple-touch-icon" href="%BASE_URL%icons/apple-touch-icon.png" />
+    <meta
+      name="description"
+      content="영어 질문을 보고 힌트와 대표 답변으로 연습하는 오픽 말하기 트레이너"
+    />
+    <title>OPIc Speaking Trainer</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
