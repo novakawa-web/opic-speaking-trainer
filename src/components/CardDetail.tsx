@@ -33,6 +33,7 @@ import {
   type AudioRecorderHandle,
 } from "./AudioRecorder";
 import { isFirstLineOnlyCard } from "../utils/cardContent";
+import { CardEditor } from "./CardEditor";
 
 type CardDetailProps = {
   card: OpicCard;
@@ -58,6 +59,11 @@ type CardDetailProps = {
   onDeleteMemo: (cardId: string, memoId: string) => void;
   onRestoreMemo: (memo: CardMemo, index: number) => void;
   onStartShadowing: (source: ShadowingSource) => void;
+  isArchived: boolean;
+  hasRelatedRecords: boolean;
+  onUpdateCard: (card: OpicCard) => void;
+  onArchiveCard: (cardId: string, archived: boolean) => void;
+  onDeleteCard: (cardId: string) => void;
 };
 
 type AnswerTab = "model" | "mine";
@@ -99,6 +105,11 @@ export function CardDetail({
   onDeleteMemo,
   onRestoreMemo,
   onStartShadowing,
+  isArchived,
+  hasRelatedRecords,
+  onUpdateCard,
+  onArchiveCard,
+  onDeleteCard,
 }: CardDetailProps) {
   const [initialUiSession] = useState(() =>
     readCardDetailUiSession(card.id, Boolean(myAnswer)),
@@ -113,10 +124,13 @@ export function CardDetail({
   const [ttsRate] = useState(readTtsRate);
   const deleteDialogRef = useRef<HTMLDialogElement>(null);
   const deleteTriggerRef = useRef<HTMLButtonElement>(null);
+  const cardDeleteDialogRef = useRef<HTMLDialogElement>(null);
+  const cardDeleteTriggerRef = useRef<HTMLButtonElement>(null);
   const memoSectionRef = useRef<CardMemoSectionHandle>(null);
   const recorderRef = useRef<AudioRecorderHandle | null>(null);
   const [recordingStatus, setRecordingStatus] =
     useState<RecordingStatus>("idle");
+  const [isEditingCard, setIsEditingCard] = useState(false);
   const {
     isSupported,
     activeTarget,
@@ -208,7 +222,7 @@ export function CardDetail({
     w: canGoNext ? goNext : undefined,
     Enter: canGoNext ? goNext : undefined,
     Space: toggleHint,
-  });
+  }, !isEditingCard);
 
   function startEditing(seed: string) {
     if (!(memoSectionRef.current?.confirmDiscardAndClose() ?? true)) return;
@@ -287,6 +301,32 @@ export function CardDetail({
     setIsEditing(false);
     setDraft("");
     return true;
+  }
+
+  function startCardEditing() {
+    runAfterDiscardCheck(() => {
+      setIsEditingCard(true);
+    });
+  }
+
+  function saveCard(nextCard: OpicCard) {
+    onUpdateCard(nextCard);
+    setIsEditingCard(false);
+  }
+
+  function closeCardDeleteDialog() {
+    cardDeleteDialogRef.current?.close();
+    window.setTimeout(() => cardDeleteTriggerRef.current?.focus(), 0);
+  }
+
+  if (isEditingCard) {
+    return (
+      <CardEditor
+        card={card}
+        onSave={saveCard}
+        onCancel={() => setIsEditingCard(false)}
+      />
+    );
   }
 
   return (
@@ -384,6 +424,45 @@ export function CardDetail({
           </button>
         </div>
       </article>
+
+      <section className="card-management-panel" aria-labelledby="card-management-title">
+        <div>
+          <p className="eyebrow">CARD MANAGEMENT</p>
+          <h2 id="card-management-title">카드 관리</h2>
+        </div>
+        <div className="card-management-primary-actions">
+          <button type="button" className="secondary-button" onClick={startCardEditing}>
+            수정
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              const nextArchived = !isArchived;
+              onArchiveCard(card.id, nextArchived);
+            }}
+          >
+            {isArchived ? "복원" : "보관"}
+          </button>
+        </div>
+        <p className="card-management-help">
+          {isArchived
+            ? "보관된 카드는 학습 목록에서 숨겨져 있으며 기록은 그대로 유지됩니다."
+            : "보관하면 학습 목록에서 숨길 수 있고 나중에 복원할 수 있습니다."}
+        </p>
+        <details className="card-danger-zone">
+          <summary>더보기</summary>
+          <p>완전 삭제는 카드와 연결된 학습 기록도 함께 제거합니다.</p>
+          <button
+            ref={cardDeleteTriggerRef}
+            type="button"
+            className="is-danger-quiet"
+            onClick={() => cardDeleteDialogRef.current?.showModal()}
+          >
+            카드 완전 삭제
+          </button>
+        </details>
+      </section>
 
       {showHint && (
         <section className="hint-panel" aria-label="암기 힌트">
@@ -710,6 +789,37 @@ export function CardDetail({
             autoFocus
           >
             나만의 답변 삭제
+          </button>
+        </div>
+      </dialog>
+
+      <dialog
+        ref={cardDeleteDialogRef}
+        className="my-answer-delete-dialog card-delete-dialog"
+        aria-labelledby="card-delete-title"
+        onCancel={(event) => {
+          event.preventDefault();
+          closeCardDeleteDialog();
+        }}
+      >
+        <h2 id="card-delete-title">이 카드와 관련 기록을 완전히 삭제할까요?</h2>
+        <dl>
+          <div><dt>질문</dt><dd>{card.front}</dd></div>
+          <div><dt>카드 ID</dt><dd><code>{card.id}</code></dd></div>
+          <div><dt>관련 학습 기록</dt><dd>{hasRelatedRecords ? "있음" : "없음"}</dd></div>
+        </dl>
+        <p>삭제 후 복구가 어렵습니다. 개인 학습 메모와 저장 지문은 삭제되지 않습니다.</p>
+        <div>
+          <button type="button" className="secondary-button" onClick={closeCardDeleteDialog}>취소</button>
+          <button
+            type="button"
+            className="delete-confirm-button"
+            onClick={() => {
+              cardDeleteDialogRef.current?.close();
+              onDeleteCard(card.id);
+            }}
+          >
+            완전 삭제
           </button>
         </div>
       </dialog>

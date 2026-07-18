@@ -4125,6 +4125,293 @@ input:focus-visible + .toggle-switch {
   }
 }
 
+/* Card editing and lifecycle management */
+.card-editor-page {
+  width: min(1080px, calc(100% - 48px));
+  margin: 32px auto 72px;
+}
+
+.card-editor-panel,
+.card-management-panel {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.card-editor-panel {
+  padding: clamp(20px, 4vw, 36px);
+}
+
+.card-editor-heading,
+.card-management-panel,
+.card-management-primary-actions,
+.card-editor-actions {
+  display: flex;
+  align-items: center;
+}
+
+.card-editor-heading {
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.card-editor-heading h1,
+.card-management-panel h2 {
+  margin: 0;
+}
+
+.card-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.card-editor-field {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.card-editor-field-wide {
+  grid-column: 1 / -1;
+}
+
+.card-editor-field input,
+.card-editor-field select,
+.card-editor-field textarea {
+  width: 100%;
+  min-width: 0;
+}
+
+.card-editor-field textarea {
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.card-editor-field small,
+.card-management-help {
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.card-editor-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-weight: 700;
+}
+
+.card-editor-check input {
+  width: 20px;
+  height: 20px;
+}
+
+.card-editor-review {
+  margin-top: 24px;
+  padding: 18px;
+  border-radius: 14px;
+  background: var(--surface-soft);
+}
+
+.card-editor-review h2 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+
+.card-editor-review p,
+.card-editor-review ul {
+  margin: 6px 0 0;
+}
+
+.card-editor-errors {
+  color: var(--danger);
+}
+
+.card-editor-warnings {
+  color: var(--status-again-text);
+}
+
+.card-editor-actions {
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.card-editor-actions button {
+  min-width: 120px;
+}
+
+.card-management-panel {
+  width: min(980px, calc(100% - 48px));
+  margin: 18px auto 0;
+  padding: 18px 20px;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+}
+
+.card-management-panel > div:first-child {
+  margin-right: auto;
+}
+
+.card-management-primary-actions {
+  gap: 8px;
+}
+
+.card-management-help {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.card-danger-zone {
+  flex-basis: 100%;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.card-danger-zone summary {
+  width: fit-content;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.card-danger-zone p {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.card-danger-zone button {
+  min-height: 44px;
+  padding-inline: 14px;
+}
+
+.card-delete-dialog dl {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.card-delete-dialog dl > div {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.card-delete-dialog dt {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.card-delete-dialog dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.transient-toast {
+  position: fixed;
+  z-index: 50;
+  left: 50%;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: min(560px, calc(100% - 24px));
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--body-copy);
+  font-weight: 700;
+}
+
+.transient-toast span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.transient-toast button {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.archive-card-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--body-copy);
+  background: var(--surface-soft);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+@media (max-width: 700px) {
+  .card-editor-page {
+    width: calc(100% - 32px);
+    margin: 16px auto 48px;
+  }
+
+  .card-editor-heading {
+    align-items: flex-start;
+  }
+
+  .card-editor-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 15px;
+  }
+
+  .card-editor-field-wide {
+    grid-column: auto;
+  }
+
+  .card-editor-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .card-editor-actions button {
+    min-width: 0;
+  }
+
+  .card-management-panel {
+    width: calc(100% - 32px);
+  }
+
+  .card-management-panel {
+    align-items: flex-start;
+  }
+
+  .card-management-primary-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .card-delete-dialog dl > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .transient-toast {
+    padding: 10px 12px;
+  }
+}
+
 /* Home dashboard and card-library responsive refinements */
 .transfer-undo-area {
   display: grid;

@@ -5,6 +5,7 @@ import type {
   StudyOrder,
 } from "../utils/studyPreferences";
 import type { AnswerContentFilter } from "../utils/cardContent";
+import type { ArchiveFilter } from "../utils/cardArchiveStorage";
 
 type TagFilterProps = {
   decks: DeckName[];
@@ -28,6 +29,8 @@ type TagFilterProps = {
   ) => void;
   answerContentFilter?: AnswerContentFilter;
   onAnswerContentFilterChange?: (value: AnswerContentFilter) => void;
+  archiveFilter?: ArchiveFilter;
+  onArchiveFilterChange?: (value: ArchiveFilter) => void;
 };
 
 export function TagFilter({
@@ -50,6 +53,8 @@ export function TagFilter({
   onAnswerLearningStatusFilterChange,
   answerContentFilter,
   onAnswerContentFilterChange,
+  archiveFilter,
+  onArchiveFilterChange,
 }: TagFilterProps) {
   return (
     <section className="filter-panel" aria-labelledby="filter-title">
@@ -64,6 +69,16 @@ export function TagFilter({
       </div>
 
       <div className="filter-grid">
+        {archiveFilter && onArchiveFilterChange && (
+          <label className="field-label">
+            <span>카드 보관 상태</span>
+            <select value={archiveFilter} onChange={(event) => onArchiveFilterChange(event.target.value as ArchiveFilter)}>
+              <option value="active">사용 중</option>
+              <option value="archived">보관됨</option>
+              <option value="all">전체</option>
+            </select>
+          </label>
+        )}
         <label className="field-label">
           <span>덱</span>
           <select

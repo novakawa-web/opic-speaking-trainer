@@ -3,6 +3,7 @@ import type { AnswerContentFilter } from "../utils/cardContent";
 import type { FirstLineMode, MockQuestionCount } from "../utils/firstLineMockSession";
 import type { StudyCardScope, StudyOrder } from "../utils/studyPreferences";
 import { TagFilter } from "./TagFilter";
+import type { ArchiveFilter } from "../utils/cardArchiveStorage";
 
 type Props = {
   cardCount: number;
@@ -29,6 +30,8 @@ type Props = {
   onReset: () => void;
   onStart: () => void;
   onBack: () => void;
+  archiveFilter: ArchiveFilter;
+  onArchiveFilterChange: (value: ArchiveFilter) => void;
 };
 
 export function FirstLineSetup(props: Props) {
@@ -59,6 +62,8 @@ export function FirstLineSetup(props: Props) {
         onStudyOrderChange={props.onStudyOrderChange}
         onAnswerContentFilterChange={props.onAnswerContentFilterChange}
         onReset={props.onReset}
+        archiveFilter={props.archiveFilter}
+        onArchiveFilterChange={props.onArchiveFilterChange}
       />
 
       <section className="first-line-mode-panel" aria-labelledby="first-line-mode-title">

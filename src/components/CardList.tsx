@@ -15,6 +15,7 @@ type CardListProps = {
   myAnswers: MyAnswers;
   cardMemos: CardMemos;
   onSelect: (card: OpicCard) => void;
+  archivedCardIds?: string[];
 };
 
 const statusLabels = {
@@ -23,7 +24,7 @@ const statusLabels = {
   hard: "첫 문장 어려움",
 } as const;
 
-export function CardList({ cards, totalCount, statuses, answerLearningStatuses = {}, myAnswers, cardMemos, onSelect }: CardListProps) {
+export function CardList({ cards, totalCount, statuses, answerLearningStatuses = {}, myAnswers, cardMemos, onSelect, archivedCardIds = [] }: CardListProps) {
   if (cards.length === 0) {
     return (
       <section className="empty-state">
@@ -84,6 +85,9 @@ export function CardList({ cards, totalCount, statuses, answerLearningStatuses =
                     <span aria-hidden="true">{pinnedMemoCount > 0 ? "📌" : "📝"}</span>
                     메모 {memoCount}
                   </span>
+                )}
+                {archivedCardIds.includes(card.id) && (
+                  <span className="archive-card-badge">보관됨</span>
                 )}
               </div>
 

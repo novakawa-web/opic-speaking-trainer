@@ -14,6 +14,7 @@ import type { AnswerContentFilter } from "../utils/cardContent";
 import { CardList } from "./CardList";
 import { TagFilter } from "./TagFilter";
 import { MemoSearch } from "./MemoSearch";
+import type { ArchiveFilter } from "../utils/cardArchiveStorage";
 
 type CardLibraryProps = {
   cards: OpicCard[];
@@ -45,6 +46,9 @@ type CardLibraryProps = {
   answerContentFilter: AnswerContentFilter;
   onAnswerContentFilterChange: (value: AnswerContentFilter) => void;
   onOpenMemoCard: (cardId: string, memoId: string) => void;
+  archiveFilter: ArchiveFilter;
+  onArchiveFilterChange: (value: ArchiveFilter) => void;
+  archivedCardIds: string[];
 };
 
 export function CardLibrary({
@@ -77,6 +81,9 @@ export function CardLibrary({
   answerContentFilter,
   onAnswerContentFilterChange,
   onOpenMemoCard,
+  archiveFilter,
+  onArchiveFilterChange,
+  archivedCardIds,
 }: CardLibraryProps) {
   const [activeTab, setActiveTab] = useState<"cards" | "memos">("cards");
   const initialSessionRef = useRef(readCardLibrarySession());
@@ -190,6 +197,8 @@ export function CardLibrary({
         onAnswerLearningStatusFilterChange={onAnswerLearningStatusFilterChange}
         answerContentFilter={answerContentFilter}
         onAnswerContentFilterChange={onAnswerContentFilterChange}
+        archiveFilter={archiveFilter}
+        onArchiveFilterChange={onArchiveFilterChange}
       />
 
       <p className="card-library-result-count" aria-live="polite">
@@ -204,6 +213,7 @@ export function CardLibrary({
         myAnswers={myAnswers}
         cardMemos={cardMemos}
         onSelect={selectCard}
+        archivedCardIds={archivedCardIds}
       />
 
       {hasMore && (

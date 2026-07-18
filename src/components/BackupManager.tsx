@@ -42,6 +42,7 @@ type BackupManagerProps = {
   personalMemos: PersonalMemoDataset;
   answerLearningStatuses: AnswerLearningStatuses;
   answerLearningAttemptsByDate: AnswerLearningAttemptsByDate;
+  archivedCardIds: string[];
   postRestoreMessage?: string;
 };
 
@@ -91,6 +92,7 @@ export function BackupManager({
   personalMemos,
   answerLearningStatuses,
   answerLearningAttemptsByDate,
+  archivedCardIds,
   postRestoreMessage,
 }: BackupManagerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -131,6 +133,7 @@ export function BackupManager({
       personalMemos,
       answerLearningStatuses,
       answerLearningAttemptsByDate,
+      archivedCardIds,
     );
   }
 
@@ -415,6 +418,10 @@ export function BackupManager({
                 <div>
                   <dt>답변 익히기 시도</dt>
                   <dd>{currentAnswerLearningAttemptCount} → <strong>{backup.summary.answerLearningAttemptCount}</strong></dd>
+                </div>
+                <div>
+                  <dt>보관 카드</dt>
+                  <dd>{archivedCardIds.length} → <strong>{backup.summary.archivedCardCount}</strong></dd>
                 </div>
                 <div>
                   <dt>설정</dt>

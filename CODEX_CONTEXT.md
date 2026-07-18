@@ -31,6 +31,10 @@
 - 첫 문장 모의고사는 현재 필터 결과를 세션마다 한 번 무작위로 섞고 중복 없이 고정한다. 문제마다 3초 카운트다운 후 정답 확인과 기존 성공/연습 필요/어려움 평가를 사용하며, 완료 화면에서 결과 요약·어려운 카드 재도전·같은 조건 재시험을 제공한다.
 - 첫 문장 전용 카드는 `firstLine`과 같은 한 문장 답변만 있고 힌트 필드가 비어 있는 카드다. 첫 문장 훈련에는 정상 포함되지만 답변 익히기에서는 전체 답변 없음 안내와 쉐도잉 비활성 사유를 표시한다. 같은 ID로 전체 답변을 덮어써도 ID 기반 학습 기록은 유지된다.
 - 카드 라이브러리와 첫 문장 준비 화면은 전체 / 첫 문장 전용 / 전체 답변 있음 필터를 지원한다.
+- 카드 상세에서 ID를 유지한 채 deck, tags, 질문, 첫 문장, 힌트, 답변, `final_rep`를 직접 수정할 수 있다. 같은 ID를 사용하므로 기존 학습 상태와 시도 기록은 유지된다.
+- 카드는 별도 ID 목록으로 보관하거나 복원할 수 있다. 카드 라이브러리의 기본값은 사용 중 카드이며, 사용 중 / 보관됨 / 전체 필터를 제공한다.
+- 카드 완전 삭제는 확인 후 카드 본문과 ID 기반 첫 문장·답변 익히기 기록, 나만의 답변, 카드 메모, 진행 세션만 정리한다. 개인 학습 메모와 저장 지문은 건드리지 않으며, 삭제 직후 메모리 스냅샷으로 한 번 실행 취소할 수 있다.
+- 카드 수정·보관·복원·완전 삭제 결과는 화면 하단의 공통 `TransientToast` 한 건으로 안내한다. 보관과 완전 삭제는 실행 취소를 제공하고, 최신 알림은 모바일 safe-area를 고려해 3.5초 뒤 자동 소멸한다.
 - 700px 이하 첫 문장 연습·모의고사에는 정답 버튼 행 바로 아래 2열 compact 이전/다음 버튼을 표시한다. 기존 스와이프는 유지하고, 701px 이상에서는 기존 질문 측면 및 하단 내비게이션을 사용한다.
 - 상태는 내부적으로 `success | again | hard | null`이며 화면에서는 성공 / 연습 필요 / 어려움으로 표시한다. 기존 `again` 저장값은 그대로 호환한다.
 - 상태 선택 이력, 날짜별 통계, 오늘 고유 카드 수, 시도 수, 성공률, 한 단계 실행 취소, 현재 상태만 초기화가 구현되어 있다.
@@ -151,6 +155,7 @@ type StudyAttempt = {
 | 키 | 내용 | JSON 전체 백업 |
 |---|---|---|
 | `opic-card-dataset` | 버전 1 활성 카드 전체 | 포함 |
+| `opic-archived-card-ids` | 학습 목록에서 보관한 카드 ID 배열 | 포함, 구버전 누락 시 빈 배열 |
 | `opic-first-line-statuses` | 카드 ID별 현재 평가 상태 | 포함 |
 | `opic-first-line-attempts-by-date` | 날짜별 첫 문장 시도 이력 | 포함, 파일에서는 flat 배열 |
 | `opic-answer-learning-statuses` | 카드 ID별 답변 익히기 상태 | 포함 |
@@ -205,7 +210,7 @@ sessionStorage 데이터는 JSON 전체 백업에 포함하지 않는다. 잘못
 
 - 파일 형식: `format: "opic-trainer-backup"`, `version: 1`, app schema version 1.
 - 최대 파일 크기: 10MB.
-- 명시적으로 포함: 활성 카드 데이터셋, 첫 문장과 답변 익히기의 현재 상태·시도 이력, 나만의 답변, 카드별 메모, 저장 지문, 개인 학습 메모, 장기 설정.
+- 명시적으로 포함: 활성 카드 데이터셋, 보관 카드 ID, 첫 문장과 답변 익히기의 현재 상태·시도 이력, 나만의 답변, 카드별 메모, 저장 지문, 개인 학습 메모, 장기 설정.
 - 명시적으로 제외: 모든 sessionStorage UI 상태, TSV 임시 백업, 직전 전체 복구 안전 백업, 녹음, TTS/타이머/Wake Lock 런타임 상태, 직접 임시 지문.
 - 복구 전 전체 파일을 파싱·검증·정규화한다. 알 수 없는 필드는 경고 후 무시하고, 데이터 손상 위험이 있는 핵심 오류가 있으면 복구를 막는다.
 - `__proto__`, `constructor`, `prototype` 같은 위험 키를 차단한다.
@@ -223,13 +228,16 @@ sessionStorage 데이터는 JSON 전체 백업에 포함하지 않는다. 잘못
 7. **TSV와 사용자 데이터는 분리한다.** TSV 카드 추가/덮어쓰기/전체 교체로 상태, 시도, 나만의 답변, 메모, 지문을 지우지 않는다.
 8. **모바일 시선 안정성을 우선한다.** 불필요한 transform, 큰 fade, 레이아웃 높이 전환을 피하고 `prefers-reduced-motion`을 존중한다.
 9. **TTS, 녹음, 백그라운드 상태를 분리한다.** Wake Lock은 화면 꺼짐 방지일 뿐 TTS pause 상태가 아니다. 백그라운드 복귀 후 플레이어는 자동 재생하지 않고 paused로 복원한다.
+10. **카드 보관은 카드 스키마와 분리한다.** `opic-archived-card-ids`만 갱신하고 카드 본문·학습 기록은 유지한다. TSV 동일 ID 덮어쓰기와도 독립적이다.
+11. **카드 완전 삭제만 ID 기반 연관 데이터를 정리한다.** 삭제는 확인과 세션 내 한 번 실행 취소를 제공하며 카드와 무관한 개인 메모·저장 지문은 삭제하지 않는다.
 
 ## 7. 주요 코드 위치
 
 - 앱 상태/화면 조립: `src/App.tsx`
 - 기본 카드: `src/data/cards.ts`
 - 공통 타입: `src/types.ts`
-- 카드 목록/상세/첫 문장: `src/components/CardList.tsx`, `CardDetail.tsx`, `FirstLineDrill.tsx`
+- 카드 목록/상세/수정/첫 문장: `src/components/CardList.tsx`, `CardDetail.tsx`, `CardEditor.tsx`, `FirstLineDrill.tsx`
+- 카드 수정·보관·삭제 정책: `src/utils/cardEditor.ts`, `src/utils/cardArchiveStorage.ts`, `src/utils/cardDeletion.ts`
 - 답변 익히기: `src/components/AnswerLearningSetup.tsx`, `src/components/AnswerLearning.tsx`, `src/utils/answerLearningStorage.ts`, `src/utils/answerLearningSession.ts`
 - 쉐도잉: `src/components/ShadowingPlayer.tsx`, `src/hooks/useShadowingPlayer.ts`, `src/utils/shadowingPlayer.ts`, `src/utils/shadowingSettings.ts`
 - 문장/문단: `src/utils/sentenceSegmenter.ts`, `src/utils/passageParagraphs.ts`
@@ -282,9 +290,10 @@ npm.cmd run test:pwa
 | `test:answer-learning` | 답변 익히기 상태·통계·세션·Undo | 50 |
 | `test:first-line-mock` | 첫 문장 전용 카드·모의고사·모바일 이동 | 18 |
 | `test:home-layout` | 홈 공통 레일·반응형 구조 | 10 |
+| `test:card-management` | 카드 수정·보관·완전 삭제·공통 toast·JSON 호환 | 31 |
 | `test:ui-system` | compact UI·복구 후 이동·간격 체계 | 21 |
 
-- 2026-07-19 현재 `npm.cmd run test:all`: **432/432 통과**.
+- 2026-07-19 현재 `npm.cmd run test:all`: **463/463 통과**.
 - 같은 확인에서 `npm.cmd run build`: TypeScript와 Vite production build 통과.
 - 같은 확인에서 `npm.cmd run test:pwa`: Pages/PWA 산출물 검증 통과. `manifest.webmanifest`, `sw.js`, `404.html`이 생성됨.
 - `test:pwa`는 `test:all`에 포함되지 않으므로 build 후 별도로 실행한다.
@@ -338,6 +347,9 @@ npm.cmd run test:pwa
 19. 모의고사 출제 순서와 결과는 `opic-first-line-mock-session` sessionStorage에만 저장하며 JSON 전체 백업에는 포함하지 않는다. 카드 상태와 UUID 시도 기록은 기존 localStorage 구조를 그대로 사용한다.
 20. 700px 이하 첫 문장 연습·모의고사에는 정답 관련 버튼 바로 아래 42px 높이의 compact 이전/다음 행을 표시하고, 이동 시 TTS·자동 넘김·카운트다운의 기존 정리 경로를 재사용한다.
 
+21. 카드 상세에 ID 고정 수정 화면, 카드 보관/복원, 확인이 필요한 완전 삭제를 추가했다. 보관 ID는 `opic-archived-card-ids`에 별도 저장하고 JSON v1 선택 필드로 백업한다.
+22. 완전 삭제는 ID 기반 첫 문장·답변 익히기 상태와 시도, 나만의 답변, 카드 메모와 관련 세션만 정리한다. 개인 학습 메모와 저장 지문은 보존하며 새로고침 전 메모리 스냅샷으로 한 번 실행 취소할 수 있다.
+23. 카드 관리 결과는 `TransientToast`로 통합했다. 알림은 하나만 유지되고 3.5초 후 사라지며, 보관·삭제 실행 취소와 `role="status"`, `aria-live="polite"`, 모바일 safe-area 배치를 사용한다.
 현재 다음 기능은 정해져 있지 않다. 새 요청을 받으면 먼저 `git status`, `git log -3`, 현재 저장소 코드를 확인하고 이어서 작업한다.
 
 ## 11. 보류하거나 하지 않기로 한 기능

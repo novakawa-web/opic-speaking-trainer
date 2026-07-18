@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppHeader } from "./components/AppHeader";
 import { BackupManager } from "./components/BackupManager";
 import { AnswerLearning } from "./components/AnswerLearning";
@@ -26,6 +26,7 @@ import { HomeQuickStart } from "./components/HomeQuickStart";
 import { ShadowingPlayer } from "./components/ShadowingPlayer";
 import { StudyDaySettings } from "./components/StudyDaySettings";
 import { TodayStats } from "./components/TodayStats";
+import { TransientToast } from "./components/TransientToast";
 import { cards as defaultCards } from "./data/cards";
 import type {
   DeckName,
@@ -44,6 +45,7 @@ import {
   recordAnswerLearningAttempt,
   removeAnswerLearningAttempt,
   saveAnswerLearningStatuses,
+  saveAnswerLearningAttempts,
 } from "./utils/answerLearningStorage";
 import {
   clearAnswerLearningSession,
@@ -58,6 +60,7 @@ import {
   readStudyAttempts,
   recordStudyAttempt,
   removeStudyAttempt,
+  saveStudyAttempts,
 } from "./utils/studyStats";
 import {
   readStudyDayStartTime,
@@ -76,7 +79,7 @@ import {
   type StudyOrder,
 } from "./utils/studyPreferences";
 import { applyTheme, readInitialTheme, saveTheme } from "./utils/themeStorage";
-import { readActiveCards } from "./utils/cardStorage";
+import { readActiveCards, saveActiveCards } from "./utils/cardStorage";
 import { readStoredStatuses, saveStatuses } from "./utils/statusStorage";
 import {
   matchesAnswerContentFilter,
@@ -94,6 +97,7 @@ import {
 import {
   deleteMyAnswer,
   readMyAnswers,
+  saveMyAnswers,
   setMyAnswer,
 } from "./utils/myAnswerStorage";
 import {
@@ -103,6 +107,7 @@ import {
   restoreCardMemo,
   toggleCardMemoPinned,
   updateCardMemo,
+  saveCardMemos,
   type CardMemo,
 } from "./utils/cardMemoStorage";
 import {
@@ -139,6 +144,20 @@ import {
   updatePersonalMemo,
   type PersonalMemo,
 } from "./utils/personalMemoStorage";
+import {
+  matchesArchiveFilter,
+  readArchivedCardIds,
+  saveArchivedCardIds,
+  setCardArchived,
+  type ArchiveFilter,
+} from "./utils/cardArchiveStorage";
+import {
+  hasCardRelatedData,
+  removeCardFromAnswerLearningSession,
+  removeCardFromAttempts,
+  removeCardFromMockSession,
+  removeCardFromRecord,
+} from "./utils/cardDeletion";
 
 type View =
   | "list"
@@ -151,6 +170,31 @@ type View =
   | "shadowing"
   | "personalMemos";
 type CardNavigationSource = "manual" | "auto";
+
+const CARD_MANAGEMENT_NOTICE_DURATION_MS = 3_500;
+
+type CardManagementNotice = {
+  id: number;
+  message: string;
+  view: "detail" | "library";
+  action: "undo-archive" | "undo-deletion" | null;
+  cardId?: string;
+};
+
+type DeletedCardSnapshot = {
+  cardId: string;
+  cards: OpicCard[];
+  statuses: FirstLineStatusMap;
+  studyAttempts: ReturnType<typeof readStudyAttempts>;
+  answerLearningStatuses: ReturnType<typeof readAnswerLearningStatuses>;
+  answerLearningAttempts: ReturnType<typeof readAnswerLearningAttempts>;
+  myAnswers: ReturnType<typeof readMyAnswers>;
+  cardMemos: ReturnType<typeof readCardMemos>;
+  archivedCardIds: string[];
+  drillCardIds: string[];
+  answerSession: AnswerLearningSession;
+  mockSession: FirstLineMockSession | null;
+};
 
 function shuffleCardIds(sourceCards: OpicCard[]) {
   const ids = sourceCards.map((card) => card.id);
@@ -233,8 +277,17 @@ function App() {
   const [cardStorageWarning, setCardStorageWarning] = useState(
     initialCardState.invalidStoredData,
   );
+  const [archivedCardIds, setArchivedCardIds] = useState(readArchivedCardIds);
+  const [archiveFilter, setArchiveFilter] = useState<ArchiveFilter>("active");
+  const [deletedCardSnapshot, setDeletedCardSnapshot] =
+    useState<DeletedCardSnapshot | null>(null);
+  const [cardManagementNotice, setCardManagementNotice] =
+    useState<CardManagementNotice | null>(null);
+  const cardManagementNoticeIdRef = useRef(0);
   const [initialNavigation] = useState(() =>
-    readInitialNavigationState(initialCardState.cards),
+    readInitialNavigationState(
+      initialCardState.cards.filter((card) => !archivedCardIds.includes(card.id)),
+    ),
   );
   const [answerSession, setAnswerSession] = useState<AnswerLearningSession>(
     initialNavigation.answerSession,
@@ -328,6 +381,12 @@ function App() {
   }, [postRestoreNavigation]);
 
   useEffect(() => {
+    if (cardManagementNotice && cardManagementNotice.view !== view) {
+      setCardManagementNotice(null);
+    }
+  }, [cardManagementNotice, view]);
+
+  useEffect(() => {
     applyTheme(theme);
     saveTheme(theme);
   }, [theme]);
@@ -350,6 +409,10 @@ function App() {
 
   const selectedCard =
     cardCatalog.find((card) => card.id === selectedCardId) ?? null;
+  const activeCatalog = useMemo(
+    () => cardCatalog.filter((card) => !archivedCardIds.includes(card.id)),
+    [archivedCardIds, cardCatalog],
+  );
   const decks = useMemo(
     () => [...new Set(cardCatalog.map((card) => card.deck))],
     [cardCatalog],
@@ -378,6 +441,7 @@ function App() {
   const filteredCards = useMemo(
     () =>
       cardCatalog.filter((card) => {
+        const matchesArchive = matchesArchiveFilter(card, archivedCardIds, archiveFilter);
         const matchesDeck = selectedDeck === "all" || card.deck === selectedDeck;
         const matchesTag = selectedTag === "all" || card.tags.includes(selectedTag);
         const matchesFinal = !finalOnly || card.tags.includes("final_rep");
@@ -392,6 +456,7 @@ function App() {
             : answerStatus === answerLearningStatusFilter);
 
         return (
+          matchesArchive &&
           matchesDeck &&
           matchesTag &&
           matchesFinal &&
@@ -403,6 +468,8 @@ function App() {
       }),
     [
       cardCatalog,
+      archivedCardIds,
+      archiveFilter,
       answerLearningStatuses,
       answerLearningStatusFilter,
       answerContentFilter,
@@ -436,6 +503,7 @@ function App() {
     studyOrder,
     answerLearningStatusFilter,
     answerContentFilter,
+    archiveFilter,
   ]);
   const filterSummary = useMemo(() => {
     const parts: string[] = [];
@@ -446,10 +514,12 @@ function App() {
     if (cardScope === "new") parts.push("새 카드");
     if (answerContentFilter === "first-line-only") parts.push("첫 문장 전용");
     if (answerContentFilter === "full-answer") parts.push("전체 답변 있음");
+    if (archiveFilter === "archived") parts.push("보관됨");
+    if (archiveFilter === "all") parts.push("사용 중+보관됨");
     if (studyOrder === "random") parts.push("랜덤 순서");
     if (studyOrder === "least-practiced") parts.push("연습 횟수 적은 순");
     return parts.length > 0 ? parts.join(" · ") : "필터 없음 · 기본 순서";
-  }, [answerContentFilter, cardScope, finalOnly, hardOnly, selectedDeck, selectedTag, studyOrder]);
+  }, [answerContentFilter, archiveFilter, cardScope, finalOnly, hardOnly, selectedDeck, selectedTag, studyOrder]);
   const drillCards = useMemo(() => {
     const byId = new Map(cardCatalog.map((card) => [card.id, card]));
     return drillCardIds.flatMap((cardId) => {
@@ -470,13 +540,17 @@ function App() {
     drillCardIds.includes(selectedCardId)
       ? drillCards
       : orderedFilteredCards;
+  const detailNavigationCards =
+    view === "detail" && selectedCard && !detailCards.some((card) => card.id === selectedCard.id)
+      ? [selectedCard]
+      : detailCards;
   const activeCards =
     view === "answerLearning" ||
     (view === "shadowing" && shadowingReturnView === "answerLearning")
       ? answerLearningCards
       : view === "drill"
         ? drillCards
-        : detailCards;
+        : detailNavigationCards;
   const selectedFilteredIndex = activeCards.findIndex(
     (card) => card.id === selectedCardId,
   );
@@ -800,7 +874,7 @@ function App() {
   function startAnswerLearning() {
     const filtered = orderAnswerLearningCards(
       filterAnswerLearningCards(
-        cardCatalog,
+        activeCatalog,
         answerSession.filters,
         answerLearningStatuses,
         myAnswers,
@@ -1253,6 +1327,7 @@ function App() {
     setStudyOrder("default");
     setAnswerLearningStatusFilter("all");
     setAnswerContentFilter("all");
+    setArchiveFilter("active");
   }
 
   function handleCardsChange(nextCards: OpicCard[]) {
@@ -1297,6 +1372,186 @@ function App() {
       setSelectedCardId(null);
       setView("list");
     }
+  }
+
+  function updateCard(nextCard: OpicCard) {
+    const nextCards = cardCatalog.map((card) =>
+      card.id === nextCard.id ? nextCard : card,
+    );
+    saveActiveCards(nextCards);
+    setCardCatalog(nextCards);
+    setCardStorageWarning(false);
+    showCardManagementNotice("카드가 수정되었습니다.", "detail");
+  }
+
+  function showCardManagementNotice(
+    message: string,
+    targetView: "detail" | "library",
+    action: CardManagementNotice["action"] = null,
+    cardId?: string,
+  ) {
+    cardManagementNoticeIdRef.current += 1;
+    if (action !== "undo-deletion") setDeletedCardSnapshot(null);
+    setCardManagementNotice({
+      id: cardManagementNoticeIdRef.current,
+      message,
+      view: targetView,
+      action,
+      cardId,
+    });
+  }
+
+  function dismissCardManagementNotice(noticeId: number) {
+    setCardManagementNotice((current) =>
+      current?.id === noticeId ? null : current,
+    );
+  }
+
+  function changeCardArchive(cardId: string, archived: boolean) {
+    const next = setCardArchived(archivedCardIds, cardId, archived);
+    setArchivedCardIds(next);
+    showCardManagementNotice(
+      archived
+        ? "카드를 보관했습니다. 기존 학습 기록은 유지됩니다."
+        : "카드를 사용 중 목록으로 복원했습니다.",
+      archived ? "library" : "detail",
+      archived ? "undo-archive" : null,
+      archived ? cardId : undefined,
+    );
+    setArchiveFilter("active");
+    if (archived) {
+      clearCardDetailUiSession();
+      setSelectedCardId(null);
+      setView("library");
+      window.scrollTo({ top: 0, behavior: "auto" });
+    }
+  }
+
+  function undoCardArchive(cardId: string) {
+    const next = setCardArchived(archivedCardIds, cardId, false);
+    setArchivedCardIds(next);
+    setArchiveFilter("active");
+    showCardManagementNotice("카드 보관을 취소했습니다.", "library");
+  }
+
+  function deleteCardPermanently(cardId: string) {
+    const card = cardCatalog.find((candidate) => candidate.id === cardId);
+    if (!card) return;
+
+    const snapshot: DeletedCardSnapshot = {
+      cardId,
+      cards: cardCatalog,
+      statuses,
+      studyAttempts,
+      answerLearningStatuses,
+      answerLearningAttempts,
+      myAnswers,
+      cardMemos,
+      archivedCardIds,
+      drillCardIds,
+      answerSession,
+      mockSession,
+    };
+    const nextCards = cardCatalog.filter((candidate) => candidate.id !== cardId);
+    const nextStatuses = removeCardFromRecord(statuses, cardId);
+    const nextAnswerStatuses = removeCardFromRecord(answerLearningStatuses, cardId);
+    const nextMyAnswers = removeCardFromRecord(myAnswers, cardId);
+    const nextCardMemos = removeCardFromRecord(cardMemos, cardId);
+    const nextStudyAttempts = removeCardFromAttempts(studyAttempts, cardId);
+    const nextAnswerAttempts = removeCardFromAttempts(answerLearningAttempts, cardId);
+    const nextArchivedIds = archivedCardIds.filter((id) => id !== cardId);
+    const nextDrillIds = drillCardIds.filter((id) => id !== cardId);
+    const nextAnswerSession = removeCardFromAnswerLearningSession(answerSession, cardId);
+    const nextMockSession = removeCardFromMockSession(mockSession, cardId);
+
+    saveActiveCards(nextCards);
+    saveStatuses(nextStatuses);
+    saveStudyAttempts(nextStudyAttempts);
+    saveAnswerLearningStatuses(nextAnswerStatuses);
+    saveAnswerLearningAttempts(nextAnswerAttempts);
+    saveMyAnswers(nextMyAnswers);
+    saveCardMemos(nextCardMemos);
+    saveArchivedCardIds(nextArchivedIds);
+    if (nextMockSession) saveFirstLineMockSession(nextMockSession);
+    else clearFirstLineMockSession();
+    updateAnswerSession(nextAnswerSession);
+    clearCardDetailUiSession();
+    clearShadowingPlayerSession();
+    saveNavigationSession({
+      currentView: "library",
+      selectedCardId: null,
+      drillSource: drillReturnView,
+      detailSource: "library",
+      drillCardIds: nextDrillIds,
+      filters: {
+        selectedDeck,
+        selectedTag,
+        finalOnly,
+        hardOnly,
+        cardScope,
+        studyOrder,
+      },
+    });
+
+    setCardCatalog(nextCards);
+    setStatuses(nextStatuses);
+    setStudyAttempts(nextStudyAttempts);
+    setAnswerLearningStatuses(nextAnswerStatuses);
+    setAnswerLearningAttempts(nextAnswerAttempts);
+    setMyAnswers(nextMyAnswers);
+    setCardMemos(nextCardMemos);
+    setArchivedCardIds(nextArchivedIds);
+    setDrillCardIds(nextDrillIds);
+    setMockSession(nextMockSession);
+    setLastUndo(null);
+    setAnswerLearningUndo(null);
+    setShadowingSource(null);
+    setMemoFocus(null);
+    setSelectedCardId(null);
+    setDeletedCardSnapshot(snapshot);
+    showCardManagementNotice(
+      "카드가 삭제되었습니다.",
+      "library",
+      "undo-deletion",
+    );
+    setView("library");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function undoCardDeletion() {
+    const snapshot = deletedCardSnapshot;
+    if (!snapshot) return;
+    saveActiveCards(snapshot.cards);
+    saveStatuses(snapshot.statuses);
+    saveStudyAttempts(snapshot.studyAttempts);
+    saveAnswerLearningStatuses(snapshot.answerLearningStatuses);
+    saveAnswerLearningAttempts(snapshot.answerLearningAttempts);
+    saveMyAnswers(snapshot.myAnswers);
+    saveCardMemos(snapshot.cardMemos);
+    saveArchivedCardIds(snapshot.archivedCardIds);
+    if (snapshot.mockSession) saveFirstLineMockSession(snapshot.mockSession);
+    else clearFirstLineMockSession();
+    saveAnswerLearningSession(snapshot.answerSession);
+
+    setCardCatalog(snapshot.cards);
+    setStatuses(snapshot.statuses);
+    setStudyAttempts(snapshot.studyAttempts);
+    setAnswerLearningStatuses(snapshot.answerLearningStatuses);
+    setAnswerLearningAttempts(snapshot.answerLearningAttempts);
+    setMyAnswers(snapshot.myAnswers);
+    setCardMemos(snapshot.cardMemos);
+    setArchivedCardIds(snapshot.archivedCardIds);
+    setDrillCardIds(snapshot.drillCardIds);
+    setAnswerSession(snapshot.answerSession);
+    setMockSession(snapshot.mockSession);
+    setDeletedCardSnapshot(null);
+    showCardManagementNotice(
+      "삭제한 카드와 관련 기록을 복원했습니다.",
+      "library",
+    );
+    setSelectedCardId(null);
+    setView("library");
+    window.scrollTo({ top: 0, behavior: "auto" });
   }
 
   if (view === "shadowing" && shadowingSource) {
@@ -1365,6 +1620,8 @@ function App() {
           onReset={resetFilters}
           onStart={startFirstLineFromSetup}
           onBack={() => setView("list")}
+          archiveFilter={archiveFilter}
+          onArchiveFilterChange={setArchiveFilter}
         />
       </div>
     );
@@ -1380,7 +1637,7 @@ function App() {
           onToggleTheme={toggleTheme}
         />
         <AnswerLearningSetup
-          cards={cardCatalog}
+          cards={activeCatalog}
           decks={decks}
           tags={tags}
           statuses={answerLearningStatuses}
@@ -1526,7 +1783,26 @@ function App() {
           answerContentFilter={answerContentFilter}
           onAnswerContentFilterChange={setAnswerContentFilter}
           onOpenMemoCard={openMemoCard}
+          archiveFilter={archiveFilter}
+          onArchiveFilterChange={setArchiveFilter}
+          archivedCardIds={archivedCardIds}
         />
+        {cardManagementNotice?.view === "library" && (
+          <TransientToast
+            message={cardManagementNotice.message}
+            noticeId={cardManagementNotice.id}
+            durationMs={CARD_MANAGEMENT_NOTICE_DURATION_MS}
+            actionLabel={cardManagementNotice.action ? "실행 취소" : undefined}
+            onAction={
+              cardManagementNotice.action === "undo-archive" && cardManagementNotice.cardId
+                ? () => undoCardArchive(cardManagementNotice.cardId!)
+                : cardManagementNotice.action === "undo-deletion" && deletedCardSnapshot
+                  ? undoCardDeletion
+                  : undefined
+            }
+            onDismiss={() => dismissCardManagementNotice(cardManagementNotice.id)}
+          />
+        )}
       </div>
     );
   }
@@ -1649,7 +1925,27 @@ function App() {
           onDeleteMemo={removeMemo}
           onRestoreMemo={restoreMemo}
           onStartShadowing={startCardShadowing}
+          isArchived={archivedCardIds.includes(selectedCard.id)}
+          hasRelatedRecords={hasCardRelatedData(selectedCard.id, {
+            statuses,
+            attempts: studyAttempts,
+            answerLearningStatuses,
+            answerLearningAttempts,
+            myAnswers,
+            cardMemos,
+          })}
+          onUpdateCard={updateCard}
+          onArchiveCard={changeCardArchive}
+          onDeleteCard={deleteCardPermanently}
         />
+        {cardManagementNotice?.view === "detail" && (
+          <TransientToast
+            message={cardManagementNotice.message}
+            noticeId={cardManagementNotice.id}
+            durationMs={CARD_MANAGEMENT_NOTICE_DURATION_MS}
+            onDismiss={() => dismissCardManagementNotice(cardManagementNotice.id)}
+          />
+        )}
       </div>
     );
   }
@@ -1695,7 +1991,7 @@ function App() {
                 </div>
               </div>
               <HomeCardDashboard
-                totalCount={cardCatalog.length}
+                totalCount={activeCatalog.length}
                 filteredCount={orderedFilteredCards.length}
                 filterSummary={filterSummary}
                 onOpenLibrary={openCardLibrary}
@@ -1739,6 +2035,7 @@ function App() {
                 personalMemos={personalMemoDataset}
                 answerLearningStatuses={answerLearningStatuses}
                 answerLearningAttemptsByDate={answerLearningAttempts}
+                archivedCardIds={archivedCardIds}
                 postRestoreMessage={postRestoreNavigation?.message}
               />
             </HomeManagement>
