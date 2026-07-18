@@ -40,7 +40,7 @@ const tests = [];
 function test(name, run) { tests.push({ name, run }); }
 const cardA = cards[0];
 const cardB = cards[1];
-const now = new Date("2026-07-16T19:30:00.000Z"); // 2026-07-17 04:30 KST
+const now = new Date(2026, 6, 17, 4, 30); // 실행 환경의 로컬 시각 2026-07-17 04:30
 
 test("빈 상태 저장소", () => assert.deepEqual(readAnswerLearningStatuses(new MemoryStorage()), {}));
 test("hard 상태 정규화", () => assert.equal(normalizeAnswerLearningStatuses({ [cardA.id]: "hard" })[cardA.id], "hard"));
@@ -68,7 +68,7 @@ test("04:00 이후 당일 학습일", () => {
   assert.equal(result.attempt.date, "2026-07-17");
 });
 test("04:00 이전 전날 학습일", () => {
-  const early = new Date("2026-07-16T18:59:00.000Z");
+  const early = new Date(2026, 6, 17, 3, 59);
   const result = recordAnswerLearningAttempt({}, cardA.id, "learning", "my-answer", "04:00", early);
   assert.equal(result.attempt.date, "2026-07-16");
 });
