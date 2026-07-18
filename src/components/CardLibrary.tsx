@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { DeckName, FirstLineStatusMap, OpicCard } from "../types";
+import type { AnswerLearningStatus, AnswerLearningStatuses, DeckName, FirstLineStatusMap, OpicCard } from "../types";
 import type { CardMemos } from "../utils/cardMemoStorage";
 import {
   CARD_LIBRARY_PAGE_SIZE,
@@ -12,11 +12,14 @@ import type { MyAnswers } from "../utils/myAnswerStorage";
 import type { StudyCardScope, StudyOrder } from "../utils/studyPreferences";
 import { CardList } from "./CardList";
 import { TagFilter } from "./TagFilter";
+import { MemoSearch } from "./MemoSearch";
 
 type CardLibraryProps = {
   cards: OpicCard[];
+  memoCards: OpicCard[];
   catalogCount: number;
   statuses: FirstLineStatusMap;
+  answerLearningStatuses: AnswerLearningStatuses;
   myAnswers: MyAnswers;
   cardMemos: CardMemos;
   decks: DeckName[];
@@ -36,12 +39,17 @@ type CardLibraryProps = {
   onStudyOrderChange: (order: StudyOrder) => void;
   onReset: () => void;
   onSelect: (card: OpicCard) => void;
+  answerLearningStatusFilter: "all" | "unlearned" | AnswerLearningStatus;
+  onAnswerLearningStatusFilterChange: (value: "all" | "unlearned" | AnswerLearningStatus) => void;
+  onOpenMemoCard: (cardId: string, memoId: string) => void;
 };
 
 export function CardLibrary({
   cards,
+  memoCards,
   catalogCount,
   statuses,
+  answerLearningStatuses,
   myAnswers,
   cardMemos,
   decks,
@@ -61,7 +69,11 @@ export function CardLibrary({
   onStudyOrderChange,
   onReset,
   onSelect,
+  answerLearningStatusFilter,
+  onAnswerLearningStatusFilterChange,
+  onOpenMemoCard,
 }: CardLibraryProps) {
+  const [activeTab, setActiveTab] = useState<"cards" | "memos">("cards");
   const initialSessionRef = useRef(readCardLibrarySession());
   const visibleCountRef = useRef(CARD_LIBRARY_PAGE_SIZE);
   const filterSignatureRef = useRef(filterSignature);
@@ -143,6 +155,16 @@ export function CardLibrary({
         <span className="card-count">전체 {catalogCount}장</span>
       </section>
 
+      <div className="card-library-tabs" role="tablist" aria-label="카드 라이브러리 보기">
+        <button type="button" role="tab" aria-selected={activeTab === "cards"} onClick={() => setActiveTab("cards")}>카드 목록</button>
+        <button type="button" role="tab" aria-selected={activeTab === "memos"} onClick={() => setActiveTab("memos")}>카드 메모 검색</button>
+      </div>
+
+      {activeTab === "memos" ? (
+        <MemoSearch cards={memoCards} cardMemos={cardMemos} onOpenCard={onOpenMemoCard} />
+      ) : (
+        <>
+
       <TagFilter
         decks={decks}
         tags={tags}
@@ -159,6 +181,8 @@ export function CardLibrary({
         onCardScopeChange={onCardScopeChange}
         onStudyOrderChange={onStudyOrderChange}
         onReset={onReset}
+        answerLearningStatusFilter={answerLearningStatusFilter}
+        onAnswerLearningStatusFilterChange={onAnswerLearningStatusFilterChange}
       />
 
       <p className="card-library-result-count" aria-live="polite">
@@ -169,6 +193,7 @@ export function CardLibrary({
         cards={shownCards}
         totalCount={cards.length}
         statuses={statuses}
+        answerLearningStatuses={answerLearningStatuses}
         myAnswers={myAnswers}
         cardMemos={cardMemos}
         onSelect={selectCard}
@@ -179,6 +204,8 @@ export function CardLibrary({
           카드 더 보기
           <span>다음 {Math.min(CARD_LIBRARY_PAGE_SIZE, cards.length - shownCards.length)}장</span>
         </button>
+      )}
+        </>
       )}
     </main>
   );

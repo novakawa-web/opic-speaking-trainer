@@ -16,8 +16,11 @@
     "test:shadowing": "node --experimental-strip-types scripts/verify-shadowing-player.mjs",
     "test:ui-session": "node --experimental-strip-types scripts/verify-ui-session.mjs",
     "test:tsv": "node --experimental-strip-types scripts/verify-tsv.mjs",
+    "test:answer-learning": "node --experimental-strip-types scripts/verify-answer-learning.mjs",
+    "test:home-layout": "node scripts/verify-home-layout.mjs",
+    "test:ui-system": "node --experimental-strip-types scripts/verify-ui-system.mjs",
     "test:pwa": "node scripts/verify-pwa.mjs",
-    "test:all": "npm run test:backup && npm run test:my-answers && npm run test:memos && npm run test:personal-memos && npm run test:passages && npm run test:recorder && npm run test:shadowing && npm run test:ui-session && npm run test:tsv",
+    "test:all": "npm run test:backup && npm run test:my-answers && npm run test:memos && npm run test:personal-memos && npm run test:passages && npm run test:recorder && npm run test:shadowing && npm run test:ui-session && npm run test:tsv && npm run test:answer-learning && npm run test:home-layout && npm run test:ui-system",
     "preview": "vite preview --base /opic-speaking-trainer/"
   },
   "dependencies": {

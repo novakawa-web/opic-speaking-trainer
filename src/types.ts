@@ -55,3 +55,38 @@ export type DailyStudyStats = {
   successCount: number;
   successRate: number;
 };
+
+export type AnswerLearningStatus = "hard" | "learning" | "speakable";
+
+export type AnswerLearningStatuses = Record<string, AnswerLearningStatus>;
+
+export type AnswerLearningAnswerSource = "default" | "my-answer";
+
+export type AnswerLearningAttempt = {
+  id: string;
+  date: string;
+  cardId: string;
+  status: AnswerLearningStatus;
+  timestamp: string;
+  answerSource: AnswerLearningAnswerSource;
+};
+
+export type AnswerLearningAttemptsByDate = Record<
+  string,
+  AnswerLearningAttempt[]
+>;
+
+export type AnswerLearningUndoEntry = {
+  cardId: string;
+  previousStatus: AnswerLearningStatus | null;
+  newStatus: AnswerLearningStatus;
+  attemptId: string;
+  attemptDate: string;
+  answerSource: AnswerLearningAnswerSource;
+};
+
+export type AnswerLearningDailyStats = {
+  date: string;
+  attemptCount: number;
+  speakableCardCount: number;
+};

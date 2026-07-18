@@ -37,17 +37,18 @@ export function PersonalMemoSummary({
     .slice(0, 3);
 
   return (
-    <section className="personal-memo-summary" aria-labelledby="personal-memo-summary-title">
+    <section className="personal-memo-summary home-material-card" aria-labelledby="personal-memo-summary-title">
       <div className="section-title-row personal-memo-summary-heading">
         <div>
           <p className="eyebrow">PERSONAL STUDY NOTES</p>
           <h2 id="personal-memo-summary-title" className="home-section-title">개인 학습 메모</h2>
-          <p>공부법, 시험 전략, 기억할 표현을 카드와 별도로 저장하세요.</p>
+          <p className="home-card-description">공부법, 시험 전략, 기억할 표현을 카드와 별도로 저장하세요.</p>
         </div>
-        <div className="personal-memo-counts" aria-label="개인 학습 메모 요약">
-          <span>저장 {dataset.memos.length}</span>
-          <span>고정 {getPinnedPersonalMemoCount(dataset)}</span>
-        </div>
+      </div>
+
+      <div className="personal-memo-counts summary-chip-row" aria-label="개인 학습 메모 요약">
+        <span className="summary-chip">저장 {dataset.memos.length}</span>
+        <span className="summary-chip">고정 {getPinnedPersonalMemoCount(dataset)}</span>
       </div>
 
       <div className="personal-memo-summary-actions">

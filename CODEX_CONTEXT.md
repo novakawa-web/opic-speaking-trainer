@@ -32,13 +32,16 @@
 - 학습일 시작 시간 기본값은 04:00이며 사용자가 자정, 새벽 4시 또는 직접 시간을 설정할 수 있다.
 - 상태 선택 후 자동 넘김 옵션과 1단계 Undo가 있다.
 - 주요 키보드 단축키: Q/W 이전·다음, Enter 다음, Space 화면별 토글, A/S/D 평가, Z 최근 평가 실행 취소.
+- 홈은 빠른 시작, 오늘 학습 기록, 학습 카드·쉐도잉 지문·개인 학습 메모의 공통 레일 구조를 사용한다. 학습 카드의 현재 조건은 모바일에서도 label과 값을 한 줄 우선으로 표시한다.
+- 답변 익히기 모드는 필터한 카드를 대상으로 힌트·첫 문장·전체 답변을 단계적으로 확인한다. 상태는 `hard | learning | speakable`이며 첫 문장 상태와 별도 저장·통계·한 단계 Undo·현재 상태 초기화를 사용한다.
+- 답변 익히기에서 선택한 기본 답변 또는 나만의 답변으로 기존 쉐도잉 플레이어에 진입하고 원래 카드·화면으로 복귀할 수 있다.
 
 ### TTS와 쉐도잉
 
 - Web Speech API 기반으로 문제, 첫 문장, 기본 답변, 나만의 답변, 쉐도잉 문장을 읽는다.
 - TTS 속도는 0.7, 0.85, 1.0, 1.15, 1.3의 5단계이며 모든 TTS 화면이 같은 설정을 공유한다.
 - 문제 자동재생 설정과 한국어 문제 뜻 표시가 있다. 한국어 TTS는 없다.
-- 영어 음성은 재생 요청마다 현재 `speechSynthesis.getVoices()` 목록에서 다시 선택한다. 우선순위는 `en-US`, `en-GB`, 기타 `en*`이다.
+- 영어 음성은 재생 요청마다 현재 `speechSynthesis.getVoices()` 목록에서 다시 선택한다. 영어 Ava 음성이 있으면 최우선이며, 이후 `en-US`, `en-GB`, 기타 `en*` 순서다. 비영어 Ava와 한국어 fallback은 사용하지 않는다.
 - 음성 목록이 일시적으로 비어 있으면 `voiceschanged`와 짧은 재시도를 사용한다. 영어 음성이 끝내 없으면 안내하고, 한국어 기본 음성으로 fallback하지 않는다.
 - 쉐도잉 소스는 카드 기본 답변, 나만의 답변, 저장하지 않은 직접 지문, 저장 지문이다.
 - 쉐도잉 반복 단위는 전체 / 현재 문단 / 현재 문장이다.
@@ -145,6 +148,8 @@ type StudyAttempt = {
 | `opic-card-dataset` | 버전 1 활성 카드 전체 | 포함 |
 | `opic-first-line-statuses` | 카드 ID별 현재 평가 상태 | 포함 |
 | `opic-first-line-attempts-by-date` | 날짜별 첫 문장 시도 이력 | 포함, 파일에서는 flat 배열 |
+| `opic-answer-learning-statuses` | 카드 ID별 답변 익히기 상태 | 포함 |
+| `opic-answer-learning-attempts-by-date` | 날짜별 답변 익히기 시도 이력 | 포함, 파일에서는 flat 배열 |
 | `opic-my-answers` | 카드 ID별 나만의 답변 | 포함 |
 | `opic-card-memos` | 카드별 여러 메모 | 포함 |
 | `opic-personal-memos` | 카드와 무관한 개인 학습 메모 데이터셋 | 포함 |
@@ -175,6 +180,8 @@ type StudyAttempt = {
 | `opic-saved-passage-library-open` | 저장 지문 목록 펼침 상태 |
 | `opic-personal-memo-editor-session` | 개인 학습 메모 작성·수정 초안 |
 | `opic-personal-memo-library-open` | 개인 학습 메모 목록 펼침 상태 |
+| `opic-answer-learning-session` | 답변 익히기 카드 순서, 현재 카드와 화면 상태 |
+| `opic-post-restore-navigation` | 전체 복구 후 관리 영역으로 한 번만 복귀하는 이동 의도 |
 
 sessionStorage 데이터는 JSON 전체 백업에 포함하지 않는다. 잘못된 JSON, 존재하지 않는 카드/지문 ID, 길이 제한 위반은 안전한 초기 상태로 fallback한다.
 
@@ -192,7 +199,7 @@ sessionStorage 데이터는 JSON 전체 백업에 포함하지 않는다. 잘못
 
 - 파일 형식: `format: "opic-trainer-backup"`, `version: 1`, app schema version 1.
 - 최대 파일 크기: 10MB.
-- 명시적으로 포함: 활성 카드 데이터셋, 현재 카드 상태, 시도 이력, 나만의 답변, 카드별 메모, 저장 지문, 개인 학습 메모, 장기 설정.
+- 명시적으로 포함: 활성 카드 데이터셋, 첫 문장과 답변 익히기의 현재 상태·시도 이력, 나만의 답변, 카드별 메모, 저장 지문, 개인 학습 메모, 장기 설정.
 - 명시적으로 제외: 모든 sessionStorage UI 상태, TSV 임시 백업, 직전 전체 복구 안전 백업, 녹음, TTS/타이머/Wake Lock 런타임 상태, 직접 임시 지문.
 - 복구 전 전체 파일을 파싱·검증·정규화한다. 알 수 없는 필드는 경고 후 무시하고, 데이터 손상 위험이 있는 핵심 오류가 있으면 복구를 막는다.
 - `__proto__`, `constructor`, `prototype` 같은 위험 키를 차단한다.
@@ -217,6 +224,7 @@ sessionStorage 데이터는 JSON 전체 백업에 포함하지 않는다. 잘못
 - 기본 카드: `src/data/cards.ts`
 - 공통 타입: `src/types.ts`
 - 카드 목록/상세/첫 문장: `src/components/CardList.tsx`, `CardDetail.tsx`, `FirstLineDrill.tsx`
+- 답변 익히기: `src/components/AnswerLearningSetup.tsx`, `src/components/AnswerLearning.tsx`, `src/utils/answerLearningStorage.ts`, `src/utils/answerLearningSession.ts`
 - 쉐도잉: `src/components/ShadowingPlayer.tsx`, `src/hooks/useShadowingPlayer.ts`, `src/utils/shadowingPlayer.ts`, `src/utils/shadowingSettings.ts`
 - 문장/문단: `src/utils/sentenceSegmenter.ts`, `src/utils/passageParagraphs.ts`
 - TTS 영어 voice: `src/hooks/useSpeechSynthesis.ts`, `src/utils/englishVoice.ts`
@@ -227,6 +235,7 @@ sessionStorage 데이터는 JSON 전체 백업에 포함하지 않는다. 잘못
 - 저장/직접 지문: `src/components/DirectTextPractice.tsx`, `src/utils/savedPassageStorage.ts`
 - TSV: `src/components/CardDataManager.tsx`, `src/utils/cardTsv.ts`, `src/utils/cardStorage.ts`
 - JSON 백업: `src/components/BackupManager.tsx`, `src/utils/appBackup.ts`
+- 복구 후 관리 영역 복귀: `src/utils/postRestoreNavigation.ts`, `src/components/HomeManagement.tsx`
 - 세션 복원: `src/utils/navigationSession.ts`, `src/utils/uiSessionStorage.ts`
 - PWA 업데이트 UI: `src/components/PwaManager.tsx`
 - 스타일: `src/styles.css`
@@ -261,11 +270,14 @@ npm.cmd run test:pwa
 | `test:personal-memos` | 개인 학습 메모 | 47 |
 | `test:passages` | 저장 지문·문단 | 41 |
 | `test:recorder` | 녹음 | 66 |
-| `test:shadowing` | 문장/TTS/쉐도잉 | 45 |
+| `test:shadowing` | 문장/TTS/쉐도잉 | 49 |
 | `test:ui-session` | 카드 상세·플레이어·카드 라이브러리 세션 | 20 |
 | `test:tsv` | TSV | 27 |
+| `test:answer-learning` | 답변 익히기 상태·통계·세션·Undo | 50 |
+| `test:home-layout` | 홈 공통 레일·반응형 구조 | 10 |
+| `test:ui-system` | compact UI·복구 후 이동·간격 체계 | 21 |
 
-- 2026-07-18 현재 `npm.cmd run test:all`: **326/326 통과**.
+- 2026-07-18 현재 `npm.cmd run test:all`: **411/411 통과**.
 - 같은 확인에서 `npm.cmd run build`: TypeScript와 Vite production build 통과.
 - 같은 확인에서 `npm.cmd run test:pwa`: Pages/PWA 산출물 검증 통과. `manifest.webmanifest`, `sw.js`, `404.html`이 생성됨.
 - `test:pwa`는 `test:all`에 포함되지 않으므로 build 후 별도로 실행한다.
@@ -310,6 +322,11 @@ npm.cmd run test:pwa
 10. TSV/JSON 직전 되돌리기는 각각 가져오기/복구 영역으로 이동했고, 안전 백업이 없으면 작은 빈 상태 문구만 표시한다.
 11. 개인 메모와 저장 지문은 제목을 비워도 본문 첫 줄에서 안전한 일반 텍스트 제목을 만들며 기존 데이터 스키마는 유지한다.
 12. 열린 개인 메모는 현재 정렬 또는 검색 결과 안에서 이전/다음으로 이동할 수 있다.
+13. 홈에 답변 익히기 빠른 시작과 별도 상태·시도 통계를 추가했으며 기존 첫 문장 저장 키와 분리했다.
+14. 홈 카드들은 1200px 공통 레일과 6·8·12·16·20·24·28px 간격 체계를 사용한다.
+15. 모바일 히어로 규칙과 빠른 시작 카드의 내부 좌우선을 20px 공통 inset으로 맞췄다.
+16. JSON 전체 복구 또는 되돌리기 후 `opic-post-restore-navigation`으로 관리 영역을 펼치고 백업 영역으로 복귀한다. 완료는 aria-live로 안내하며 제목에는 자동 focus를 주지 않는다.
+17. 학습 카드의 요약 칩, 현재 조건, 버튼 그룹은 16px stack gap을 사용하고 현재 조건은 360px 이상에서 한 줄을 우선한다.
 
 현재 다음 기능은 정해져 있지 않다. 새 요청을 받으면 먼저 `git status`, `git log -3`, 현재 저장소 코드를 확인하고 이어서 작업한다.
 

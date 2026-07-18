@@ -5,7 +5,19 @@ import type {
   StudyAttempt,
   StudyAttemptsByDate,
   ThemeMode,
+  AnswerLearningAttempt,
+  AnswerLearningAttemptsByDate,
+  AnswerLearningStatuses,
 } from "../types.ts";
+import {
+  ANSWER_LEARNING_ATTEMPTS_STORAGE_KEY,
+  ANSWER_LEARNING_STATUSES_STORAGE_KEY,
+  flattenAnswerLearningAttempts,
+  groupAnswerLearningAttempts,
+  isAnswerLearningAttempt,
+  isAnswerLearningStatus,
+  normalizeAnswerLearningStatuses,
+} from "./answerLearningStorage.ts";
 import {
   CARD_DATASET_STORAGE_KEY,
   CARD_DATASET_VERSION,
@@ -145,6 +157,8 @@ export type BackupSummary = {
   savedPassageCount: number;
   personalMemoCount: number;
   pinnedPersonalMemoCount: number;
+  answerLearningStatusCount: number;
+  answerLearningAttemptCount: number;
   settingsCount: number;
 };
 
@@ -165,6 +179,8 @@ export type AppBackupV1 = {
     cardMemos: CardMemos;
     savedPassages: SavedPassageDataset;
     personalMemos: PersonalMemoDataset;
+    answerLearningStatuses: AnswerLearningStatuses;
+    answerLearningAttempts: AnswerLearningAttempt[];
     settings: BackupSettings;
   };
 };
@@ -230,6 +246,8 @@ export const BACKUP_STORAGE_POLICY = [
   { key: CARD_MEMOS_STORAGE_KEY, schemaPath: "data.cardMemos", included: true },
   { key: SAVED_PASSAGES_STORAGE_KEY, schemaPath: "data.savedPassages", included: true },
   { key: PERSONAL_MEMOS_STORAGE_KEY, schemaPath: "data.personalMemos", included: true },
+  { key: ANSWER_LEARNING_STATUSES_STORAGE_KEY, schemaPath: "data.answerLearningStatuses", included: true },
+  { key: ANSWER_LEARNING_ATTEMPTS_STORAGE_KEY, schemaPath: "data.answerLearningAttempts", included: true },
   { key: THEME_STORAGE_KEY, schemaPath: "data.settings.theme", included: true },
   { key: STUDY_DAY_START_STORAGE_KEY, schemaPath: "data.settings.studyDayStartTime", included: true },
   { key: TTS_RATE_STORAGE_KEY, schemaPath: "data.settings.ttsRate", included: true },
@@ -712,6 +730,72 @@ function normalizeBackupPersonalMemos(
   });
 }
 
+function normalizeBackupAnswerLearningStatuses(
+  value: unknown,
+  issues: BackupIssue[],
+) {
+  if (value === undefined) return {};
+  if (!isRecord(value)) {
+    issues.push(
+      createIssue(
+        "warning",
+        "data.answerLearningStatuses",
+        "답변 익히기 상태 형식이 올바르지 않아 빈 상태로 복구합니다.",
+      ),
+    );
+    return {};
+  }
+  Object.entries(value).forEach(([cardId, status]) => {
+    if (!cardId.trim() || !isAnswerLearningStatus(status)) {
+      issues.push(
+        createIssue(
+          "warning",
+          `data.answerLearningStatuses.${cardId || "(empty)"}`,
+          "답변 익히기 상태는 hard, learning, speakable 중 하나여야 합니다.",
+        ),
+      );
+    }
+  });
+  return normalizeAnswerLearningStatuses(value);
+}
+
+function normalizeBackupAnswerLearningAttempts(
+  value: unknown,
+  issues: BackupIssue[],
+) {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) {
+    issues.push(
+      createIssue(
+        "warning",
+        "data.answerLearningAttempts",
+        "답변 익히기 시도 형식이 올바르지 않아 빈 기록으로 복구합니다.",
+      ),
+    );
+    return [];
+  }
+  const seenIds = new Set<string>();
+  const attempts: AnswerLearningAttempt[] = [];
+  value.forEach((candidate, index) => {
+    const path = `data.answerLearningAttempts[${index}]`;
+    if (!isAnswerLearningAttempt(candidate)) {
+      issues.push(createIssue("error", path, "답변 익히기 시도의 필수 값이 올바르지 않습니다."));
+      return;
+    }
+    if (!isValidDateKey(candidate.date)) {
+      issues.push(createIssue("error", `${path}.date`, "유효한 로컬 학습일이 필요합니다."));
+      return;
+    }
+    if (seenIds.has(candidate.id)) {
+      issues.push(createIssue("error", `${path}.id`, `답변 익히기 시도 ID '${candidate.id}'가 중복되었습니다.`));
+      return;
+    }
+    seenIds.add(candidate.id);
+    attempts.push({ ...candidate });
+  });
+  return attempts;
+}
+
 function summarizeBackupData(
   cards: OpicCard[],
   statuses: Record<string, FirstLineResult>,
@@ -720,6 +804,8 @@ function summarizeBackupData(
   cardMemos: CardMemos,
   savedPassages: SavedPassageDataset,
   personalMemos: PersonalMemoDataset,
+  answerLearningStatuses: AnswerLearningStatuses,
+  answerLearningAttempts: AnswerLearningAttempt[],
   settings: BackupSettings,
 ): BackupSummary {
   return {
@@ -733,6 +819,8 @@ function summarizeBackupData(
     savedPassageCount: savedPassages.passages.length,
     personalMemoCount: personalMemos.memos.length,
     pinnedPersonalMemoCount: getPinnedPersonalMemoCount(personalMemos),
+    answerLearningStatusCount: Object.keys(answerLearningStatuses).length,
+    answerLearningAttemptCount: answerLearningAttempts.length,
     settingsCount: Object.keys(settings).length,
   };
 }
@@ -783,6 +871,8 @@ export function createAppBackup(
   cardMemos = readCardMemos(),
   savedPassages = readSavedPassageDataset(),
   personalMemos = readPersonalMemoDataset(),
+  answerLearningStatuses: AnswerLearningStatuses = {},
+  answerLearningAttemptsByDate: AnswerLearningAttemptsByDate = {},
 ): AppBackupV1 {
   const exportedAt = now.toISOString();
   const normalizedStatuses = normalizeStatuses(statuses) as Record<
@@ -795,6 +885,12 @@ export function createAppBackup(
   const normalizedCardMemos = normalizeCardMemos(cardMemos);
   const normalizedSavedPassages = normalizeSavedPassageDataset(savedPassages);
   const normalizedPersonalMemos = normalizePersonalMemoDataset(personalMemos);
+  const normalizedAnswerLearningStatuses = normalizeAnswerLearningStatuses(
+    answerLearningStatuses,
+  );
+  const answerLearningAttempts = flattenAnswerLearningAttempts(
+    answerLearningAttemptsByDate,
+  );
 
   return {
     format: APP_BACKUP_FORMAT,
@@ -812,6 +908,8 @@ export function createAppBackup(
       normalizedCardMemos,
       normalizedSavedPassages,
       normalizedPersonalMemos,
+      normalizedAnswerLearningStatuses,
+      answerLearningAttempts,
       settings,
     ),
     data: {
@@ -825,6 +923,8 @@ export function createAppBackup(
       cardMemos: normalizedCardMemos,
       savedPassages: normalizedSavedPassages,
       personalMemos: normalizedPersonalMemos,
+      answerLearningStatuses: normalizedAnswerLearningStatuses,
+      answerLearningAttempts,
       settings: { ...settings },
     },
   };
@@ -910,6 +1010,8 @@ export function validateBackup(value: unknown): BackupValidationResult {
           "savedPassageCount",
           "personalMemoCount",
           "pinnedPersonalMemoCount",
+          "answerLearningStatusCount",
+          "answerLearningAttemptCount",
           "settingsCount",
         ],
         "summary",
@@ -986,6 +1088,8 @@ export function validateBackup(value: unknown): BackupValidationResult {
       "cardMemos",
       "savedPassages",
       "personalMemos",
+      "answerLearningStatuses",
+      "answerLearningAttempts",
       "settings",
     ],
     "data",
@@ -1168,6 +1272,16 @@ export function validateBackup(value: unknown): BackupValidationResult {
     data.personalMemos,
     issues,
   );
+  const normalizedAnswerLearningStatuses =
+    normalizeBackupAnswerLearningStatuses(
+      data.answerLearningStatuses,
+      issues,
+    );
+  const normalizedAnswerLearningAttempts =
+    normalizeBackupAnswerLearningAttempts(
+      data.answerLearningAttempts,
+      issues,
+    );
   const settings = normalizeSettings(data.settings, issues);
   if (issues.some((issue) => issue.severity === "error")) {
     return finalizeValidation(null, issues);
@@ -1189,6 +1303,8 @@ export function validateBackup(value: unknown): BackupValidationResult {
       normalizedCardMemos,
       normalizedSavedPassages,
       normalizedPersonalMemos,
+      normalizedAnswerLearningStatuses,
+      normalizedAnswerLearningAttempts,
       settings,
     ),
     data: {
@@ -1203,6 +1319,8 @@ export function validateBackup(value: unknown): BackupValidationResult {
       cardMemos: normalizedCardMemos,
       savedPassages: normalizedSavedPassages,
       personalMemos: normalizedPersonalMemos,
+      answerLearningStatuses: normalizedAnswerLearningStatuses,
+      answerLearningAttempts: normalizedAnswerLearningAttempts,
       settings,
     },
   };
@@ -1253,6 +1371,8 @@ function backupToStorageValues(backup: AppBackupV1) {
     [CARD_MEMOS_STORAGE_KEY, JSON.stringify(backup.data.cardMemos)],
     [SAVED_PASSAGES_STORAGE_KEY, JSON.stringify(backup.data.savedPassages)],
     [PERSONAL_MEMOS_STORAGE_KEY, JSON.stringify(backup.data.personalMemos)],
+    [ANSWER_LEARNING_STATUSES_STORAGE_KEY, JSON.stringify(backup.data.answerLearningStatuses)],
+    [ANSWER_LEARNING_ATTEMPTS_STORAGE_KEY, JSON.stringify(groupAnswerLearningAttempts(backup.data.answerLearningAttempts))],
     [THEME_STORAGE_KEY, settings.theme],
     [STUDY_DAY_START_STORAGE_KEY, settings.studyDayStartTime],
     [TTS_RATE_STORAGE_KEY, String(settings.ttsRate)],

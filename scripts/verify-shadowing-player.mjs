@@ -109,6 +109,29 @@ test("속도 값 공유", () => {
 test("영어 음성 없음", () => {
   assert.equal(chooseEnglishVoice([{ lang: "ko-KR" }, { lang: "ja-JP" }]), null);
 });
+test("Ava en-US 음성을 다른 영어 음성보다 우선한다", () => {
+  const regular = { name: "English US", lang: "en-US", voiceURI: "regular-en-us" };
+  const ava = { name: "Microsoft Ava Online", lang: "en-US", voiceURI: "ava-online" };
+  assert.equal(chooseEnglishVoice([regular, ava]), ava);
+});
+test("Ava en-GB 음성도 en-US 일반 음성보다 우선한다", () => {
+  const regular = { name: "English US", lang: "en-US", voiceURI: "regular-en-us" };
+  const ava = { name: "Ava UK", lang: "en-GB", voiceURI: "microsoft-ava-gb" };
+  assert.equal(chooseEnglishVoice([regular, ava]), ava);
+});
+test("Ava 이름의 비영어 음성은 선택하지 않는다", () => {
+  const koreanAva = { name: "Ava Korean", lang: "ko-KR", voiceURI: "ava-ko" };
+  const english = { name: "English UK", lang: "en-GB", voiceURI: "english-gb" };
+  assert.equal(chooseEnglishVoice([koreanAva, english]), english);
+});
+test("Ava가 없으면 기존 en-US, en-GB, 기타 영어 순서를 유지한다", () => {
+  const other = { name: "English AU", lang: "en-AU", voiceURI: "english-au" };
+  const british = { name: "English UK", lang: "en-GB", voiceURI: "english-gb" };
+  const american = { name: "English US", lang: "en-US", voiceURI: "english-us" };
+  assert.equal(chooseEnglishVoice([other, british, american]), american);
+  assert.equal(chooseEnglishVoice([other, british]), british);
+  assert.equal(chooseEnglishVoice([other]), other);
+});
 test("stale cached voice is replaced from the current voice list", () => {
   const stale = { name: "Old English", lang: "en-US", voiceURI: "old" };
   const current = { name: "Current English", lang: "en-US", voiceURI: "current" };

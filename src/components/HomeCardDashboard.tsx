@@ -16,22 +16,24 @@ export function HomeCardDashboard({
   const hasCards = filteredCount > 0;
 
   return (
-    <section className="home-card-dashboard" aria-labelledby="home-card-dashboard-title">
+    <section className="home-card-dashboard home-material-card material-card-content-stack" aria-labelledby="home-card-dashboard-title">
       <div className="section-title-row">
         <div>
           <p className="eyebrow">STUDY CARDS</p>
           <h2 id="home-card-dashboard-title" className="home-section-title">학습 카드</h2>
-          <p>전체 목록은 카드 라이브러리에서 보고, 현재 조건으로 바로 연습하세요.</p>
-        </div>
-        <div className="home-card-counts" aria-label="학습 카드 수">
-          <span>전체 <strong>{totalCount}</strong>장</span>
-          <span>현재 <strong>{filteredCount}</strong>장</span>
+          <p className="home-card-description">전체 목록은 카드 라이브러리에서 보고, 현재 조건으로 바로 연습하세요.</p>
         </div>
       </div>
 
+      <div className="home-card-counts summary-chip-row" aria-label="학습 카드 수">
+        <span className="summary-chip">전체 <strong>{totalCount}</strong>장</span>
+        <span className="summary-chip">현재 <strong>{filteredCount}</strong>장</span>
+      </div>
+
       <p className="home-filter-summary">
-        <strong>현재 조건</strong>
-        <span>{filterSummary}</span>
+        <strong className="home-filter-summary-label">현재 조건</strong>
+        <span className="home-filter-summary-separator" aria-hidden="true">·</span>
+        <span className="home-filter-summary-value">{filterSummary}</span>
       </p>
 
       {!hasCards && (

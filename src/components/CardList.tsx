@@ -1,4 +1,4 @@
-import type { FirstLineStatusMap, OpicCard } from "../types";
+import type { AnswerLearningStatuses, FirstLineStatusMap, OpicCard } from "../types";
 import type { MyAnswers } from "../utils/myAnswerStorage";
 import { selectHasMyAnswer } from "../utils/myAnswerStorage";
 import {
@@ -11,6 +11,7 @@ type CardListProps = {
   cards: OpicCard[];
   totalCount?: number;
   statuses: FirstLineStatusMap;
+  answerLearningStatuses?: AnswerLearningStatuses;
   myAnswers: MyAnswers;
   cardMemos: CardMemos;
   onSelect: (card: OpicCard) => void;
@@ -22,7 +23,7 @@ const statusLabels = {
   hard: "첫 문장 어려움",
 } as const;
 
-export function CardList({ cards, totalCount, statuses, myAnswers, cardMemos, onSelect }: CardListProps) {
+export function CardList({ cards, totalCount, statuses, answerLearningStatuses = {}, myAnswers, cardMemos, onSelect }: CardListProps) {
   if (cards.length === 0) {
     return (
       <section className="empty-state">
@@ -48,6 +49,7 @@ export function CardList({ cards, totalCount, statuses, myAnswers, cardMemos, on
       <div className="card-grid">
         {cards.map((card, index) => {
           const status = statuses[card.id];
+          const answerStatus = answerLearningStatuses[card.id];
           const hasMyAnswer = selectHasMyAnswer(myAnswers, card.id);
           const memoCount = getMemoCount(cardMemos, card.id);
           const pinnedMemoCount = getPinnedMemoCount(cardMemos, card.id);
@@ -65,6 +67,11 @@ export function CardList({ cards, totalCount, statuses, myAnswers, cardMemos, on
                 {status && (
                   <span className={`status-badge status-${status}`}>
                     {statusLabels[status]}
+                  </span>
+                )}
+                {answerStatus && (
+                  <span className={`answer-learning-badge answer-status-${answerStatus}`}>
+                    답변 {answerStatus === "hard" ? "어려움" : answerStatus === "learning" ? "익히는 중" : "말할 수 있음"}
                   </span>
                 )}
                 {hasMyAnswer && (

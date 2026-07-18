@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "./components/AppHeader";
 import { BackupManager } from "./components/BackupManager";
+import { AnswerLearning } from "./components/AnswerLearning";
+import {
+  AnswerLearningSetup,
+} from "./components/AnswerLearningSetup";
+import {
+  filterAnswerLearningCards,
+  orderAnswerLearningCards,
+} from "./utils/answerLearningSelectors";
 import { CardLibrary } from "./components/CardLibrary";
-import { MemoSearch } from "./components/MemoSearch";
 import {
   PersonalMemoLibrary,
   PersonalMemoSummary,
@@ -12,17 +19,37 @@ import { CardDetail } from "./components/CardDetail";
 import { DirectTextPractice } from "./components/DirectTextPractice";
 import { FirstLineDrill } from "./components/FirstLineDrill";
 import { HomeCardDashboard } from "./components/HomeCardDashboard";
+import { HomeManagement } from "./components/HomeManagement";
+import { HomeQuickStart } from "./components/HomeQuickStart";
 import { ShadowingPlayer } from "./components/ShadowingPlayer";
 import { StudyDaySettings } from "./components/StudyDaySettings";
 import { TodayStats } from "./components/TodayStats";
 import { cards as defaultCards } from "./data/cards";
 import type {
   DeckName,
+  AnswerLearningStatus,
+  AnswerLearningUndoEntry,
   FirstLineResult,
   FirstLineStatusMap,
   OpicCard,
   StatusUndoEntry,
 } from "./types";
+import {
+  calculateAnswerLearningAttemptCounts,
+  calculateAnswerLearningDailyStats,
+  readAnswerLearningAttempts,
+  readAnswerLearningStatuses,
+  recordAnswerLearningAttempt,
+  removeAnswerLearningAttempt,
+  saveAnswerLearningStatuses,
+} from "./utils/answerLearningStorage";
+import {
+  clearAnswerLearningSession,
+  readAnswerLearningSession,
+  saveAnswerLearningSession,
+  shuffleAnswerLearningIds,
+  type AnswerLearningSession,
+} from "./utils/answerLearningSession";
 import {
   calculateAttemptCounts,
   calculateDailyStats,
@@ -39,6 +66,7 @@ import {
   resolveNavigationSession,
   saveNavigationSession,
 } from "./utils/navigationSession";
+import { consumePostRestoreNavigation } from "./utils/postRestoreNavigation";
 import {
   saveStudyCardScope,
   saveStudyOrder,
@@ -97,7 +125,15 @@ import {
   type PersonalMemo,
 } from "./utils/personalMemoStorage";
 
-type View = "list" | "library" | "detail" | "drill" | "shadowing" | "personalMemos";
+type View =
+  | "list"
+  | "library"
+  | "detail"
+  | "drill"
+  | "answerSetup"
+  | "answerLearning"
+  | "shadowing"
+  | "personalMemos";
 type CardNavigationSource = "manual" | "auto";
 
 function shuffleCardIds(sourceCards: OpicCard[]) {
@@ -133,6 +169,9 @@ function readInitialNavigationState(availableCards: OpicCard[]) {
       ) ?? null
     : null;
   const storedMyAnswers = playerCard ? readMyAnswers() : {};
+  const answerSession = readAnswerLearningSession(
+    availableCards.map((card) => card.id),
+  );
   const restoredShadowingSource = playerPassage
     ? createSavedPassageSource(playerPassage)
     : playerCard
@@ -144,12 +183,19 @@ function readInitialNavigationState(availableCards: OpicCard[]) {
   return {
     view: restoredShadowingSource
       ? ("shadowing" as const)
+      : answerSession.screen === "learning" && answerSession.cardOrder.length > 0
+        ? ("answerLearning" as const)
       : stored.currentView === "home"
         ? ("list" as const)
         : stored.currentView,
     selectedCardId: restoredShadowingSource?.cardId ?? stored.selectedCardId,
     shadowingSource: restoredShadowingSource,
-    shadowingReturnView: playerPassage ? ("direct" as const) : ("detail" as const),
+    shadowingReturnView: playerPassage
+      ? ("direct" as const)
+      : answerSession.screen === "learning" && playerCard && answerSession.cardOrder.includes(playerCard.id)
+        ? ("answerLearning" as const)
+        : ("detail" as const),
+    answerSession,
     drillReturnView: stored.drillSource,
     detailReturnView: stored.detailSource,
     selectedDeck: stored.filters.selectedDeck,
@@ -163,6 +209,7 @@ function readInitialNavigationState(availableCards: OpicCard[]) {
 }
 
 function App() {
+  const [postRestoreNavigation] = useState(consumePostRestoreNavigation);
   const [initialCardState] = useState(() => readActiveCards(defaultCards));
   const [cardCatalog, setCardCatalog] = useState<OpicCard[]>(
     initialCardState.cards,
@@ -172,6 +219,9 @@ function App() {
   );
   const [initialNavigation] = useState(() =>
     readInitialNavigationState(initialCardState.cards),
+  );
+  const [answerSession, setAnswerSession] = useState<AnswerLearningSession>(
+    initialNavigation.answerSession,
   );
   const [theme, setTheme] = useState(readInitialTheme);
   const [view, setView] = useState<View>(() =>
@@ -194,6 +244,9 @@ function App() {
   const [selectedTag, setSelectedTag] = useState(initialNavigation.selectedTag);
   const [finalOnly, setFinalOnly] = useState(initialNavigation.finalOnly);
   const [hardOnly, setHardOnly] = useState(initialNavigation.hardOnly);
+  const [answerLearningStatusFilter, setAnswerLearningStatusFilter] = useState<
+    "all" | "unlearned" | AnswerLearningStatus
+  >("all");
   const [cardScope, setCardScope] = useState<StudyCardScope>(
     initialNavigation.cardScope,
   );
@@ -216,6 +269,18 @@ function App() {
   );
   const [memoFocus, setMemoFocus] = useState<{ cardId: string; memoId: string } | null>(null);
   const [studyAttempts, setStudyAttempts] = useState(readStudyAttempts);
+  const [answerLearningStatuses, setAnswerLearningStatuses] = useState(
+    readAnswerLearningStatuses,
+  );
+  const [answerLearningAttempts, setAnswerLearningAttempts] = useState(
+    readAnswerLearningAttempts,
+  );
+  const [answerLearningUndo, setAnswerLearningUndo] =
+    useState<AnswerLearningUndoEntry | null>(null);
+  const [answerLearningFeedback, setAnswerLearningFeedback] = useState<string | null>(null);
+  const [answerLearningReturnView, setAnswerLearningReturnView] = useState<
+    "setup" | "detail"
+  >("setup");
   const [studyDayStartTime, setStudyDayStartTime] = useState(
     readStudyDayStartTime,
   );
@@ -224,9 +289,21 @@ function App() {
   const [shadowingSource, setShadowingSource] = useState<ShadowingSource | null>(
     initialNavigation.shadowingSource,
   );
-  const [shadowingReturnView, setShadowingReturnView] = useState<"detail" | "direct">(
+  const [shadowingReturnView, setShadowingReturnView] = useState<
+    "detail" | "direct" | "answerLearning"
+  >(
     initialNavigation.shadowingReturnView,
   );
+
+  useEffect(() => {
+    if (!postRestoreNavigation) return;
+    window.requestAnimationFrame(() => {
+      document.getElementById(postRestoreNavigation.target)?.scrollIntoView({
+        behavior: "auto",
+        block: "start",
+      });
+    });
+  }, [postRestoreNavigation]);
 
   useEffect(() => {
     applyTheme(theme);
@@ -244,6 +321,10 @@ function App() {
   useEffect(() => {
     saveStudyOrder(studyOrder);
   }, [studyOrder]);
+
+  useEffect(() => {
+    saveAnswerLearningSession(answerSession);
+  }, [answerSession]);
 
   const selectedCard =
     cardCatalog.find((card) => card.id === selectedCardId) ?? null;
@@ -263,6 +344,14 @@ function App() {
     () => calculateAttemptCounts(studyAttempts),
     [studyAttempts],
   );
+  const answerLearningAttemptCounts = useMemo(
+    () => calculateAnswerLearningAttemptCounts(answerLearningAttempts),
+    [answerLearningAttempts],
+  );
+  const answerLearningTodayStats = useMemo(
+    () => calculateAnswerLearningDailyStats(answerLearningAttempts, studyDayStartTime),
+    [answerLearningAttempts, studyDayStartTime],
+  );
 
   const filteredCards = useMemo(
     () =>
@@ -272,17 +361,26 @@ function App() {
         const matchesFinal = !finalOnly || card.tags.includes("final_rep");
         const matchesHard = !hardOnly || statuses[card.id] === "hard";
         const matchesScope = cardScope === "all" || statuses[card.id] == null;
+        const answerStatus = answerLearningStatuses[card.id];
+        const matchesAnswerLearning =
+          answerLearningStatusFilter === "all" ||
+          (answerLearningStatusFilter === "unlearned"
+            ? !answerStatus
+            : answerStatus === answerLearningStatusFilter);
 
         return (
           matchesDeck &&
           matchesTag &&
           matchesFinal &&
           matchesHard &&
-          matchesScope
+          matchesScope &&
+          matchesAnswerLearning
         );
       }),
     [
       cardCatalog,
+      answerLearningStatuses,
+      answerLearningStatusFilter,
       cardScope,
       finalOnly,
       hardOnly,
@@ -311,6 +409,7 @@ function App() {
     hardOnly,
     cardScope,
     studyOrder,
+    answerLearningStatusFilter,
   ]);
   const filterSummary = useMemo(() => {
     const parts: string[] = [];
@@ -330,13 +429,26 @@ function App() {
       return card ? [card] : [];
     });
   }, [cardCatalog, drillCardIds]);
+  const answerLearningCards = useMemo(() => {
+    const byId = new Map(cardCatalog.map((card) => [card.id, card]));
+    return answerSession.cardOrder.flatMap((cardId) => {
+      const card = byId.get(cardId);
+      return card ? [card] : [];
+    });
+  }, [answerSession.cardOrder, cardCatalog]);
   const detailCards =
     drillReturnView === "detail" &&
     selectedCardId !== null &&
     drillCardIds.includes(selectedCardId)
       ? drillCards
       : orderedFilteredCards;
-  const activeCards = view === "drill" ? drillCards : detailCards;
+  const activeCards =
+    view === "answerLearning" ||
+    (view === "shadowing" && shadowingReturnView === "answerLearning")
+      ? answerLearningCards
+      : view === "drill"
+        ? drillCards
+        : detailCards;
   const selectedFilteredIndex = activeCards.findIndex(
     (card) => card.id === selectedCardId,
   );
@@ -371,6 +483,7 @@ function App() {
   useEffect(() => {
     if (
       view === "list" ||
+      view === "answerSetup" ||
       !selectedCardId ||
       selectedFilteredIndex >= 0 ||
       (view === "drill" && drillCards.length === 0)
@@ -381,7 +494,7 @@ function App() {
     // Invalid or filtered-out restored cards always return to a safe home state.
     setSelectedCardId(null);
     setView("list");
-  }, [drillCards.length, selectedCardId, selectedFilteredIndex, view]);
+  }, [answerLearningCards.length, drillCards.length, selectedCardId, selectedFilteredIndex, view]);
 
   useEffect(() => {
     const persistedView =
@@ -389,7 +502,10 @@ function App() {
         ? shadowingReturnView === "detail"
           ? "detail"
           : "home"
-        : view === "list" || view === "personalMemos"
+        : view === "list" ||
+            view === "personalMemos" ||
+            view === "answerSetup" ||
+            view === "answerLearning"
           ? "home"
           : view;
     saveNavigationSession({
@@ -429,6 +545,13 @@ function App() {
       clearShadowingPlayerSession();
       setShadowingSource(null);
       if (
+        shadowingReturnView === "answerLearning" &&
+        answerSession.cardOrder.length > 0
+      ) {
+        const index = Math.min(answerSession.currentIndex, answerSession.cardOrder.length - 1);
+        setSelectedCardId(answerSession.cardOrder[index] ?? null);
+        setView("answerLearning");
+      } else if (
         shadowingReturnView === "detail" &&
         selectedCardId &&
         cardCatalog.some((card) => card.id === selectedCardId)
@@ -443,7 +566,7 @@ function App() {
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [cardCatalog, selectedCardId, shadowingReturnView, view]);
+  }, [answerSession.cardOrder, answerSession.currentIndex, cardCatalog, selectedCardId, shadowingReturnView, view]);
 
   useEffect(() => {
     if (view !== "library" && view !== "detail") return;
@@ -535,6 +658,16 @@ function App() {
       : createModelAnswerSource(nextCard);
     setSelectedCardId(nextCard.id);
     setShadowingSource(nextSource);
+    if (shadowingReturnView === "answerLearning") {
+      updateAnswerSession({
+        ...answerSession,
+        currentIndex: selectedFilteredIndex + offset,
+        answerSources: {
+          ...answerSession.answerSources,
+          [nextCard.id]: myAnswers[nextCard.id] ? "my-answer" : "default",
+        },
+      });
+    }
     window.scrollTo({ top: 0, behavior: "auto" });
   }
 
@@ -544,6 +677,17 @@ function App() {
       setShadowingSource(createMyAnswerSource(selectedCard, myAnswers[selectedCard.id]));
     } else {
       setShadowingSource(createModelAnswerSource(selectedCard));
+    }
+    if (shadowingReturnView === "answerLearning") {
+      updateAnswerSession({
+        ...answerSession,
+        answerSources: {
+          ...answerSession.answerSources,
+          [selectedCard.id]: sourceType === "myAnswer" && myAnswers[selectedCard.id]
+            ? "my-answer"
+            : "default",
+        },
+      });
     }
   }
 
@@ -559,6 +703,205 @@ function App() {
     setSelectedCardId(firstCardId);
     setDrillReturnView("list");
     setView("drill");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function updateAnswerSession(next: AnswerLearningSession) {
+    setAnswerSession(next);
+    saveAnswerLearningSession(next);
+  }
+
+  function openAnswerLearningSetup() {
+    setAnswerLearningUndo(null);
+    setAnswerLearningFeedback(null);
+    updateAnswerSession({ ...answerSession, screen: "setup" });
+    setSelectedCardId(null);
+    setAnswerLearningReturnView("setup");
+    setView("answerSetup");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function startAnswerLearning() {
+    const filtered = orderAnswerLearningCards(
+      filterAnswerLearningCards(
+        cardCatalog,
+        answerSession.filters,
+        answerLearningStatuses,
+        myAnswers,
+      ),
+      answerSession.filters.order,
+      answerLearningAttemptCounts,
+    );
+    const selected = new Set(answerSession.selectedCardIds);
+    const ids = filtered.map((card) => card.id).filter((id) => selected.has(id));
+    const cardOrder =
+      answerSession.filters.order === "random"
+        ? shuffleAnswerLearningIds(ids)
+        : ids;
+    if (cardOrder.length === 0) return;
+    const answerSources = { ...answerSession.answerSources };
+    cardOrder.forEach((cardId) => {
+      if (!answerSources[cardId] || (answerSources[cardId] === "my-answer" && !myAnswers[cardId])) {
+        answerSources[cardId] = myAnswers[cardId] ? "my-answer" : "default";
+      }
+    });
+    const nextSession: AnswerLearningSession = {
+      ...answerSession,
+      screen: "learning",
+      cardOrder,
+      currentIndex: 0,
+      answerSources,
+    };
+    updateAnswerSession(nextSession);
+    setAnswerLearningUndo(null);
+    setAnswerLearningFeedback(null);
+    setSelectedCardId(cardOrder[0]);
+    setView("answerLearning");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function startSingleCardAnswerLearning(card: OpicCard) {
+    const nextSession: AnswerLearningSession = {
+      ...answerSession,
+      screen: "learning",
+      selectedCardIds: [card.id],
+      cardOrder: [card.id],
+      currentIndex: 0,
+      answerSources: {
+        ...answerSession.answerSources,
+        [card.id]: myAnswers[card.id] ? "my-answer" : "default",
+      },
+      reveals: {
+        ...answerSession.reveals,
+        [card.id]: { hint: false, firstLine: false, answer: false, frontKo: false },
+      },
+    };
+    updateAnswerSession(nextSession);
+    setAnswerLearningUndo(null);
+    setAnswerLearningFeedback(null);
+    setSelectedCardId(card.id);
+    setAnswerLearningReturnView("detail");
+    setView("answerLearning");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function leaveAnswerLearning() {
+    setAnswerLearningUndo(null);
+    setAnswerLearningFeedback(null);
+    if (answerLearningReturnView === "detail" && selectedCard) {
+      updateAnswerSession({ ...answerSession, screen: "setup" });
+      setView("detail");
+    } else {
+      updateAnswerSession({ ...answerSession, screen: "setup" });
+      setSelectedCardId(null);
+      setView("answerSetup");
+    }
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function closeAnswerLearning() {
+    clearAnswerLearningSession();
+    setAnswerSession({
+      ...answerSession,
+      screen: "setup",
+      selectedCardIds: [],
+      cardOrder: [],
+      currentIndex: 0,
+      answerSources: {},
+      reveals: {},
+    });
+    setSelectedCardId(null);
+    setView("list");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function navigateAnswerLearning(offset: -1 | 1) {
+    const nextIndex = answerSession.currentIndex + offset;
+    const nextCardId = answerSession.cardOrder[nextIndex];
+    if (!nextCardId) return;
+    setAnswerLearningUndo(null);
+    setAnswerLearningFeedback(null);
+    const nextSession: AnswerLearningSession = {
+      ...answerSession,
+      currentIndex: nextIndex,
+      reveals: {
+        ...answerSession.reveals,
+        [nextCardId]: { hint: false, firstLine: false, answer: false, frontKo: false },
+      },
+      answerSources: {
+        ...answerSession.answerSources,
+        [nextCardId]: myAnswers[nextCardId] ? "my-answer" : "default",
+      },
+    };
+    updateAnswerSession(nextSession);
+    setSelectedCardId(nextCardId);
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function updateAnswerLearningStatus(status: AnswerLearningStatus) {
+    if (!selectedCard) return;
+    const cardId = selectedCard.id;
+    const previousStatus = answerLearningStatuses[cardId] ?? null;
+    const nextStatuses = { ...answerLearningStatuses, [cardId]: status };
+    const answerSource =
+      answerSession.answerSources[cardId] === "my-answer" && myAnswers[cardId]
+        ? "my-answer"
+        : "default";
+    const result = recordAnswerLearningAttempt(
+      answerLearningAttempts,
+      cardId,
+      status,
+      answerSource,
+      studyDayStartTime,
+    );
+    saveAnswerLearningStatuses(nextStatuses);
+    setAnswerLearningStatuses(nextStatuses);
+    setAnswerLearningAttempts(result.attemptsByDate);
+    setAnswerLearningUndo({
+      cardId,
+      previousStatus,
+      newStatus: status,
+      attemptId: result.attempt.id,
+      attemptDate: result.attempt.date,
+      answerSource,
+    });
+    setAnswerLearningFeedback(`${selectedCard.hint.title}: 상태를 저장했어요.`);
+  }
+
+  function undoAnswerLearningStatus() {
+    if (!answerLearningUndo) return;
+    const entry = answerLearningUndo;
+    const nextStatuses = { ...answerLearningStatuses };
+    if (entry.previousStatus) nextStatuses[entry.cardId] = entry.previousStatus;
+    else delete nextStatuses[entry.cardId];
+    saveAnswerLearningStatuses(nextStatuses);
+    setAnswerLearningStatuses(nextStatuses);
+    setAnswerLearningAttempts((current) =>
+      removeAnswerLearningAttempt(current, entry.attemptDate, entry.attemptId),
+    );
+    const cardIndex = answerSession.cardOrder.indexOf(entry.cardId);
+    if (cardIndex >= 0) {
+      updateAnswerSession({ ...answerSession, currentIndex: cardIndex });
+      setSelectedCardId(entry.cardId);
+    }
+    setAnswerLearningUndo(null);
+    setAnswerLearningFeedback("방금 선택한 답변 익히기 상태를 취소했어요.");
+  }
+
+  function resetAnswerLearningStatus() {
+    if (!selectedCard || !answerLearningStatuses[selectedCard.id]) return;
+    const next = { ...answerLearningStatuses };
+    delete next[selectedCard.id];
+    saveAnswerLearningStatuses(next);
+    setAnswerLearningStatuses(next);
+    setAnswerLearningFeedback("현재 상태만 초기화했어요. 이전 학습 시도 기록은 유지됩니다.");
+  }
+
+  function startAnswerLearningShadowing(source: ShadowingSource) {
+    window.history.pushState({ ...window.history.state, opicShadowing: true }, "");
+    setShadowingSource(source);
+    setShadowingReturnView("answerLearning");
+    setView("shadowing");
     window.scrollTo({ top: 0, behavior: "auto" });
   }
 
@@ -793,7 +1136,7 @@ function App() {
     setLastUndo(null);
     setFeedbackMessage(null);
     setDrillCardIds([]);
-    setDetailReturnView("home");
+    setDetailReturnView("library");
     setSelectedCardId(card.id);
     setMemoFocus({ cardId, memoId });
     window.history.pushState({ ...window.history.state, opicView: "detail" }, "");
@@ -812,11 +1155,14 @@ function App() {
     setHardOnly(false);
     setCardScope("all");
     setStudyOrder("default");
+    setAnswerLearningStatusFilter("all");
   }
 
   function handleCardsChange(nextCards: OpicCard[]) {
     const nextIds = new Set(nextCards.map((card) => card.id));
     const nextDrillIds = drillCardIds.filter((cardId) => nextIds.has(cardId));
+    const nextAnswerIds = answerSession.selectedCardIds.filter((cardId) => nextIds.has(cardId));
+    const nextAnswerOrder = answerSession.cardOrder.filter((cardId) => nextIds.has(cardId));
     const selectedCardStillExists =
       selectedCardId === null || nextIds.has(selectedCardId);
 
@@ -825,6 +1171,13 @@ function App() {
     setLastUndo(null);
     setFeedbackMessage(null);
     setDrillCardIds(nextDrillIds);
+    updateAnswerSession({
+      ...answerSession,
+      selectedCardIds: nextAnswerIds,
+      cardOrder: nextAnswerOrder,
+      currentIndex: Math.min(answerSession.currentIndex, Math.max(nextAnswerOrder.length - 1, 0)),
+      screen: answerSession.screen === "learning" && nextAnswerOrder.length === 0 ? "setup" : answerSession.screen,
+    });
 
     if (
       selectedDeck !== "all" &&
@@ -839,7 +1192,11 @@ function App() {
       setSelectedTag("all");
     }
 
-    if (!selectedCardStillExists || (view === "drill" && nextDrillIds.length === 0)) {
+    if (
+      !selectedCardStillExists ||
+      (view === "drill" && nextDrillIds.length === 0) ||
+      (view === "answerLearning" && nextAnswerOrder.length === 0)
+    ) {
       setSelectedCardId(null);
       setView("list");
     }
@@ -868,7 +1225,9 @@ function App() {
           }
           clearShadowingPlayerSession();
           setShadowingSource(null);
-          if (shadowingReturnView === "detail" && selectedCard) {
+          if (shadowingReturnView === "answerLearning" && selectedCard) {
+            setView("answerLearning");
+          } else if (shadowingReturnView === "detail" && selectedCard) {
             setView("detail");
           } else {
             setSelectedCardId(null);
@@ -877,6 +1236,101 @@ function App() {
           window.scrollTo({ top: 0, behavior: "auto" });
         }}
       />
+    );
+  }
+
+  if (view === "answerSetup") {
+    return (
+      <div className="app-shell">
+        <AppHeader
+          theme={theme}
+          studyTitle="답변 익히기 준비"
+          onBack={closeAnswerLearning}
+          onToggleTheme={toggleTheme}
+        />
+        <AnswerLearningSetup
+          cards={cardCatalog}
+          decks={decks}
+          tags={tags}
+          statuses={answerLearningStatuses}
+          myAnswers={myAnswers}
+          cardMemos={cardMemos}
+          attemptCounts={answerLearningAttemptCounts}
+          session={answerSession}
+          onSessionChange={updateAnswerSession}
+          onStart={startAnswerLearning}
+          onBack={closeAnswerLearning}
+        />
+      </div>
+    );
+  }
+
+  if (selectedCard && view === "answerLearning") {
+    const reveal = answerSession.reveals[selectedCard.id] ?? {
+      hint: false,
+      firstLine: false,
+      answer: false,
+      frontKo: false,
+    };
+    const answerSource =
+      answerSession.answerSources[selectedCard.id] === "my-answer" && myAnswers[selectedCard.id]
+        ? "my-answer"
+        : "default";
+    const undoCard = answerLearningUndo
+      ? cardCatalog.find((card) => card.id === answerLearningUndo.cardId)
+      : null;
+    const answerStatusLabels = {
+      hard: "어려움",
+      learning: "익히는 중",
+      speakable: "말할 수 있음",
+    } as const;
+    return (
+      <div className="app-shell">
+        <AppHeader
+          theme={theme}
+          studyTitle="답변 익히기"
+          mobileSticky
+          currentPosition={currentPosition}
+          totalCards={activeCards.length}
+          onBack={leaveAnswerLearning}
+          onToggleTheme={toggleTheme}
+        />
+        <AnswerLearning
+          card={selectedCard}
+          myAnswer={myAnswers[selectedCard.id]}
+          status={answerLearningStatuses[selectedCard.id] ?? null}
+          answerSource={answerSource}
+          reveal={reveal}
+          currentPosition={currentPosition}
+          totalCards={activeCards.length}
+          canGoPrevious={canGoPrevious}
+          canGoNext={canGoNext}
+          undoTarget={answerLearningUndo && undoCard ? {
+            cardTitle: undoCard.hint.title,
+            statusLabel: answerStatusLabels[answerLearningUndo.newStatus],
+          } : null}
+          feedbackMessage={answerLearningFeedback}
+          onAnswerSourceChange={(source) =>
+            updateAnswerSession({
+              ...answerSession,
+              answerSources: { ...answerSession.answerSources, [selectedCard.id]: source },
+            })
+          }
+          onRevealChange={(nextReveal) =>
+            updateAnswerSession({
+              ...answerSession,
+              reveals: { ...answerSession.reveals, [selectedCard.id]: nextReveal },
+            })
+          }
+          onPrevious={() => navigateAnswerLearning(-1)}
+          onNext={() => navigateAnswerLearning(1)}
+          onStatusChange={updateAnswerLearningStatus}
+          onUndo={undoAnswerLearningStatus}
+          onReset={resetAnswerLearningStatus}
+          onStartShadowing={startAnswerLearningShadowing}
+          onBack={leaveAnswerLearning}
+        />
+      </div>
     );
   }
 
@@ -913,8 +1367,10 @@ function App() {
         />
         <CardLibrary
           cards={orderedFilteredCards}
+          memoCards={cardCatalog}
           catalogCount={cardCatalog.length}
           statuses={statuses}
+          answerLearningStatuses={answerLearningStatuses}
           myAnswers={myAnswers}
           cardMemos={cardMemos}
           decks={decks}
@@ -934,6 +1390,9 @@ function App() {
           onStudyOrderChange={setStudyOrder}
           onReset={resetFilters}
           onSelect={(card) => openCard(card, "library")}
+          answerLearningStatusFilter={answerLearningStatusFilter}
+          onAnswerLearningStatusFilterChange={setAnswerLearningStatusFilter}
+          onOpenMemoCard={openMemoCard}
         />
       </div>
     );
@@ -1005,6 +1464,7 @@ function App() {
         <CardDetail
           card={selectedCard}
           status={statuses[selectedCard.id] ?? null}
+          answerLearningStatus={answerLearningStatuses[selectedCard.id] ?? null}
           myAnswer={myAnswers[selectedCard.id]}
           memos={cardMemos[selectedCard.id] ?? []}
           focusMemoId={memoFocus?.cardId === selectedCard.id ? memoFocus.memoId : null}
@@ -1027,6 +1487,7 @@ function App() {
             setDrillReturnView("detail");
             setView("drill");
           }}
+          onStartAnswerLearning={() => startSingleCardAnswerLearning(selectedCard)}
           onSaveMyAnswer={saveMyAnswer}
           onDeleteMyAnswer={removeMyAnswer}
           onCreateMemo={addMemo}
@@ -1044,79 +1505,98 @@ function App() {
     <div className="app-shell">
       <AppHeader theme={theme} onToggleTheme={toggleTheme} />
 
-      <main className="home-page">
-        <section className="hero-panel">
-          <div>
-            <span className="hero-label">WEEK 6 · START SMALL</span>
-            <h2>질문을 보고, 먼저 입으로 꺼내보세요.</h2>
-            <p>
-              완벽한 답변보다 첫 문장을 빠르게 시작하는 힘을 기릅니다.
-              막히면 힌트를 보고 다시 말해도 괜찮아요.
-            </p>
+      <div className="home-layout-shell">
+        <main className="home-page">
+          <div className="home-content-rail">
+            <section className="hero-panel">
+              <div>
+                <span className="hero-label">WEEK 6 · START SMALL</span>
+                <h2>질문을 보고, 먼저 입으로 꺼내보세요.</h2>
+                <p>
+                  완벽한 답변보다 첫 문장을 빠르게 시작하는 힘을 기릅니다.
+                  막히면 힌트를 보고 다시 말해도 괜찮아요.
+                </p>
+              </div>
+              <div className="hero-rule compact-learning-tile">
+                <span>오늘의 규칙</span>
+                <strong>3초 안에 첫 문장</strong>
+              </div>
+            </section>
+
+            <HomeQuickStart
+              canStartFirstLine={orderedFilteredCards.length > 0}
+              onStartFirstLine={startFilteredDrill}
+              onStartAnswerLearning={openAnswerLearningSetup}
+              onOpenShadowing={() =>
+                document.getElementById("direct-practice-title")?.scrollIntoView({ behavior: "smooth" })
+              }
+            />
+
+            <TodayStats stats={todayStats} answerStats={answerLearningTodayStats} />
+
+            <section className="home-learning-materials" aria-labelledby="home-learning-materials-title">
+              <div className="section-title-row home-learning-materials-heading">
+                <div>
+                  <p className="eyebrow">MY LEARNING MATERIALS</p>
+                  <h2 id="home-learning-materials-title" className="home-section-title">내 학습 자료</h2>
+                </div>
+              </div>
+              <HomeCardDashboard
+                totalCount={cardCatalog.length}
+                filteredCount={orderedFilteredCards.length}
+                filterSummary={filterSummary}
+                onOpenLibrary={openCardLibrary}
+                onStartDrill={startFilteredDrill}
+              />
+
+              <DirectTextPractice
+                passages={savedPassageDataset.passages}
+                onCreate={createPassage}
+                onUpdate={editPassage}
+                onDelete={removePassage}
+                onRestore={restorePassage}
+                onStart={startDirectShadowing}
+              />
+
+              <PersonalMemoSummary
+                dataset={personalMemoDataset}
+                onOpenLibrary={() => openPersonalMemos(false)}
+                onStartNew={() => openPersonalMemos(true)}
+              />
+            </section>
+
+            <HomeManagement initialExpanded={postRestoreNavigation?.managementExpanded}>
+              <StudyDaySettings
+                value={studyDayStartTime}
+                onChange={setStudyDayStartTime}
+              />
+              <CardDataManager
+                cards={cardCatalog}
+                storageWarning={cardStorageWarning}
+                onCardsChange={handleCardsChange}
+              />
+
+              <BackupManager
+                cards={cardCatalog}
+                statuses={statuses}
+                attemptsByDate={studyAttempts}
+                myAnswers={myAnswers}
+                cardMemos={cardMemos}
+                savedPassages={savedPassageDataset}
+                personalMemos={personalMemoDataset}
+                answerLearningStatuses={answerLearningStatuses}
+                answerLearningAttemptsByDate={answerLearningAttempts}
+                postRestoreMessage={postRestoreNavigation?.message}
+              />
+            </HomeManagement>
           </div>
-          <div className="hero-rule">
-            <span>오늘의 규칙</span>
-            <strong>3초 안에 첫 문장</strong>
-          </div>
-        </section>
+        </main>
 
-        <TodayStats stats={todayStats} />
-
-        <StudyDaySettings
-          value={studyDayStartTime}
-          onChange={setStudyDayStartTime}
-        />
-
-        <HomeCardDashboard
-          totalCount={cardCatalog.length}
-          filteredCount={orderedFilteredCards.length}
-          filterSummary={filterSummary}
-          onOpenLibrary={openCardLibrary}
-          onStartDrill={startFilteredDrill}
-        />
-
-        <DirectTextPractice
-          passages={savedPassageDataset.passages}
-          onCreate={createPassage}
-          onUpdate={editPassage}
-          onDelete={removePassage}
-          onRestore={restorePassage}
-          onStart={startDirectShadowing}
-        />
-
-        <PersonalMemoSummary
-          dataset={personalMemoDataset}
-          onOpenLibrary={() => openPersonalMemos(false)}
-          onStartNew={() => openPersonalMemos(true)}
-        />
-
-        <MemoSearch
-          cards={cardCatalog}
-          cardMemos={cardMemos}
-          onOpenCard={openMemoCard}
-        />
-
-        <CardDataManager
-          cards={cardCatalog}
-          storageWarning={cardStorageWarning}
-          onCardsChange={handleCardsChange}
-        />
-
-        <BackupManager
-          cards={cardCatalog}
-          statuses={statuses}
-          attemptsByDate={studyAttempts}
-          myAnswers={myAnswers}
-          cardMemos={cardMemos}
-          savedPassages={savedPassageDataset}
-          personalMemos={personalMemoDataset}
-        />
-      </main>
-
-      <footer className="app-footer">
-        <p>짧게 시작하고, 끝까지 말하기.</p>
-        <span>OPIc Speaking Trainer · Local MVP</span>
-      </footer>
+        <footer className="app-footer">
+          <p>짧게 시작하고, 끝까지 말하기.</p>
+          <span>OPIc Speaking Trainer · Local MVP</span>
+        </footer>
+      </div>
     </div>
   );
 }

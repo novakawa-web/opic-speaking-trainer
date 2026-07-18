@@ -7,7 +7,7 @@ import {
 } from "react";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
-import type { FirstLineStatus, OpicCard } from "../types";
+import type { AnswerLearningStatus, FirstLineStatus, OpicCard } from "../types";
 import { activateButton } from "../utils/buttonFocus";
 import { extractMyFirstLine, normalizeMyAnswerText } from "../utils/myAnswerStorage";
 import { readTtsRate } from "../utils/ttsSettings";
@@ -36,6 +36,7 @@ import {
 type CardDetailProps = {
   card: OpicCard;
   status: FirstLineStatus;
+  answerLearningStatus: AnswerLearningStatus | null;
   myAnswer?: string;
   memos: CardMemo[];
   focusMemoId?: string | null;
@@ -47,6 +48,7 @@ type CardDetailProps = {
   onPrevious: () => void;
   onNext: () => void;
   onStartDrill: () => void;
+  onStartAnswerLearning: () => void;
   onSaveMyAnswer: (cardId: string, answer: string) => void;
   onDeleteMyAnswer: (cardId: string) => void;
   onCreateMemo: (cardId: string, content: string) => void;
@@ -75,6 +77,7 @@ const detailShortcuts = [
 export function CardDetail({
   card,
   status,
+  answerLearningStatus,
   myAnswer,
   memos,
   focusMemoId,
@@ -86,6 +89,7 @@ export function CardDetail({
   onPrevious,
   onNext,
   onStartDrill,
+  onStartAnswerLearning,
   onSaveMyAnswer,
   onDeleteMyAnswer,
   onCreateMemo,
@@ -305,6 +309,11 @@ export function CardDetail({
                 첫 문장 {statusLabels[status]}
               </span>
             )}
+            {answerLearningStatus && (
+              <span className={`answer-learning-badge answer-status-${answerLearningStatus}`}>
+                답변 {answerLearningStatus === "hard" ? "어려움" : answerLearningStatus === "learning" ? "익히는 중" : "말할 수 있음"}
+              </span>
+            )}
           </div>
 
           <p className="detail-deck">{card.deck}</p>
@@ -363,6 +372,13 @@ export function CardDetail({
               답변
             </button>
           </div>
+          <button
+            type="button"
+            className="secondary-button detail-answer-learning-entry"
+            onClick={(event) => activateButton(event, () => runAfterDiscardCheck(onStartAnswerLearning))}
+          >
+            이 카드 답변 익히기
+          </button>
         </div>
       </article>
 

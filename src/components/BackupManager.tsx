@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import type {
+  AnswerLearningAttemptsByDate,
+  AnswerLearningStatuses,
   FirstLineStatusMap,
   OpicCard,
   StudyAttemptsByDate,
@@ -28,6 +30,7 @@ import {
   type KeyValueStorage,
 } from "../utils/appBackup";
 import { activateButton } from "../utils/buttonFocus";
+import { savePostRestoreNavigation } from "../utils/postRestoreNavigation";
 
 type BackupManagerProps = {
   cards: OpicCard[];
@@ -37,6 +40,9 @@ type BackupManagerProps = {
   cardMemos: CardMemos;
   savedPassages: SavedPassageDataset;
   personalMemos: PersonalMemoDataset;
+  answerLearningStatuses: AnswerLearningStatuses;
+  answerLearningAttemptsByDate: AnswerLearningAttemptsByDate;
+  postRestoreMessage?: string;
 };
 
 function localBackupFileName(date = new Date()) {
@@ -83,12 +89,15 @@ export function BackupManager({
   cardMemos,
   savedPassages,
   personalMemos,
+  answerLearningStatuses,
+  answerLearningAttemptsByDate,
+  postRestoreMessage,
 }: BackupManagerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState("");
   const [preview, setPreview] = useState<BackupValidationResult | null>(null);
   const [restoreConfirmed, setRestoreConfirmed] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(postRestoreMessage ?? "");
   const [isReading, setIsReading] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [safetyBackupAvailable, setSafetyBackupAvailable] = useState(
@@ -101,6 +110,10 @@ export function BackupManager({
   const currentMemoCount = getMemoCount(cardMemos);
   const currentSavedPassageCount = savedPassages.passages.length;
   const currentPersonalMemoCount = personalMemos.memos.length;
+  const currentAnswerLearningStatusCount = Object.keys(answerLearningStatuses).length;
+  const currentAnswerLearningAttemptCount = Object.values(
+    answerLearningAttemptsByDate,
+  ).reduce((count, attempts) => count + attempts.length, 0);
   const backup = preview?.backup ?? null;
   const restoreDisabled =
     !backup || !preview?.canRestore || !restoreConfirmed || isRestoring;
@@ -116,6 +129,8 @@ export function BackupManager({
       cardMemos,
       savedPassages,
       personalMemos,
+      answerLearningStatuses,
+      answerLearningAttemptsByDate,
     );
   }
 
@@ -191,6 +206,7 @@ export function BackupManager({
         getSessionStorage(),
       );
       setSafetyBackupAvailable(true);
+      savePostRestoreNavigation("전체 복구가 완료됐어요.");
       setMessage("전체 복구 완료: 데이터를 저장했습니다. 안전하게 다시 불러오는 중입니다…");
       scheduleReload();
     } catch (error) {
@@ -219,6 +235,7 @@ export function BackupManager({
         return;
       }
       setSafetyBackupAvailable(false);
+      savePostRestoreNavigation("직전 전체 복구 이전 상태로 돌아왔어요.");
       setMessage("직전 전체 복구 이전 상태를 저장했습니다. 다시 불러오는 중입니다…");
       scheduleReload();
     } catch (error) {
@@ -244,7 +261,7 @@ export function BackupManager({
         : "선택한 백업 파일이 없어요.";
 
   return (
-    <section className="backup-manager" aria-labelledby="backup-manager-title">
+    <section id="backup-manager" className="backup-manager" aria-labelledby="backup-manager-title">
       <div className="section-title-row backup-manager-heading">
         <div>
           <p className="eyebrow">BACKUP &amp; RESTORE</p>
@@ -390,6 +407,14 @@ export function BackupManager({
                 <div>
                   <dt>고정 개인 메모</dt>
                   <dd>{getPinnedPersonalMemoCount(personalMemos)} → <strong>{backup.summary.pinnedPersonalMemoCount}</strong></dd>
+                </div>
+                <div>
+                  <dt>답변 익히기 상태</dt>
+                  <dd>{currentAnswerLearningStatusCount} → <strong>{backup.summary.answerLearningStatusCount}</strong></dd>
+                </div>
+                <div>
+                  <dt>답변 익히기 시도</dt>
+                  <dd>{currentAnswerLearningAttemptCount} → <strong>{backup.summary.answerLearningAttemptCount}</strong></dd>
                 </div>
                 <div>
                   <dt>설정</dt>

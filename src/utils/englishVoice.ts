@@ -34,8 +34,12 @@ export function isEnglishVoice(voice: Pick<SpeechSynthesisVoice, "lang">) {
 
 export function chooseEnglishVoice(voices: SpeechSynthesisVoice[]) {
   const language = (voice: SpeechSynthesisVoice) => voice.lang.toLowerCase();
+  const isAvaVoice = (voice: SpeechSynthesisVoice) =>
+    isEnglishVoice(voice) &&
+    `${voice.name} ${voice.voiceURI}`.toLowerCase().includes("ava");
 
   return (
+    voices.find(isAvaVoice) ??
     voices.find((voice) => language(voice).startsWith("en-us")) ??
     voices.find((voice) => language(voice).startsWith("en-gb")) ??
     voices.find((voice) => language(voice).startsWith("en")) ??

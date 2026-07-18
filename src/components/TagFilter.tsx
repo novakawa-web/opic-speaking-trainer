@@ -1,4 +1,5 @@
 import type { DeckName } from "../types";
+import type { AnswerLearningStatus } from "../types";
 import type {
   StudyCardScope,
   StudyOrder,
@@ -20,6 +21,10 @@ type TagFilterProps = {
   onCardScopeChange: (scope: StudyCardScope) => void;
   onStudyOrderChange: (order: StudyOrder) => void;
   onReset: () => void;
+  answerLearningStatusFilter?: "all" | "unlearned" | AnswerLearningStatus;
+  onAnswerLearningStatusFilterChange?: (
+    value: "all" | "unlearned" | AnswerLearningStatus,
+  ) => void;
 };
 
 export function TagFilter({
@@ -38,6 +43,8 @@ export function TagFilter({
   onCardScopeChange,
   onStudyOrderChange,
   onReset,
+  answerLearningStatusFilter,
+  onAnswerLearningStatusFilterChange,
 }: TagFilterProps) {
   return (
     <section className="filter-panel" aria-labelledby="filter-title">
@@ -68,6 +75,26 @@ export function TagFilter({
             ))}
           </select>
         </label>
+
+        {answerLearningStatusFilter && onAnswerLearningStatusFilterChange && (
+          <label className="field-label">
+            <span>답변 익히기 상태</span>
+            <select
+              value={answerLearningStatusFilter}
+              onChange={(event) =>
+                onAnswerLearningStatusFilterChange(
+                  event.target.value as "all" | "unlearned" | AnswerLearningStatus,
+                )
+              }
+            >
+              <option value="all">전체</option>
+              <option value="unlearned">미학습</option>
+              <option value="hard">어려움</option>
+              <option value="learning">익히는 중</option>
+              <option value="speakable">말할 수 있음</option>
+            </select>
+          </label>
+        )}
 
         <label className="field-label">
           <span>태그</span>

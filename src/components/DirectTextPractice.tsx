@@ -210,14 +210,14 @@ export function DirectTextPractice({
   }
 
   return (
-    <section className="direct-practice-section" aria-labelledby="direct-practice-title">
+    <section className="direct-practice-section home-material-card" aria-labelledby="direct-practice-title">
       <div className="section-heading-row">
         <div>
           <p className="eyebrow">PASSAGE LIBRARY</p>
           <h2 id="direct-practice-title" className="home-section-title">쉐도잉 지문</h2>
-          <p>새 지문을 작성하거나 저장한 지문을 다시 열어 연습하세요.</p>
+          <p className="home-card-description">새 지문을 작성하거나 저장한 지문을 다시 열어 연습하세요.</p>
         </div>
-        <span className="saved-passage-count">저장 {passages.length}개</span>
+        <span className="saved-passage-count summary-chip">저장 {passages.length}개</span>
       </div>
 
       <div className="saved-passage-primary-actions">
