@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { cards } from "../src/data/cards.ts";
 import {
   applyBackupWithSafety,
@@ -22,6 +23,7 @@ import {
   normalizePersonalMemoDataset,
   readPersonalMemoDataset,
   readPersonalMemoEditorSession,
+  resolvePersonalMemoInput,
   restorePersonalMemo,
   savePersonalMemoEditorSession,
   searchPersonalMemos,
@@ -29,6 +31,12 @@ import {
   togglePersonalMemoPinned,
   updatePersonalMemo,
 } from "../src/utils/personalMemoStorage.ts";
+import {
+  parseSimpleMarkdown,
+  parseSimpleMarkdownInlines,
+  simpleMarkdownToPlainText,
+  stripSimpleMarkdown,
+} from "../src/utils/simpleMarkdown.ts";
 
 class MemoryStorage {
   values = new Map();
@@ -87,8 +95,10 @@ test("삭제 복원 데이터", () => {
   assert.equal(restored.memos[deleted.index].id, "personal-001");
 });
 
-test("제목 공백 거부", () => {
-  assert.throws(() => createPersonalMemo(baseDataset(), "   ", "본문"));
+test("빈 제목은 일반 첫 줄에서 자동 생성", () => {
+  const memo = createPersonalMemo(baseDataset(), "   ", "자동 제목\n본문").memo;
+  assert.equal(memo.title, "자동 제목");
+  assert.equal(memo.content, "본문");
 });
 
 test("본문 공백 거부", () => {
@@ -108,6 +118,116 @@ test("본문 10000자 제한", () => {
 test("줄바꿈 보존", () => {
   const memo = createPersonalMemo(baseDataset(), "제목", "첫 줄\n\n둘째 문단", { id: "linebreak" }).memo;
   assert.equal(memo.content, "첫 줄\n\n둘째 문단");
+});
+
+test("직접 입력 제목은 자동 제목보다 우선", () => {
+  const memo = createPersonalMemo(baseDataset(), "직접 제목", "# 본문 첫 줄\n내용").memo;
+  assert.equal(memo.title, "직접 제목");
+  assert.equal(memo.content, "# 본문 첫 줄\n내용");
+});
+
+test("Markdown 제목 첫 줄에서 자동 생성", () => {
+  const resolved = resolvePersonalMemoInput("", "\n\n# 오픽 복습 방법\n본문 내용");
+  assert.equal(resolved?.title, "오픽 복습 방법");
+  assert.equal(resolved?.content, "본문 내용");
+});
+
+test("굵게와 목록 문법을 제거해 자동 제목 생성", () => {
+  assert.equal(resolvePersonalMemoInput("", "**굵은 제목**\n본문")?.title, "굵은 제목");
+  assert.equal(resolvePersonalMemoInput("", "- 목록 제목\n본문")?.title, "목록 제목");
+  assert.equal(resolvePersonalMemoInput("", "1. 번호 제목\n본문")?.title, "번호 제목");
+});
+
+test("한 줄 본문은 자동 제목 생성 후에도 유지", () => {
+  const resolved = resolvePersonalMemoInput("", "> 기억할 내용");
+  assert.equal(resolved?.title, "기억할 내용");
+  assert.equal(resolved?.content, "> 기억할 내용");
+});
+
+test("개인 메모 자동 제목은 120자로 제한", () => {
+  const resolved = resolvePersonalMemoInput("", `${"가".repeat(150)}\n본문`);
+  assert.equal(resolved?.title.length, PERSONAL_MEMO_TITLE_MAX_LENGTH);
+  assert.equal(resolved?.content, "본문");
+});
+
+test("간단 Markdown 블록 파싱", () => {
+  const blocks = parseSimpleMarkdown(
+    "# 큰 제목\n## 소제목\n### 작은 제목\n\n- 첫 항목\n* 둘째 항목\n\n> 기억할 말\n\n---\n\n본문",
+  );
+  assert.deepEqual(
+    blocks.map((block) => block.type),
+    ["heading", "heading", "heading", "unordered-list", "quote", "divider", "paragraph"],
+  );
+  assert.equal(blocks[0].level, 1);
+  assert.equal(blocks[1].level, 2);
+  assert.equal(blocks[2].level, 3);
+  assert.equal(blocks[3].items.length, 2);
+});
+
+test("번호 목록과 빈 줄 문단 파싱", () => {
+  const blocks = parseSimpleMarkdown("1. 첫째\n2. 둘째\n\n일반 문단\n이어지는 줄\n\n마지막 문단");
+  assert.deepEqual(
+    blocks.map((block) => block.type),
+    ["ordered-list", "paragraph", "paragraph"],
+  );
+  assert.equal(blocks[0].items.length, 2);
+  assert.equal(blocks[1].lines.length, 2);
+});
+
+test("굵게와 인라인 코드 파싱", () => {
+  assert.deepEqual(parseSimpleMarkdownInlines("**중요** 그리고 `firstLine`"), [
+    { type: "strong", text: "중요" },
+    { type: "text", text: " 그리고 " },
+    { type: "code", text: "firstLine" },
+  ]);
+});
+
+test("Markdown 일반 텍스트 미리보기", () => {
+  assert.equal(
+    simpleMarkdownToPlainText("# 전략\n\n- **첫 문장**\n- `Space` 사용"),
+    "전략 첫 문장 Space 사용",
+  );
+});
+
+test("닫히지 않은 Markdown 문법은 일반 텍스트", () => {
+  assert.deepEqual(parseSimpleMarkdownInlines("**닫히지 않음과 `코드"), [
+    { type: "text", text: "**닫히지 않음과 `코드" },
+  ]);
+});
+
+test("Markdown 기호 제거 helper", () => {
+  assert.equal(
+    stripSimpleMarkdown("## 핵심\n\n> 첫 **문장**을 `빠르게`"),
+    "핵심 첫 문장을 빠르게",
+  );
+});
+
+test("HTML 문자열은 파서에서 텍스트로 유지", () => {
+  const content = '<img src=x onerror="alert(1)">';
+  const blocks = parseSimpleMarkdown(content);
+  assert.equal(blocks[0].type, "paragraph");
+  assert.equal(blocks[0].lines[0][0].text, content);
+});
+
+test("Markdown 표시 구현은 dangerouslySetInnerHTML을 사용하지 않음", () => {
+  const component = readFileSync(
+    new URL("../src/components/SimpleMarkdown.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.equal(component.includes("dangerouslySetInnerHTML"), false);
+});
+
+test("열린 개인 메모는 현재 결과 순서에서 이전 다음 이동", () => {
+  const component = readFileSync(
+    new URL("../src/components/PersonalMemoManager.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.ok(component.includes("moveOpenMemo"));
+  assert.ok(component.includes("이전 메모"));
+  assert.ok(component.includes("다음 메모"));
+  assert.ok(component.includes("{memoIndex + 1} / {results.length}"));
+  assert.ok(component.includes("disabled={!previousMemo}"));
+  assert.ok(component.includes("disabled={!nextMemo}"));
 });
 
 test("잘못된 localStorage fallback", () => {
@@ -162,6 +282,20 @@ test("대소문자 무시", () => {
   assert.equal(searchPersonalMemos(seedDataset().memos, "USEFUL ENGLISH").length, 1);
 });
 
+test("검색 시 Markdown 기호를 제외한 표시 문구 사용", () => {
+  const dataset = createPersonalMemo(baseDataset(), "Markdown", "첫 **문장**을 빠르게", {
+    id: "markdown-search",
+  }).dataset;
+  assert.deepEqual(
+    searchPersonalMemos(dataset.memos, "첫 문장").map((memo) => memo.id),
+    ["markdown-search"],
+  );
+});
+
+test("기존 일반 메모 검색 호환", () => {
+  assert.equal(searchPersonalMemos(seedDataset().memos, "첫 문장은 3초").length, 1);
+});
+
 test("편집 초안 serialize/restore", () => {
   const storage = new MemoryStorage();
   const session = { mode: "edit", memoId: "personal-001", titleDraft: "초안", contentDraft: "내용\n보존", dirty: true };
@@ -195,6 +329,19 @@ test("JSON 백업 round trip", () => {
   assert.equal(parsed.canRestore, true);
   assert.deepEqual(parsed.backup.data.personalMemos, personalMemos);
   assert.equal(parsed.backup.summary.personalMemoCount, 2);
+});
+
+test("Markdown 원문 JSON 백업 round trip", () => {
+  const personalMemos = createPersonalMemo(
+    baseDataset(),
+    "GPT 답변",
+    "# 핵심\n\n- **첫 문장**\n> 기억할 내용\n\n`firstLine`",
+    { id: "markdown-backup" },
+  ).dataset;
+  const backup = createAppBackup(cards, {}, {}, undefined, new Date("2026-07-17T12:00:00Z"), {}, {}, undefined, personalMemos);
+  const parsed = parseAndValidateBackup(serializeAppBackup(backup));
+  assert.equal(parsed.canRestore, true);
+  assert.equal(parsed.backup.data.personalMemos.memos[0].content, personalMemos.memos[0].content);
 });
 
 test("기존 JSON 필드 누락", () => {

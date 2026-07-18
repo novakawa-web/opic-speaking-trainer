@@ -152,7 +152,7 @@ export function BackupManager({
       setPreview(result);
       setMessage(
         result.canRestore
-          ? `검증 완료: 경고 ${result.warningCount}건, 복구할 수 있습니다.`
+          ? `복구 준비됨: 경고 ${result.warningCount}건, 복구할 수 있습니다.`
           : `검증 실패: 오류 ${result.errorCount}건을 확인해 주세요.`,
       );
     } catch {
@@ -168,6 +168,11 @@ export function BackupManager({
     setPreview(null);
     setRestoreConfirmed(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function chooseAnotherFile() {
+    clearPreview();
+    window.setTimeout(() => fileInputRef.current?.click(), 0);
   }
 
   function scheduleReload() {
@@ -186,7 +191,7 @@ export function BackupManager({
         getSessionStorage(),
       );
       setSafetyBackupAvailable(true);
-      setMessage("전체 복구를 저장했습니다. 안전하게 다시 불러오는 중입니다…");
+      setMessage("전체 복구 완료: 데이터를 저장했습니다. 안전하게 다시 불러오는 중입니다…");
       scheduleReload();
     } catch (error) {
       setIsRestoring(false);
@@ -228,6 +233,15 @@ export function BackupManager({
 
   const visibleIssues = preview?.issues.slice(0, 40) ?? [];
   const hiddenIssueCount = Math.max(0, (preview?.issues.length ?? 0) - 40);
+  const fileFlowStatus = isReading
+    ? "파일을 확인하고 있어요."
+    : preview
+      ? preview.canRestore
+        ? "복구 준비됨"
+        : "복구 준비 불가"
+      : fileName
+        ? "파일을 확인하지 못했어요."
+        : "선택한 백업 파일이 없어요.";
 
   return (
     <section className="backup-manager" aria-labelledby="backup-manager-title">
@@ -247,7 +261,9 @@ export function BackupManager({
         포함되므로 파일 공유에 주의해 주세요.
       </p>
 
-      <div className="backup-action-grid">
+      <div className="data-transfer-section is-export">
+        <h3>전체 백업 내보내기</h3>
+        <div className="backup-action-grid">
         <button
           type="button"
           className="backup-action-button"
@@ -255,49 +271,85 @@ export function BackupManager({
         >
           전체 백업 내보내기
         </button>
-        <button
-          type="button"
-          className="backup-action-button is-quiet"
-          disabled={!safetyBackupAvailable || isRestoring}
-          aria-describedby="full-restore-undo-help"
-          onClick={(event) => activateButton(event, handleUndoRestore)}
-        >
-          직전 전체 복구 되돌리기
-        </button>
+        </div>
       </div>
-      <p id="full-restore-undo-help" className="backup-helper-text">
-        {safetyBackupAvailable
-          ? "직전 전체 복구를 실행하기 전 상태로 한 번만 돌아갈 수 있습니다."
-          : "전체 복구를 실행하면 현재 상태가 최근 1회 안전 백업됩니다."}
-      </p>
+
+      <div className="data-transfer-section is-restore">
+        <h3>JSON 백업 복구</h3>
+        <p className="backup-helper-text">
+          전체 백업 파일을 선택한 뒤 내용을 확인하고 복구합니다.
+        </p>
+      <ol className="file-workflow-steps" aria-label="JSON 전체 백업 복구 단계">
+        <li className={preview || isReading ? "is-complete" : "is-current"}>
+          <span>1</span>
+          <strong>{fileName ? "파일 선택 완료" : "파일 선택"}</strong>
+        </li>
+        <li className={preview ? "is-complete" : isReading ? "is-current" : ""}>
+          <span>2</span>
+          <strong>복구 미리보기</strong>
+        </li>
+        <li className={preview ? "is-current" : ""}>
+          <span>3</span>
+          <strong>전체 복구 실행</strong>
+        </li>
+      </ol>
 
       <div className="backup-file-panel">
-        <label htmlFor="full-backup-json-file">JSON 백업 파일 선택</label>
+        <p className="file-picker-label" id="full-backup-json-file-label">
+          전체 백업 JSON 파일
+        </p>
+        <div className="managed-file-picker">
         <input
           ref={fileInputRef}
           id="full-backup-json-file"
+          className="managed-file-input"
           type="file"
           accept=".json,application/json"
+          aria-label="JSON 백업 복구"
+          aria-describedby="full-backup-json-file-help"
           onChange={handleFileChange}
         />
-        <p>최대 10MB · 선택만으로 데이터가 변경되지 않습니다.</p>
+          <label
+            id="full-backup-json-file-trigger"
+            className="managed-file-trigger"
+            htmlFor="full-backup-json-file"
+          >
+            JSON 백업 복구
+          </label>
+          <span className="managed-file-name">
+            {fileName || "선택한 백업 파일이 없어요."}
+          </span>
+        </div>
+        <p id="full-backup-json-file-help">
+          전체 백업 파일을 선택한 뒤 내용을 확인하고 복구합니다. 최대 10MB까지 확인할 수 있어요.
+        </p>
       </div>
 
-      {isReading && <p className="backup-reading-message">백업 내용을 검증하는 중입니다…</p>}
+      <p
+        className={`file-flow-status ${preview?.canRestore ? "is-ready" : ""}`.trim()}
+        role="status"
+        aria-live="polite"
+      >
+        {fileFlowStatus}
+      </p>
 
       {preview && (
         <div className="backup-preview">
           <div className="backup-preview-heading">
             <div>
               <p className="eyebrow">RESTORE PREVIEW</p>
-              <h3>{fileName}</h3>
+              <p className={`transfer-ready-label ${preview.canRestore ? "" : "is-error"}`.trim()}>
+                {preview.canRestore ? "복구 준비됨" : "오류를 확인해 주세요"}
+              </p>
+              <h3>복구할 백업 파일</h3>
+              <p className="managed-preview-file-name">파일명: {fileName}</p>
             </div>
             <button
               type="button"
               className="backup-preview-close"
-              onClick={(event) => activateButton(event, clearPreview)}
+              onClick={(event) => activateButton(event, chooseAnotherFile)}
             >
-              파일 닫기
+              다른 파일 선택
             </button>
           </div>
 
@@ -398,7 +450,7 @@ export function BackupManager({
             aria-describedby="full-restore-disabled-help"
             onClick={(event) => activateButton(event, handleRestore)}
           >
-            위험 작업: 전체 복구
+            전체 복구 실행
           </button>
           <p id="full-restore-disabled-help" className="backup-helper-text">
             {!preview.canRestore
@@ -410,7 +462,30 @@ export function BackupManager({
         </div>
       )}
 
-      <p className="backup-result-message" aria-live="polite">
+      <div className="transfer-undo-area" aria-label="JSON 전체 복구 되돌리기">
+        {safetyBackupAvailable ? (
+          <>
+            <button
+              type="button"
+              className="backup-action-button is-quiet"
+              disabled={isRestoring}
+              aria-describedby="full-restore-undo-help"
+              onClick={(event) => activateButton(event, handleUndoRestore)}
+            >
+              직전 전체 복구 되돌리기
+            </button>
+            <p id="full-restore-undo-help" className="backup-helper-text">
+              직전 전체 복구를 실행하기 전 상태로 한 번만 돌아갈 수 있습니다.
+            </p>
+          </>
+        ) : (
+          <p className="backup-helper-text">되돌릴 전체 복구가 없어요.</p>
+        )}
+      </div>
+
+      </div>
+
+      <p className="backup-result-message" role="status" aria-live="polite">
         {message}
       </p>
     </section>

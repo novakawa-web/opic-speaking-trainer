@@ -9,6 +9,7 @@ import {
 
 type CardListProps = {
   cards: OpicCard[];
+  totalCount?: number;
   statuses: FirstLineStatusMap;
   myAnswers: MyAnswers;
   cardMemos: CardMemos;
@@ -21,7 +22,7 @@ const statusLabels = {
   hard: "첫 문장 어려움",
 } as const;
 
-export function CardList({ cards, statuses, myAnswers, cardMemos, onSelect }: CardListProps) {
+export function CardList({ cards, totalCount, statuses, myAnswers, cardMemos, onSelect }: CardListProps) {
   if (cards.length === 0) {
     return (
       <section className="empty-state">
@@ -41,7 +42,7 @@ export function CardList({ cards, statuses, myAnswers, cardMemos, onSelect }: Ca
           <p className="eyebrow">CARD LIBRARY</p>
           <h2 id="card-list-title">연습 카드</h2>
         </div>
-        <span className="card-count">{cards.length}개</span>
+        <span className="card-count">{totalCount ?? cards.length}개</span>
       </div>
 
       <div className="card-grid">

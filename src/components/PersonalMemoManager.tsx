@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatMemoDate } from "../utils/cardMemoStorage";
+import { SimpleMarkdown } from "./SimpleMarkdown";
+import { simpleMarkdownToPlainText } from "../utils/simpleMarkdown";
 import {
   PERSONAL_MEMO_CONTENT_MAX_LENGTH,
   PERSONAL_MEMO_TITLE_MAX_LENGTH,
@@ -8,6 +10,7 @@ import {
   getPinnedPersonalMemoCount,
   normalizePersonalMemoText,
   readPersonalMemoEditorSession,
+  resolvePersonalMemoInput,
   savePersonalMemoEditorSession,
   searchPersonalMemos,
   sortPersonalMemos,
@@ -38,7 +41,7 @@ export function PersonalMemoSummary({
       <div className="section-title-row personal-memo-summary-heading">
         <div>
           <p className="eyebrow">PERSONAL STUDY NOTES</p>
-          <h2 id="personal-memo-summary-title">개인 학습 메모</h2>
+          <h2 id="personal-memo-summary-title" className="home-section-title">개인 학습 메모</h2>
           <p>공부법, 시험 전략, 기억할 표현을 카드와 별도로 저장하세요.</p>
         </div>
         <div className="personal-memo-counts" aria-label="개인 학습 메모 요약">
@@ -68,7 +71,7 @@ export function PersonalMemoSummary({
                   <li key={memo.id}>
                     <button type="button" onClick={onOpenLibrary}>
                       <strong>📌 {memo.title}</strong>
-                      <span>{memo.content}</span>
+                      <span>{simpleMarkdownToPlainText(memo.content)}</span>
                     </button>
                   </li>
                 ))}
@@ -143,6 +146,7 @@ export function PersonalMemoLibrary({
   const [deletedMemo, setDeletedMemo] = useState<DeletedPersonalMemo | null>(null);
   const deleteDialogRef = useRef<HTMLDialogElement>(null);
   const deleteTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const memoHeadingRefs = useRef(new Map<string, HTMLHeadingElement>());
   const results = useMemo(
     () => searchPersonalMemos(dataset.memos, query),
     [dataset.memos, query],
@@ -154,6 +158,9 @@ export function PersonalMemoLibrary({
       : null;
   const normalizedTitle = editor?.titleDraft.trim() ?? "";
   const normalizedContent = normalizePersonalMemoText(editor?.contentDraft ?? "");
+  const resolvedInput = editor
+    ? resolvePersonalMemoInput(editor.titleDraft, editor.contentDraft)
+    : null;
   const isDirty = Boolean(
     editor &&
       (editor.mode === "new"
@@ -161,13 +168,7 @@ export function PersonalMemoLibrary({
         : normalizedTitle !== originalMemo?.title ||
           normalizedContent !== originalMemo?.content),
   );
-  const canSave = Boolean(
-    editor &&
-      normalizedTitle.length > 0 &&
-      normalizedTitle.length <= PERSONAL_MEMO_TITLE_MAX_LENGTH &&
-      normalizedContent.length > 0 &&
-      normalizedContent.length <= PERSONAL_MEMO_CONTENT_MAX_LENGTH,
-  );
+  const canSave = Boolean(editor && resolvedInput);
 
   function confirmDiscard() {
     return (
@@ -195,6 +196,28 @@ export function PersonalMemoLibrary({
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isDirty]);
+
+  useEffect(() => {
+    if (openMemoId && !results.some((memo) => memo.id === openMemoId)) {
+      setOpenMemoId(null);
+    }
+  }, [openMemoId, results]);
+
+  function showMemo(memoId: string) {
+    setOpenMemoId(memoId);
+    window.requestAnimationFrame(() => {
+      const heading = memoHeadingRefs.current.get(memoId);
+      heading?.scrollIntoView({ behavior: "auto", block: "start" });
+      heading?.focus({ preventScroll: true });
+    });
+  }
+
+  function moveOpenMemo(offset: -1 | 1) {
+    if (!openMemoId || editor) return;
+    const currentIndex = results.findIndex((memo) => memo.id === openMemoId);
+    const nextMemo = results[currentIndex + offset];
+    if (nextMemo) showMemo(nextMemo.id);
+  }
 
   function startNew() {
     if (editor && !confirmDiscard()) return;
@@ -257,9 +280,14 @@ export function PersonalMemoLibrary({
 
   function confirmDelete() {
     if (!deleteTarget) return;
+    const deleteIndex = results.findIndex((memo) => memo.id === deleteTarget.id);
+    const replacementMemo =
+      results[deleteIndex + 1] ?? results[deleteIndex - 1] ?? null;
     const deleted = onDelete(deleteTarget.id);
     setDeletedMemo(deleted);
-    setOpenMemoId((current) => (current === deleteTarget.id ? null : current));
+    setOpenMemoId((current) =>
+      current === deleteTarget.id ? replacementMemo?.id ?? null : current,
+    );
     setMessage(deleted ? "개인 학습 메모를 삭제했습니다." : "삭제할 메모를 찾지 못했습니다.");
     closeDeleteDialog();
   }
@@ -309,11 +337,12 @@ export function PersonalMemoLibrary({
           <h3 id="personal-memo-editor-title">
             {editor.mode === "new" ? "새 개인 학습 메모" : "개인 학습 메모 수정"}
           </h3>
-          <label htmlFor="personal-memo-title-input">제목</label>
+          <label htmlFor="personal-memo-title-input">제목 <span className="optional-field-label">선택</span></label>
           <input
             id="personal-memo-title-input"
             value={editor.titleDraft}
             maxLength={PERSONAL_MEMO_TITLE_MAX_LENGTH}
+            placeholder="비워두면 본문의 첫 줄을 제목으로 사용해요."
             onChange={(event) =>
               setEditor((current) => current ? { ...current, titleDraft: event.target.value } : current)
             }
@@ -322,6 +351,9 @@ export function PersonalMemoLibrary({
           <div className="personal-memo-field-count">
             {editor.titleDraft.length} / {PERSONAL_MEMO_TITLE_MAX_LENGTH}자
           </div>
+          {!normalizedTitle && resolvedInput && (
+            <p className="auto-title-preview">자동 제목: <strong>{resolvedInput.title}</strong></p>
+          )}
           <label htmlFor="personal-memo-content-input">본문</label>
           <textarea
             id="personal-memo-content-input"
@@ -344,12 +376,15 @@ export function PersonalMemoLibrary({
           <div className="personal-memo-field-count">
             {editor.contentDraft.length.toLocaleString()} / {PERSONAL_MEMO_CONTENT_MAX_LENGTH.toLocaleString()}자
           </div>
+            <p className="personal-memo-markdown-help">
+              제목(#), 굵게(**), 목록(-), 인용(&gt;) 형식을 사용할 수 있어요.
+            </p>
           <div className="personal-memo-editor-actions">
             <button type="button" className="primary-button" disabled={!canSave} onClick={saveEditor}>저장</button>
             <button type="button" className="secondary-button" onClick={cancelEditor}>취소</button>
           </div>
           {!canSave && (
-            <p className="disabled-reason">공백이 아닌 제목과 본문을 입력하면 저장할 수 있습니다.</p>
+            <p className="disabled-reason">본문을 입력하면 제목을 직접 쓰거나 첫 줄에서 자동으로 만들 수 있습니다.</p>
           )}
           <p className="editor-shortcut-help">Ctrl/Cmd + Enter 저장 · Esc 취소</p>
         </section>
@@ -366,22 +401,57 @@ export function PersonalMemoLibrary({
 
       {!editor && results.length > 0 && (
         <div className="personal-memo-list">
-          {results.map((memo) => {
+          {results.map((memo, memoIndex) => {
             const isOpen = openMemoId === memo.id;
+            const previousMemo = results[memoIndex - 1];
+            const nextMemo = results[memoIndex + 1];
             return (
               <article className={`personal-memo-item ${memo.pinned ? "is-pinned" : ""}`} key={memo.id}>
                 <div className="personal-memo-item-meta">
                   <span>{memo.pinned ? "📌 고정됨" : "개인 학습 메모"}</span>
                   <time dateTime={memo.updatedAt}>{formatMemoDate(memo.updatedAt)}</time>
                 </div>
-                <h3>{memo.title}</h3>
-                <p className={isOpen ? "is-expanded" : ""}>{memo.content}</p>
+                <h3
+                  ref={(node) => {
+                    if (node) memoHeadingRefs.current.set(memo.id, node);
+                    else memoHeadingRefs.current.delete(memo.id);
+                  }}
+                  tabIndex={isOpen ? -1 : undefined}
+                >
+                  {memo.title}
+                </h3>
+                {isOpen ? (
+                  <>
+                    <SimpleMarkdown content={memo.content} className="personal-memo-rendered" />
+                    <nav className="personal-memo-view-navigation" aria-label="열린 개인 메모 이동">
+                      <button
+                        type="button"
+                        disabled={!previousMemo}
+                        aria-label={previousMemo ? `이전 메모: ${previousMemo.title}` : "이전 메모 없음"}
+                        onClick={() => moveOpenMemo(-1)}
+                      >
+                        ‹ 이전 메모
+                      </button>
+                      <strong aria-live="polite">{memoIndex + 1} / {results.length}</strong>
+                      <button
+                        type="button"
+                        disabled={!nextMemo}
+                        aria-label={nextMemo ? `다음 메모: ${nextMemo.title}` : "다음 메모 없음"}
+                        onClick={() => moveOpenMemo(1)}
+                      >
+                        다음 메모 ›
+                      </button>
+                    </nav>
+                  </>
+                ) : (
+                  <p>{simpleMarkdownToPlainText(memo.content)}</p>
+                )}
                 <div className="personal-memo-item-actions">
                   <button
                     type="button"
                     aria-expanded={isOpen}
                     aria-label={`${memo.title} 개인 메모 ${isOpen ? "접기" : "열기"}`}
-                    onClick={() => setOpenMemoId(isOpen ? null : memo.id)}
+                    onClick={() => isOpen ? setOpenMemoId(null) : showMemo(memo.id)}
                   >
                     {isOpen ? "접기" : "열기"}
                   </button>
@@ -391,7 +461,7 @@ export function PersonalMemoLibrary({
                     aria-label={`${memo.title} ${memo.pinned ? "고정 해제" : "고정"}`}
                     onClick={() => onTogglePinned(memo.id)}
                   >
-                    {memo.pinned ? "고정 해제" : "고정"}
+                    {memo.pinned ? "해제" : "고정"}
                   </button>
                   <button type="button" onClick={() => startEdit(memo)}>수정</button>
                   <button

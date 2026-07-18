@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   CARD_TSV_HEADERS,
   createSampleCards,
@@ -265,6 +266,65 @@ test("알 수 없는 header는 경고 후 무시", () => {
   assert.equal(parsed.errorCount, 0);
   assert.equal(parsed.warningCount, 1);
   assert.deepEqual(parsed.unknownHeaders, ["extraColumn"]);
+});
+
+test("TSV 가져오기 UI는 선택·미리보기·실행 단계를 표시", () => {
+  const source = readFileSync(
+    new URL("../src/components/CardDataManager.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.ok(source.includes("TSV 가져오기"));
+  assert.ok(source.includes("파일 선택 완료"));
+  assert.ok(source.includes("가져오기 미리보기"));
+  assert.ok(source.includes("가져오기 실행"));
+  assert.ok(source.includes("카드 TSV 파일을 선택한 뒤 내용을 검토하고 가져옵니다."));
+});
+
+test("TSV 가져오기 UI는 파일 상태와 재선택을 안내", () => {
+  const source = readFileSync(
+    new URL("../src/components/CardDataManager.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.ok(source.includes("선택한 카드 파일이 없어요."));
+  assert.ok(source.includes("파일을 확인하고 있어요."));
+  assert.ok(source.includes("가져오기 준비됨"));
+  assert.ok(source.includes("가져오기 완료:"));
+  assert.ok(source.includes("다른 파일 선택"));
+  assert.ok(source.includes('aria-live="polite"'));
+});
+
+test("TSV 가져오기 오류는 실행을 막고 이유를 표시", () => {
+  const source = readFileSync(
+    new URL("../src/components/CardDataManager.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.ok(source.includes("hasBlockingErrors"));
+  assert.ok(source.includes("importDisabled"));
+  assert.ok(source.includes("오류가 하나라도 있으면 가져올 수 없습니다."));
+});
+
+test("TSV 되돌리기는 가져오기 영역에만 조건부 표시", () => {
+  const source = readFileSync(
+    new URL("../src/components/CardDataManager.tsx", import.meta.url),
+    "utf8",
+  );
+  const exportIndex = source.indexOf('className="data-transfer-section is-export"');
+  const importIndex = source.indexOf('className="data-transfer-section is-import"');
+  const undoIndex = source.indexOf("직전 TSV 가져오기 되돌리기");
+  assert.ok(exportIndex >= 0 && importIndex > exportIndex);
+  assert.ok(undoIndex > importIndex);
+  assert.ok(source.includes("{backupAvailable ? ("));
+  assert.ok(source.includes("되돌릴 TSV 가져오기가 없어요."));
+});
+
+test("긴 파일명은 모바일에서 가로 넘침 없이 처리", () => {
+  const styles = readFileSync(
+    new URL("../src/styles.css", import.meta.url),
+    "utf8",
+  );
+  assert.ok(styles.includes(".managed-file-name"));
+  assert.ok(styles.includes("text-overflow: ellipsis"));
+  assert.ok(styles.includes("overflow-wrap: anywhere"));
 });
 
 let passed = 0;

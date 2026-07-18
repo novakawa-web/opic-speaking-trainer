@@ -88,17 +88,16 @@ export function CardDataManager({
     setMessage("");
     setPolicy("new-only");
     setReplaceConfirmed(false);
+    setFileName(file.name);
     try {
       const parsed = parseCardTsv(await file.text(), cards);
-      setFileName(file.name);
       setPreview(parsed);
       setMessage(
         parsed.errorCount > 0
           ? `검증에서 오류 ${parsed.errorCount}건을 찾았습니다. 파일을 수정한 뒤 다시 선택해 주세요.`
-          : `검증 완료: ${parsed.validCards.length}장을 가져올 수 있습니다.`,
+          : `가져오기 준비됨: ${parsed.validCards.length}장을 가져올 수 있습니다.`,
       );
     } catch {
-      setFileName(file.name);
       setPreview(null);
       setMessage("파일을 읽을 수 없습니다. UTF-8 TSV 파일인지 확인해 주세요.");
     } finally {
@@ -113,6 +112,11 @@ export function CardDataManager({
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
+  function chooseAnotherFile() {
+    clearSelectedFile();
+    window.setTimeout(() => fileInputRef.current?.click(), 0);
+  }
+
   function handleImport() {
     if (!preview || importDisabled) return;
 
@@ -123,8 +127,10 @@ export function CardDataManager({
       saveActiveCards(result.cards);
       onCardsChange(result.cards);
       setBackupAvailable(true);
+      const appliedCount = result.added + result.updated;
       setMessage(
-        `가져오기 완료: 추가 ${result.added}장, 업데이트 ${result.updated}장, ` +
+        `가져오기 완료: ${appliedCount}장의 카드를 가져왔어요. ` +
+          `추가 ${result.added}장, 업데이트 ${result.updated}장, ` +
           `건너뜀 ${result.skipped}장, 전체 ${result.cards.length}장`,
       );
       clearSelectedFile();
@@ -157,6 +163,15 @@ export function CardDataManager({
 
   const visibleIssues = preview?.issues.slice(0, 40) ?? [];
   const hiddenIssueCount = Math.max(0, (preview?.issues.length ?? 0) - 40);
+  const fileFlowStatus = isReading
+    ? "파일을 확인하고 있어요."
+    : preview
+      ? preview.errorCount > 0
+        ? "가져오기 준비 불가"
+        : "가져오기 준비됨"
+      : fileName
+        ? "파일을 확인하지 못했어요."
+        : "선택한 카드 파일이 없어요.";
 
   return (
     <section className="card-data-manager" aria-labelledby="card-data-title">
@@ -177,7 +192,9 @@ export function CardDataManager({
         </p>
       )}
 
-      <div className="data-action-grid">
+      <div className="data-transfer-section is-export">
+        <h3>TSV 내보내기</h3>
+        <div className="data-action-grid">
         <button
           type="button"
           className="data-action-button"
@@ -190,7 +207,7 @@ export function CardDataManager({
             )
           }
         >
-          TSV 내보내기
+          TSV로 내보내기
         </button>
         <button
           type="button"
@@ -204,23 +221,10 @@ export function CardDataManager({
             )
           }
         >
-          샘플 TSV
+          샘플 TSV 받기
         </button>
-        <button
-          type="button"
-          className="data-action-button is-quiet"
-          disabled={!backupAvailable}
-          aria-describedby="restore-help"
-          onClick={(event) => activateButton(event, handleRestore)}
-        >
-          직전 가져오기 되돌리기
-        </button>
+        </div>
       </div>
-      <p id="restore-help" className="data-helper-text">
-        {backupAvailable
-          ? "카드 내용만 복구하며 상태와 시도 기록은 유지됩니다."
-          : "가져오기를 실행하면 직전 카드 구성이 한 번 자동 백업됩니다."}
-      </p>
 
       <details className="data-format-help">
         <summary>TSV 형식과 편집 규칙</summary>
@@ -234,38 +238,83 @@ export function CardDataManager({
         </p>
       </details>
 
+      <div className="data-transfer-section is-import">
+        <h3>TSV 가져오기</h3>
+        <p className="data-helper-text">
+          카드 TSV 파일을 선택한 뒤 내용을 검토하고 가져옵니다.
+        </p>
+
+      <ol className="file-workflow-steps" aria-label="TSV 카드 가져오기 단계">
+        <li className={preview || isReading ? "is-complete" : "is-current"}>
+          <span>1</span>
+          <strong>{fileName ? "파일 선택 완료" : "파일 선택"}</strong>
+        </li>
+        <li className={preview ? "is-complete" : isReading ? "is-current" : ""}>
+          <span>2</span>
+          <strong>가져오기 미리보기</strong>
+        </li>
+        <li className={preview ? "is-current" : ""}>
+          <span>3</span>
+          <strong>가져오기 실행</strong>
+        </li>
+      </ol>
+
       <div className="file-picker-panel">
-        <label className="file-picker-label" htmlFor="card-tsv-file">
-          TSV 파일 선택
-        </label>
+        <p className="file-picker-label" id="card-tsv-file-label">TSV 카드 파일</p>
+        <div className="managed-file-picker">
         <input
           ref={fileInputRef}
           id="card-tsv-file"
-          className="file-picker-input"
+          className="managed-file-input"
           type="file"
           accept=".tsv,text/tab-separated-values,text/plain"
+          aria-label="TSV 가져오기"
+          aria-describedby="card-tsv-file-help"
           onChange={handleFileChange}
         />
-        <p className="data-helper-text">
-          파일을 선택해도 즉시 반영되지 않습니다. 검증 결과와 충돌 정책을 먼저 확인합니다.
+          <label
+            id="card-tsv-file-trigger"
+            className="managed-file-trigger"
+            htmlFor="card-tsv-file"
+          >
+            TSV 가져오기
+          </label>
+          <span className="managed-file-name">
+            {fileName || "선택한 카드 파일이 없어요."}
+          </span>
+        </div>
+        <p id="card-tsv-file-help" className="data-helper-text">
+          카드 TSV 파일을 선택한 뒤 내용을 검토하고 가져옵니다.
         </p>
       </div>
 
-      {isReading && <p className="data-reading-message">파일을 확인하는 중입니다…</p>}
+      <p
+        className={`file-flow-status ${preview && !hasBlockingErrors ? "is-ready" : ""}`.trim()}
+        role="status"
+        aria-live="polite"
+      >
+        {fileFlowStatus}
+      </p>
 
       {preview && (
         <div className="import-preview">
           <div className="import-preview-heading">
             <div>
               <p className="eyebrow">IMPORT PREVIEW</p>
-              <h3>{fileName}</h3>
+              <p className={`transfer-ready-label ${hasBlockingErrors ? "is-error" : ""}`.trim()}>
+                {hasBlockingErrors ? "오류를 수정해 주세요" : "가져오기 준비됨"}
+              </p>
+              <h3>파일명: {fileName}</h3>
+              <p className="transfer-preview-summary">
+                정상 카드 {preview.validCards.length}장 · 오류 {preview.errorRowCount}건 · 기존 ID {preview.existingConflictCount}건
+              </p>
             </div>
             <button
               type="button"
               className="preview-clear-button"
-              onClick={(event) => activateButton(event, clearSelectedFile)}
+              onClick={(event) => activateButton(event, chooseAnotherFile)}
             >
-              파일 닫기
+              다른 파일 선택
             </button>
           </div>
 
@@ -376,7 +425,29 @@ export function CardDataManager({
         </div>
       )}
 
-      <p className="data-result-message" aria-live="polite">
+      <div className="transfer-undo-area" aria-label="TSV 가져오기 되돌리기">
+        {backupAvailable ? (
+          <>
+            <button
+              type="button"
+              className="data-action-button is-quiet"
+              aria-describedby="tsv-import-undo-help"
+              onClick={(event) => activateButton(event, handleRestore)}
+            >
+              직전 TSV 가져오기 되돌리기
+            </button>
+            <p id="tsv-import-undo-help" className="data-helper-text">
+              카드 내용만 직전 가져오기 전으로 복구하며 상태와 시도 기록은 유지됩니다.
+            </p>
+          </>
+        ) : (
+          <p className="data-helper-text">되돌릴 TSV 가져오기가 없어요.</p>
+        )}
+      </div>
+
+      </div>
+
+      <p className="data-result-message" role="status" aria-live="polite">
         {message}
       </p>
     </section>

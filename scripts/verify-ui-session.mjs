@@ -1,4 +1,17 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import {
+  CARD_LIBRARY_PAGE_SIZE,
+  getNextCardLibraryVisibleCount,
+  readCardLibrarySession,
+  resolveCardLibraryVisibleCount,
+  saveCardLibrarySession,
+} from "../src/utils/cardLibrarySession.ts";
+import {
+  DEFAULT_NAVIGATION_SESSION,
+  resolveNavigationSession,
+} from "../src/utils/navigationSession.ts";
+import { cards } from "../src/data/cards.ts";
 import {
   defaultCardDetailUiSession,
   parseCardDetailUiSession,
@@ -11,6 +24,61 @@ function test(name, run) {
   passed += 1;
   console.log(`✓ ${name}`);
 }
+
+class MemoryStorage {
+  values = new Map();
+  getItem(key) { return this.values.get(key) ?? null; }
+  setItem(key, value) { this.values.set(key, String(value)); }
+}
+
+test("카드 라이브러리는 처음 20장만 표시", () => {
+  assert.equal(CARD_LIBRARY_PAGE_SIZE, 20);
+  assert.equal(resolveCardLibraryVisibleCount({ filterSignature: "a", visibleCount: 60, scrollY: 0 }, "b"), 20);
+});
+
+test("카드 더 보기는 20장씩 증가", () => {
+  assert.equal(getNextCardLibraryVisibleCount(20), 40);
+  assert.equal(getNextCardLibraryVisibleCount(40), 60);
+});
+
+test("카드 라이브러리 표시 개수와 스크롤 세션 복원", () => {
+  const storage = new MemoryStorage();
+  saveCardLibrarySession({ filterSignature: "filters", visibleCount: 60, scrollY: 720 }, storage);
+  assert.deepEqual(readCardLibrarySession(storage), {
+    filterSignature: "filters",
+    visibleCount: 60,
+    scrollY: 720,
+  });
+});
+
+test("카드 라이브러리 내비게이션 세션 복원", () => {
+  const resolved = resolveNavigationSession(
+    { ...DEFAULT_NAVIGATION_SESSION, currentView: "library", detailSource: "library" },
+    cards,
+  );
+  assert.equal(resolved.currentView, "library");
+  assert.equal(resolved.detailSource, "library");
+});
+
+test("홈은 전체 CardList 대신 compact 카드 대시보드 사용", () => {
+  const source = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
+  assert.equal(source.includes('import { CardList }'), false);
+  assert.ok(source.includes("<HomeCardDashboard"));
+  assert.ok(source.includes("<CardLibrary"));
+});
+
+test("카드 라이브러리는 렌더링 목록 자체를 slice로 제한", () => {
+  const source = readFileSync(new URL("../src/components/CardLibrary.tsx", import.meta.url), "utf8");
+  assert.ok(source.includes("cards.slice(0, visibleCount)"));
+  assert.ok(source.includes("총 {cards.length}장 중 {shownCards.length}장 표시"));
+  assert.ok(source.includes("카드 더 보기"));
+});
+
+test("개인 메모 모바일 액션은 360px에서 4열", () => {
+  const styles = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+  assert.ok(styles.includes("grid-template-columns: repeat(4, minmax(0, 1fr))"));
+  assert.ok(styles.includes("@media (max-width: 339px)"));
+});
 
 test("card detail session state serialize/restore", () => {
   const raw = JSON.stringify({

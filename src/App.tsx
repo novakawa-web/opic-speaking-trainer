@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "./components/AppHeader";
 import { BackupManager } from "./components/BackupManager";
+import { CardLibrary } from "./components/CardLibrary";
 import { MemoSearch } from "./components/MemoSearch";
 import {
   PersonalMemoLibrary,
@@ -8,13 +9,11 @@ import {
 } from "./components/PersonalMemoManager";
 import { CardDataManager } from "./components/CardDataManager";
 import { CardDetail } from "./components/CardDetail";
-import { CardList } from "./components/CardList";
-import { DrillStartPanel } from "./components/DrillStartPanel";
 import { DirectTextPractice } from "./components/DirectTextPractice";
 import { FirstLineDrill } from "./components/FirstLineDrill";
+import { HomeCardDashboard } from "./components/HomeCardDashboard";
 import { ShadowingPlayer } from "./components/ShadowingPlayer";
 import { StudyDaySettings } from "./components/StudyDaySettings";
-import { TagFilter } from "./components/TagFilter";
 import { TodayStats } from "./components/TodayStats";
 import { cards as defaultCards } from "./data/cards";
 import type {
@@ -98,7 +97,7 @@ import {
   type PersonalMemo,
 } from "./utils/personalMemoStorage";
 
-type View = "list" | "detail" | "drill" | "shadowing" | "personalMemos";
+type View = "list" | "library" | "detail" | "drill" | "shadowing" | "personalMemos";
 type CardNavigationSource = "manual" | "auto";
 
 function shuffleCardIds(sourceCards: OpicCard[]) {
@@ -152,6 +151,7 @@ function readInitialNavigationState(availableCards: OpicCard[]) {
     shadowingSource: restoredShadowingSource,
     shadowingReturnView: playerPassage ? ("direct" as const) : ("detail" as const),
     drillReturnView: stored.drillSource,
+    detailReturnView: stored.detailSource,
     selectedDeck: stored.filters.selectedDeck,
     selectedTag: stored.filters.selectedTag,
     finalOnly: stored.filters.finalOnly,
@@ -181,6 +181,9 @@ function App() {
   );
   const [drillReturnView, setDrillReturnView] = useState<"list" | "detail">(
     initialNavigation.drillReturnView,
+  );
+  const [detailReturnView, setDetailReturnView] = useState<"home" | "library">(
+    initialNavigation.detailReturnView,
   );
   const [selectedCardId, setSelectedCardId] = useState<string | null>(
     initialNavigation.selectedCardId,
@@ -301,6 +304,25 @@ function App() {
       )
       .map(({ card }) => card);
   }, [attemptCounts, filteredCards, studyOrder]);
+  const filterSignature = JSON.stringify([
+    selectedDeck,
+    selectedTag,
+    finalOnly,
+    hardOnly,
+    cardScope,
+    studyOrder,
+  ]);
+  const filterSummary = useMemo(() => {
+    const parts: string[] = [];
+    if (selectedDeck !== "all") parts.push(selectedDeck);
+    if (selectedTag !== "all") parts.push(`#${selectedTag}`);
+    if (finalOnly) parts.push("final_rep");
+    if (hardOnly) parts.push("첫 문장 어려움");
+    if (cardScope === "new") parts.push("새 카드");
+    if (studyOrder === "random") parts.push("랜덤 순서");
+    if (studyOrder === "least-practiced") parts.push("연습 횟수 적은 순");
+    return parts.length > 0 ? parts.join(" · ") : "필터 없음 · 기본 순서";
+  }, [cardScope, finalOnly, hardOnly, selectedDeck, selectedTag, studyOrder]);
   const drillCards = useMemo(() => {
     const byId = new Map(cardCatalog.map((card) => [card.id, card]));
     return drillCardIds.flatMap((cardId) => {
@@ -374,6 +396,7 @@ function App() {
       currentView: persistedView,
       selectedCardId: persistedView === "home" ? null : selectedCardId,
       drillSource: drillReturnView,
+      detailSource: detailReturnView,
       drillCardIds,
       filters: {
         selectedDeck,
@@ -388,6 +411,7 @@ function App() {
     cardScope,
     drillCardIds,
     drillReturnView,
+    detailReturnView,
     finalOnly,
     hardOnly,
     selectedCardId,
@@ -421,16 +445,67 @@ function App() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, [cardCatalog, selectedCardId, shadowingReturnView, view]);
 
-  function openCard(card: OpicCard) {
+  useEffect(() => {
+    if (view !== "library" && view !== "detail") return;
+
+    const handlePopState = () => {
+      if (view === "detail") {
+        clearCardDetailUiSession();
+        setLastUndo(null);
+        setFeedbackMessage(null);
+        setSelectedCardId(null);
+        setMemoFocus(null);
+        setView(detailReturnView === "library" ? "library" : "list");
+      } else {
+        setView("list");
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [detailReturnView, view]);
+
+  function openCard(card: OpicCard, source: "home" | "library" = "library") {
     clearCardDetailUiSession();
     setLastUndo(null);
     setFeedbackMessage(null);
     setDrillCardIds([]);
     setMemoFocus(null);
     setShadowingSource(null);
+    setDetailReturnView(source);
     setSelectedCardId(card.id);
+    window.history.pushState({ ...window.history.state, opicView: "detail" }, "");
     setView("detail");
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function openCardLibrary() {
+    setSelectedCardId(null);
+    window.history.pushState({ ...window.history.state, opicView: "library" }, "");
+    setView("library");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function closeCardLibrary() {
+    if (window.history.state?.opicView === "library") {
+      window.history.back();
+      return;
+    }
+    setView("list");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function closeCardDetail() {
+    if (window.history.state?.opicView === "detail") {
+      window.history.back();
+      return;
+    }
+    clearCardDetailUiSession();
+    setLastUndo(null);
+    setFeedbackMessage(null);
+    setSelectedCardId(null);
+    setMemoFocus(null);
+    setView(detailReturnView === "library" ? "library" : "list");
   }
 
   function startCardShadowing(source: ShadowingSource) {
@@ -718,8 +793,10 @@ function App() {
     setLastUndo(null);
     setFeedbackMessage(null);
     setDrillCardIds([]);
+    setDetailReturnView("home");
     setSelectedCardId(card.id);
     setMemoFocus({ cardId, memoId });
+    window.history.pushState({ ...window.history.state, opicView: "detail" }, "");
     setView("detail");
     window.scrollTo({ top: 0, behavior: "auto" });
   }
@@ -825,6 +902,43 @@ function App() {
     );
   }
 
+  if (view === "library") {
+    return (
+      <div className="app-shell">
+        <AppHeader
+          theme={theme}
+          studyTitle="카드 라이브러리"
+          onBack={closeCardLibrary}
+          onToggleTheme={toggleTheme}
+        />
+        <CardLibrary
+          cards={orderedFilteredCards}
+          catalogCount={cardCatalog.length}
+          statuses={statuses}
+          myAnswers={myAnswers}
+          cardMemos={cardMemos}
+          decks={decks}
+          tags={tags}
+          selectedDeck={selectedDeck}
+          selectedTag={selectedTag}
+          finalOnly={finalOnly}
+          hardOnly={hardOnly}
+          cardScope={cardScope}
+          studyOrder={studyOrder}
+          filterSignature={filterSignature}
+          onDeckChange={setSelectedDeck}
+          onTagChange={setSelectedTag}
+          onFinalOnlyChange={setFinalOnly}
+          onHardOnlyChange={setHardOnly}
+          onCardScopeChange={setCardScope}
+          onStudyOrderChange={setStudyOrder}
+          onReset={resetFilters}
+          onSelect={(card) => openCard(card, "library")}
+        />
+      </div>
+    );
+  }
+
   if (selectedCard && view === "drill") {
     const undoCard = lastUndo
       ? cardCatalog.find((card) => card.id === lastUndo.cardId) ?? null
@@ -898,14 +1012,7 @@ function App() {
           totalCards={activeCards.length}
           canGoPrevious={canGoPrevious}
           canGoNext={canGoNext}
-          onBack={() => {
-            clearCardDetailUiSession();
-            setLastUndo(null);
-            setFeedbackMessage(null);
-            setSelectedCardId(null);
-            setMemoFocus(null);
-            setView("list");
-          }}
+          onBack={closeCardDetail}
           onPrevious={() => navigateCard(-1)}
           onNext={() => navigateCard(1)}
           onStartDrill={() => {
@@ -960,27 +1067,12 @@ function App() {
           onChange={setStudyDayStartTime}
         />
 
-        <TagFilter
-          decks={decks}
-          tags={tags}
-          selectedDeck={selectedDeck}
-          selectedTag={selectedTag}
-          finalOnly={finalOnly}
-          hardOnly={hardOnly}
-          cardScope={cardScope}
-          studyOrder={studyOrder}
-          onDeckChange={setSelectedDeck}
-          onTagChange={setSelectedTag}
-          onFinalOnlyChange={setFinalOnly}
-          onHardOnlyChange={setHardOnly}
-          onCardScopeChange={setCardScope}
-          onStudyOrderChange={setStudyOrder}
-          onReset={resetFilters}
-        />
-
-        <DrillStartPanel
-          cardCount={orderedFilteredCards.length}
-          onStart={startFilteredDrill}
+        <HomeCardDashboard
+          totalCount={cardCatalog.length}
+          filteredCount={orderedFilteredCards.length}
+          filterSummary={filterSummary}
+          onOpenLibrary={openCardLibrary}
+          onStartDrill={startFilteredDrill}
         />
 
         <DirectTextPractice
@@ -992,24 +1084,16 @@ function App() {
           onStart={startDirectShadowing}
         />
 
-        <CardList
-          cards={orderedFilteredCards}
-          statuses={statuses}
-          myAnswers={myAnswers}
-          cardMemos={cardMemos}
-          onSelect={openCard}
+        <PersonalMemoSummary
+          dataset={personalMemoDataset}
+          onOpenLibrary={() => openPersonalMemos(false)}
+          onStartNew={() => openPersonalMemos(true)}
         />
 
         <MemoSearch
           cards={cardCatalog}
           cardMemos={cardMemos}
           onOpenCard={openMemoCard}
-        />
-
-        <PersonalMemoSummary
-          dataset={personalMemoDataset}
-          onOpenLibrary={() => openPersonalMemos(false)}
-          onStartNew={() => openPersonalMemos(true)}
         />
 
         <CardDataManager

@@ -1,6 +1,7 @@
 import type { OpicCard } from "../types.ts";
 import type { SavedPassage } from "./savedPassageStorage.ts";
 import { segmentEnglishText } from "./sentenceSegmenter.ts";
+import { resolveOptionalTitle } from "./simpleMarkdown.ts";
 
 export const MAX_DIRECT_PRACTICE_LENGTH = 20_000;
 
@@ -62,9 +63,10 @@ export function createMyAnswerSource(
 }
 
 export function createCustomTextSource(title: string, text: string): ShadowingSource {
+  const resolvedTitle = resolveOptionalTitle(title, text, 100)?.title;
   return {
     sourceType: "custom",
-    sourceTitle: title.trim() || "직접 지문",
+    sourceTitle: resolvedTitle || "직접 지문",
     sourceText: text.trim(),
   };
 }

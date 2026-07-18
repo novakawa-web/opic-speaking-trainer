@@ -10,13 +10,15 @@ import {
 
 export const NAVIGATION_SESSION_STORAGE_KEY = "opic-navigation-session";
 
-export type NavigationView = "home" | "detail" | "drill";
+export type NavigationView = "home" | "library" | "detail" | "drill";
 export type DrillSource = "list" | "detail";
+export type DetailSource = "home" | "library";
 
 export type NavigationSession = {
   currentView: NavigationView;
   selectedCardId: string | null;
   drillSource: DrillSource;
+  detailSource: DetailSource;
   drillCardIds: string[];
   filters: {
     selectedDeck: DeckName | "all";
@@ -32,6 +34,7 @@ export const DEFAULT_NAVIGATION_SESSION: NavigationSession = {
   currentView: "home",
   selectedCardId: null,
   drillSource: "detail",
+  detailSource: "home",
   drillCardIds: [],
   filters: {
     selectedDeck: "all",
@@ -54,8 +57,9 @@ function createDefaultNavigationSession(): NavigationSession {
   };
 }
 
-const validViews = new Set<NavigationView>(["home", "detail", "drill"]);
+const validViews = new Set<NavigationView>(["home", "library", "detail", "drill"]);
 const validSources = new Set<DrillSource>(["list", "detail"]);
+const validDetailSources = new Set<DetailSource>(["home", "library"]);
 
 export function readNavigationSession(): NavigationSession {
   try {
@@ -73,6 +77,9 @@ export function readNavigationSession(): NavigationSession {
     const drillSource = validSources.has(parsed.drillSource as DrillSource)
       ? (parsed.drillSource as DrillSource)
       : "detail";
+    const detailSource = validDetailSources.has(parsed.detailSource as DetailSource)
+      ? (parsed.detailSource as DetailSource)
+      : "home";
 
     return {
       currentView,
@@ -81,6 +88,7 @@ export function readNavigationSession(): NavigationSession {
           ? parsed.selectedCardId
           : null,
       drillSource,
+      detailSource,
       drillCardIds: Array.isArray(parsed.drillCardIds)
         ? parsed.drillCardIds.filter(
             (cardId): cardId is string => typeof cardId === "string",
@@ -147,7 +155,7 @@ export function resolveNavigationSession(
   return {
     ...session,
     currentView:
-      session.currentView === "home" || cardExists
+      session.currentView === "home" || session.currentView === "library" || cardExists
         ? session.currentView
         : "home",
     selectedCardId: cardExists ? session.selectedCardId : null,

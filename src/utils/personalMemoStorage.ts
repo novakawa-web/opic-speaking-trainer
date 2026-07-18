@@ -1,3 +1,8 @@
+import {
+  resolveOptionalTitle,
+  stripSimpleMarkdown,
+} from "./simpleMarkdown.ts";
+
 export const PERSONAL_MEMOS_STORAGE_KEY = "opic-personal-memos";
 export const PERSONAL_MEMO_EDITOR_SESSION_KEY =
   "opic-personal-memo-editor-session";
@@ -153,14 +158,25 @@ export function createPersonalMemoId() {
 }
 
 export function isValidPersonalMemoInput(title: string, content: string) {
-  const normalizedTitle = title.trim();
-  const normalizedContent = normalizePersonalMemoText(content);
-  return (
-    normalizedTitle.length > 0 &&
-    normalizedTitle.length <= PERSONAL_MEMO_TITLE_MAX_LENGTH &&
-    normalizedContent.length > 0 &&
-    normalizedContent.length <= PERSONAL_MEMO_CONTENT_MAX_LENGTH
+  return resolvePersonalMemoInput(title, content) !== null;
+}
+
+export function resolvePersonalMemoInput(title: string, content: string) {
+  const sourceContent = normalizePersonalMemoText(content);
+  if (sourceContent.length > PERSONAL_MEMO_CONTENT_MAX_LENGTH) return null;
+  const resolved = resolveOptionalTitle(
+    title,
+    sourceContent,
+    PERSONAL_MEMO_TITLE_MAX_LENGTH,
   );
+  if (
+    !resolved ||
+    resolved.title.length > PERSONAL_MEMO_TITLE_MAX_LENGTH ||
+    resolved.content.length > PERSONAL_MEMO_CONTENT_MAX_LENGTH
+  ) {
+    return null;
+  }
+  return resolved;
 }
 
 export function createPersonalMemo(
@@ -170,7 +186,8 @@ export function createPersonalMemo(
   options: { now?: Date; id?: string } = {},
 ) {
   const id = options.id ?? createPersonalMemoId();
-  if (!isSafeId(id) || !isValidPersonalMemoInput(title, content)) {
+  const resolved = resolvePersonalMemoInput(title, content);
+  if (!isSafeId(id) || !resolved) {
     throw new Error("제목과 본문을 확인해 주세요.");
   }
   if (dataset.memos.some((memo) => memo.id === id)) {
@@ -179,8 +196,8 @@ export function createPersonalMemo(
   const timestamp = (options.now ?? new Date()).toISOString();
   const memo: PersonalMemo = {
     id,
-    title: title.trim(),
-    content: normalizePersonalMemoText(content),
+    title: resolved.title,
+    content: resolved.content,
     pinned: false,
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -201,7 +218,8 @@ export function updatePersonalMemo(
   content: string,
   now = new Date(),
 ) {
-  if (!isValidPersonalMemoInput(title, content)) {
+  const resolved = resolvePersonalMemoInput(title, content);
+  if (!resolved) {
     throw new Error("제목과 본문을 확인해 주세요.");
   }
   let updated: PersonalMemo | null = null;
@@ -209,8 +227,8 @@ export function updatePersonalMemo(
     if (memo.id !== memoId) return memo;
     updated = {
       ...memo,
-      title: title.trim(),
-      content: normalizePersonalMemoText(content),
+      title: resolved.title,
+      content: resolved.content,
       updatedAt: now.toISOString(),
     };
     return updated;
@@ -289,7 +307,8 @@ export function searchPersonalMemos(memos: PersonalMemo[], query: string) {
   const normalizedQuery = query.trim().toLocaleLowerCase();
   return sortPersonalMemos(memos).filter((memo) => {
     if (!normalizedQuery) return true;
-    return `${memo.title}\n${memo.content}`
+    const visibleContent = stripSimpleMarkdown(memo.content);
+    return `${memo.title}\n${visibleContent}\n${memo.content}`
       .toLocaleLowerCase()
       .includes(normalizedQuery);
   });

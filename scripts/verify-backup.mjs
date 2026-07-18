@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { cards as defaultCards } from "../src/data/cards.ts";
 import {
   APP_BACKUP_FORMAT,
@@ -409,6 +410,55 @@ test("저장 지문 복구 저장 키 매핑", () => {
   );
   applyBackupWithSafety(backup, makeBackup(), storage);
   assert.deepEqual(JSON.parse(storage.getItem(SAVED_PASSAGES_STORAGE_KEY)), savedPassages);
+});
+
+test("JSON 복구 UI는 선택·미리보기·실행 단계를 표시", () => {
+  const source = readFileSync(
+    new URL("../src/components/BackupManager.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.ok(source.includes("JSON 백업 복구"));
+  assert.ok(source.includes("파일 선택 완료"));
+  assert.ok(source.includes("복구 미리보기"));
+  assert.ok(source.includes("전체 복구 실행"));
+  assert.ok(source.includes("전체 백업 파일을 선택한 뒤 내용을 확인하고 복구합니다."));
+});
+
+test("JSON 복구 UI는 파일 상태와 재선택을 안내", () => {
+  const source = readFileSync(
+    new URL("../src/components/BackupManager.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.ok(source.includes("선택한 백업 파일이 없어요."));
+  assert.ok(source.includes("파일을 확인하고 있어요."));
+  assert.ok(source.includes("복구 준비됨"));
+  assert.ok(source.includes("전체 복구 완료:"));
+  assert.ok(source.includes("다른 파일 선택"));
+  assert.ok(source.includes('aria-live="polite"'));
+});
+
+test("JSON 복구 오류와 확인 절차가 실행을 차단", () => {
+  const source = readFileSync(
+    new URL("../src/components/BackupManager.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.ok(source.includes("restoreDisabled"));
+  assert.ok(source.includes("오류가 있는 백업은 복구할 수 없습니다."));
+  assert.ok(source.includes("전체 복구 확인에 체크해 주세요."));
+});
+
+test("JSON 되돌리기는 복구 영역에만 조건부 표시", () => {
+  const source = readFileSync(
+    new URL("../src/components/BackupManager.tsx", import.meta.url),
+    "utf8",
+  );
+  const exportIndex = source.indexOf('className="data-transfer-section is-export"');
+  const restoreIndex = source.indexOf('className="data-transfer-section is-restore"');
+  const undoIndex = source.lastIndexOf("직전 전체 복구 되돌리기");
+  assert.ok(exportIndex >= 0 && restoreIndex > exportIndex);
+  assert.ok(undoIndex > restoreIndex);
+  assert.ok(source.includes("{safetyBackupAvailable ? ("));
+  assert.ok(source.includes("되돌릴 전체 복구가 없어요."));
 });
 
 let passed = 0;

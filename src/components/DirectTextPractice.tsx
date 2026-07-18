@@ -11,6 +11,7 @@ import {
   isValidSavedPassageInput,
   readSavedPassageEditorSession,
   readSavedPassageLibraryOpen,
+  resolveSavedPassageInput,
   saveSavedPassageEditorSession,
   saveSavedPassageLibraryOpen,
   sortSavedPassages,
@@ -89,6 +90,9 @@ export function DirectTextPractice({
   );
   const sentenceCount = flattenParagraphSentences(editorParagraphs).length;
   const paragraphCount = editorParagraphs.length;
+  const resolvedEditorInput = editor
+    ? resolveSavedPassageInput(editor.titleDraft, editor.textDraft)
+    : null;
   const canSave = Boolean(
     editor && isValidSavedPassageInput(editor.titleDraft, editor.textDraft),
   );
@@ -210,7 +214,7 @@ export function DirectTextPractice({
       <div className="section-heading-row">
         <div>
           <p className="eyebrow">PASSAGE LIBRARY</p>
-          <h2 id="direct-practice-title">쉐도잉 지문</h2>
+          <h2 id="direct-practice-title" className="home-section-title">쉐도잉 지문</h2>
           <p>새 지문을 작성하거나 저장한 지문을 다시 열어 연습하세요.</p>
         </div>
         <span className="saved-passage-count">저장 {passages.length}개</span>
@@ -242,12 +246,12 @@ export function DirectTextPractice({
                 <strong>{editor.mode === "edit" ? "저장 지문 수정" : "새 지문 작성"}</strong>
                 <span>{editor.dirty ? "저장하지 않은 변경 있음" : "편집 준비"}</span>
               </div>
-              <label htmlFor="saved-passage-title-input">지문 제목</label>
+              <label htmlFor="saved-passage-title-input">지문 제목 <span className="optional-field-label">선택</span></label>
               <input
                 id="saved-passage-title-input"
                 value={editor.titleDraft}
                 maxLength={SAVED_PASSAGE_TITLE_MAX_LENGTH}
-                placeholder="예: Hotel role-play"
+                placeholder="비워두면 본문의 첫 줄을 제목으로 사용해요."
                 onKeyDown={handleEditorKeyDown}
                 onChange={(event) =>
                   setEditor((current) =>
@@ -257,6 +261,9 @@ export function DirectTextPractice({
                   )
                 }
               />
+              {!editor.titleDraft.trim() && resolvedEditorInput && (
+                <p className="auto-title-preview">자동 제목: <strong>{resolvedEditorInput.title}</strong></p>
+              )}
               <label htmlFor="saved-passage-text-input">영어 지문</label>
               <textarea
                 id="saved-passage-text-input"
@@ -296,7 +303,7 @@ export function DirectTextPractice({
                 <button type="button" className="text-button" onClick={closeEditor}>취소</button>
               </div>
               {!canSave && (
-                <p className="disabled-reason">제목과 공백이 아닌 본문을 입력하면 저장할 수 있습니다.</p>
+                <p className="disabled-reason">본문을 입력하면 제목을 직접 쓰거나 첫 줄에서 자동으로 만들 수 있습니다.</p>
               )}
               <p className="data-note">Ctrl/Cmd + Enter 저장 · Esc 취소 · 빈 줄은 문단 구분</p>
             </div>

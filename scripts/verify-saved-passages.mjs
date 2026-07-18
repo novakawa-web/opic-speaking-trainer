@@ -6,6 +6,7 @@ import {
   isValidSavedPassageInput,
   normalizeSavedPassageDataset,
   parseSavedPassageEditorSession,
+  resolveSavedPassageInput,
   restoreSavedPassage,
   sortSavedPassages,
   updateSavedPassage,
@@ -66,12 +67,42 @@ test("삭제 지문 원래 위치 복원", () => {
   const restored = restoreSavedPassage({ version: 1, passages: [other] }, passage, 0);
   assert.deepEqual(restored.passages.map((item) => item.id), [passage.id, other.id]);
 });
-test("공백 제목 거부", () => assert.equal(isValidSavedPassageInput(" ", "Text."), false));
+test("공백 제목은 본문 첫 줄로 자동 생성", () => {
+  const result = addSavedPassage(
+    { version: 1, passages: [] },
+    " ",
+    "# Travel plan\nI want to visit Jeju.",
+    now,
+    "auto-title-passage",
+  );
+  assert.equal(result.passage.title, "Travel plan");
+  assert.equal(result.passage.text, "I want to visit Jeju.");
+});
 test("공백 본문 거부", () => assert.equal(isValidSavedPassageInput("Title", "\n "), false));
 test("제목 100자 제한", () => assert.equal(isValidSavedPassageInput("a".repeat(101), "Text."), false));
 test("본문 20,000자 제한", () => assert.equal(isValidSavedPassageInput("Title", "a".repeat(20_001)), false));
 test("내부 줄바꿈 보존", () => {
   assert.equal(normalizeSavedPassageDataset(dataset).passages[0].text, passage.text);
+});
+test("저장 지문 직접 제목은 그대로 유지", () => {
+  const resolved = resolveSavedPassageInput("직접 제목", "# First line\nSecond line");
+  assert.equal(resolved?.title, "직접 제목");
+  assert.equal(resolved?.text, "# First line\nSecond line");
+});
+test("저장 지문 앞 빈 줄과 Markdown 문법 제거", () => {
+  const resolved = resolveSavedPassageInput("", "\n\n**Useful phrases**\nFirst.\nSecond.");
+  assert.equal(resolved?.title, "Useful phrases");
+  assert.equal(resolved?.text, "First.\nSecond.");
+});
+test("한 줄 저장 지문은 자동 제목 생성 후 본문 유지", () => {
+  const resolved = resolveSavedPassageInput("", "A short passage.");
+  assert.equal(resolved?.title, "A short passage.");
+  assert.equal(resolved?.text, "A short passage.");
+});
+test("저장 지문 자동 제목은 100자로 제한", () => {
+  const resolved = resolveSavedPassageInput("", `${"a".repeat(130)}\nBody.`);
+  assert.equal(resolved?.title.length, 100);
+  assert.equal(resolved?.text, "Body.");
 });
 test("잘못된 데이터셋 fallback", () => {
   assert.deepEqual(normalizeSavedPassageDataset({ version: 2, passages: [] }).passages, []);
