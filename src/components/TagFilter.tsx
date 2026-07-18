@@ -4,6 +4,7 @@ import type {
   StudyCardScope,
   StudyOrder,
 } from "../utils/studyPreferences";
+import type { AnswerContentFilter } from "../utils/cardContent";
 
 type TagFilterProps = {
   decks: DeckName[];
@@ -25,6 +26,8 @@ type TagFilterProps = {
   onAnswerLearningStatusFilterChange?: (
     value: "all" | "unlearned" | AnswerLearningStatus,
   ) => void;
+  answerContentFilter?: AnswerContentFilter;
+  onAnswerContentFilterChange?: (value: AnswerContentFilter) => void;
 };
 
 export function TagFilter({
@@ -45,6 +48,8 @@ export function TagFilter({
   onReset,
   answerLearningStatusFilter,
   onAnswerLearningStatusFilterChange,
+  answerContentFilter,
+  onAnswerContentFilterChange,
 }: TagFilterProps) {
   return (
     <section className="filter-panel" aria-labelledby="filter-title">
@@ -75,6 +80,17 @@ export function TagFilter({
             ))}
           </select>
         </label>
+
+        {answerContentFilter && onAnswerContentFilterChange && (
+          <label className="field-label">
+            <span>답변 구성</span>
+            <select value={answerContentFilter} onChange={(event) => onAnswerContentFilterChange(event.target.value as AnswerContentFilter)}>
+              <option value="all">전체</option>
+              <option value="first-line-only">첫 문장 전용</option>
+              <option value="full-answer">전체 답변 있음</option>
+            </select>
+          </label>
+        )}
 
         {answerLearningStatusFilter && onAnswerLearningStatusFilterChange && (
           <label className="field-label">

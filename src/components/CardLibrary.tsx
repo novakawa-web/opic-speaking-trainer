@@ -10,6 +10,7 @@ import {
 } from "../utils/cardLibrarySession";
 import type { MyAnswers } from "../utils/myAnswerStorage";
 import type { StudyCardScope, StudyOrder } from "../utils/studyPreferences";
+import type { AnswerContentFilter } from "../utils/cardContent";
 import { CardList } from "./CardList";
 import { TagFilter } from "./TagFilter";
 import { MemoSearch } from "./MemoSearch";
@@ -41,6 +42,8 @@ type CardLibraryProps = {
   onSelect: (card: OpicCard) => void;
   answerLearningStatusFilter: "all" | "unlearned" | AnswerLearningStatus;
   onAnswerLearningStatusFilterChange: (value: "all" | "unlearned" | AnswerLearningStatus) => void;
+  answerContentFilter: AnswerContentFilter;
+  onAnswerContentFilterChange: (value: AnswerContentFilter) => void;
   onOpenMemoCard: (cardId: string, memoId: string) => void;
 };
 
@@ -71,6 +74,8 @@ export function CardLibrary({
   onSelect,
   answerLearningStatusFilter,
   onAnswerLearningStatusFilterChange,
+  answerContentFilter,
+  onAnswerContentFilterChange,
   onOpenMemoCard,
 }: CardLibraryProps) {
   const [activeTab, setActiveTab] = useState<"cards" | "memos">("cards");
@@ -183,6 +188,8 @@ export function CardLibrary({
         onReset={onReset}
         answerLearningStatusFilter={answerLearningStatusFilter}
         onAnswerLearningStatusFilterChange={onAnswerLearningStatusFilterChange}
+        answerContentFilter={answerContentFilter}
+        onAnswerContentFilterChange={onAnswerContentFilterChange}
       />
 
       <p className="card-library-result-count" aria-live="polite">

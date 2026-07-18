@@ -18,6 +18,7 @@ import {
   saveActiveCards,
   saveImportBackup,
 } from "../src/utils/cardStorage.ts";
+import { isFirstLineOnlyCard } from "../src/utils/cardContent.ts";
 
 const baseCard = {
   id: "verify-card-001",
@@ -158,6 +159,34 @@ test("firstLine과 answer 첫 줄 불일치", () => {
   );
   const parsed = parseCardTsv(tsv);
   assert.ok(parsed.issues.some((issue) => issue.field === "firstLine"));
+});
+
+test("첫 문장 전용 TSV 카드는 빈 힌트와 한 줄 답변을 보존", () => {
+  const card = {
+    ...baseCard,
+    id: "firstline-only-001",
+    tags: ["firstline_only", "mock"],
+    hint: { title: "", memoryTip: "", subjectTip: "", minimum: "", flow: [] },
+    back: [baseCard.firstLine],
+  };
+  const parsed = parseCardTsv(exportCardsToTsv([card]));
+  assert.equal(parsed.errorCount, 0);
+  assert.equal(parsed.validCards[0].hint.title, "");
+  assert.equal(isFirstLineOnlyCard(parsed.validCards[0]), true);
+});
+
+test("완성 카드는 첫 문장 전용으로 분류하지 않음", () => {
+  assert.equal(isFirstLineOnlyCard(baseCard), false);
+});
+
+test("같은 ID 덮어쓰기는 카드 내용만 교체하고 별도 기록 객체를 건드리지 않음", () => {
+  const firstOnly = { ...baseCard, hint: { title: "", memoryTip: "", minimum: "", flow: [] }, back: [baseCard.firstLine] };
+  const statuses = { [baseCard.id]: "success" };
+  const answerStatuses = { [baseCard.id]: "learning" };
+  const result = applyCardImport([firstOnly], [baseCard], "overwrite");
+  assert.deepEqual(result.cards, [baseCard]);
+  assert.equal(statuses[baseCard.id], "success");
+  assert.equal(answerStatuses[baseCard.id], "learning");
 });
 
 test("export/import round trip", () => {

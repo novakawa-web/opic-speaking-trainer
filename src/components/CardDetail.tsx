@@ -32,6 +32,7 @@ import {
   AudioRecorder,
   type AudioRecorderHandle,
 } from "./AudioRecorder";
+import { isFirstLineOnlyCard } from "../utils/cardContent";
 
 type CardDetailProps = {
   card: OpicCard;
@@ -128,10 +129,11 @@ export function CardDetail({
   const isDirty = isEditing && normalizedDraft !== originalAnswer;
   const myFirstLine = myAnswer ? extractMyFirstLine(myAnswer) : "";
   const modelAnswerText = card.back.join("\n");
+  const firstLineOnly = isFirstLineOnlyCard(card);
   const recorderBusy = isRecordingBusy(recordingStatus);
   const shadowingSource =
     answerTab === "model"
-      ? createModelAnswerSource(card)
+      ? firstLineOnly ? null : createModelAnswerSource(card)
       : myAnswer
         ? createMyAnswerSource(card, myAnswer)
         : null;
@@ -304,6 +306,7 @@ export function CardDetail({
         <div className="question-content">
           <div className="detail-meta">
             <span className="mode-chip">SPEAK FIRST</span>
+            {firstLineOnly && <span className="first-line-only-badge">첫 문장 전용 카드</span>}
             {status && (
               <span className={`status-badge status-${status}`}>
                 첫 문장 {statusLabels[status]}
@@ -473,7 +476,9 @@ export function CardDetail({
               ▶ 현재 답변으로 쉐도잉 연습
             </button>
             <span>
-              {answerTab === "model"
+              {answerTab === "model" && firstLineOnly
+                ? "전체 답변이 없어 쉐도잉을 시작할 수 없습니다."
+                : answerTab === "model"
                 ? "기본 답변을 문장별로 재생합니다."
                 : myAnswer
                   ? "나만의 답변을 문장별로 재생합니다."

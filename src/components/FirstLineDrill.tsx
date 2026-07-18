@@ -19,6 +19,7 @@ import {
 } from "../utils/ttsSettings";
 import { ShortcutHelp } from "./ShortcutHelp";
 import { StudyNavigation } from "./StudyNavigation";
+import type { FirstLineMode } from "../utils/firstLineMockSession";
 
 type FirstLineDrillProps = {
   card: OpicCard;
@@ -40,6 +41,7 @@ type FirstLineDrillProps = {
   onBack: () => void;
   onPrevious: () => void;
   onNext: (source?: "manual" | "auto") => void;
+  mode?: FirstLineMode;
 };
 
 const statusOptions = [
@@ -93,6 +95,7 @@ export function FirstLineDrill({
   onBack,
   onPrevious,
   onNext,
+  mode = "practice",
 }: FirstLineDrillProps) {
   const [showFirstLine, setShowFirstLine] = useState(false);
   const [showFrontKo, setShowFrontKo] = useState(false);
@@ -107,6 +110,7 @@ export function FirstLineDrill({
     null,
   );
   const [showSwipeHint, setShowSwipeHint] = useState(shouldShowSwipeHint);
+  const [countdown, setCountdown] = useState(3);
   const autoplayRef = useRef(questionAutoplay);
   const autoAdvanceTimerRef = useRef<number | null>(null);
   const questionText = stripQuestionPrefix(card.front);
@@ -135,6 +139,7 @@ export function FirstLineDrill({
 
   const saveStatus = useCallback(
     (nextStatus: FirstLineResult) => {
+      if (mode === "mock" && !showFirstLine) return;
       cancelAutoAdvance();
       onStatusChange(nextStatus);
 
@@ -152,7 +157,7 @@ export function FirstLineDrill({
         onNext("auto");
       }, 450);
     },
-    [autoAdvance, canGoNext, cancelAutoAdvance, onNext, onStatusChange, stop],
+    [autoAdvance, canGoNext, cancelAutoAdvance, mode, onNext, onStatusChange, showFirstLine, stop],
   );
   const goBack = useCallback(() => {
     cancelAutoAdvance();
@@ -231,7 +236,7 @@ export function FirstLineDrill({
     stop();
     clearMessage();
 
-    if (!autoplayRef.current || !isTtsSupported) return;
+    if ((mode !== "mock" && !autoplayRef.current) || !isTtsSupported) return;
 
     // Defer until the new card has committed; cancellation keeps rapid navigation safe.
     const timerId = window.setTimeout(() => {
@@ -250,7 +255,23 @@ export function FirstLineDrill({
     questionText,
     speak,
     stop,
+    mode,
   ]);
+
+  useEffect(() => {
+    if (mode !== "mock") return;
+    setCountdown(3);
+    const timer = window.setInterval(() => {
+      setCountdown((current) => {
+        if (current <= 1) {
+          window.clearInterval(timer);
+          return 0;
+        }
+        return current - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [card.id, mode]);
 
   useEffect(
     () => () => {
@@ -278,9 +299,9 @@ export function FirstLineDrill({
     w: canGoNext ? goNext : undefined,
     Enter: canGoNext ? goNext : undefined,
     Space: toggleFirstLine,
-    a: () => saveStatus("success"),
-    s: () => saveStatus("again"),
-    d: () => saveStatus("hard"),
+    a: mode === "mock" && !showFirstLine ? undefined : () => saveStatus("success"),
+    s: mode === "mock" && !showFirstLine ? undefined : () => saveStatus("again"),
+    d: mode === "mock" && !showFirstLine ? undefined : () => saveStatus("hard"),
     z: undoTarget ? undoLastSelection : undefined,
   });
 
@@ -299,7 +320,12 @@ export function FirstLineDrill({
       <section className="drill-card" {...swipeHandlers}>
         <div className="drill-decoration" aria-hidden="true" />
         <div className="drill-content">
-          <span className="drill-kicker">3초 안에 시작해 보세요</span>
+          <span className="drill-kicker">{mode === "mock" ? "첫 문장 모의고사" : "3초 안에 시작해 보세요"}</span>
+          {mode === "mock" && (
+            <div className={`mock-countdown ${countdown === 0 ? "is-finished" : ""}`} role="timer" aria-live="polite">
+              {countdown > 0 ? <><strong>{countdown}</strong><span>초 안에 첫 문장을 시작하세요</span></> : <span>말한 뒤 정답을 확인하세요</span>}
+            </div>
+          )}
           {showSwipeHint ? (
             <p className="swipe-hint" role="note">
               좌우로 밀어 카드를 이동할 수 있어요
@@ -367,6 +393,7 @@ export function FirstLineDrill({
                   }`}
                   aria-pressed={status === option.value}
                   aria-keyshortcuts={option.shortcut}
+                  disabled={mode === "mock" && !showFirstLine}
                   onClick={(event) =>
                     activateButton(event, () => saveStatus(option.value))
                   }
@@ -396,7 +423,7 @@ export function FirstLineDrill({
                 aria-keyshortcuts="Space"
                 onClick={(event) => activateButton(event, toggleFirstLine)}
               >
-                {showFirstLine ? "다시 도전" : "첫 문장 보기"}
+                {showFirstLine ? "다시 도전" : mode === "mock" ? "정답 확인" : "첫 문장 보기"}
               </button>
               <button
                 className="speech-button first-line-speech-button"
@@ -413,6 +440,29 @@ export function FirstLineDrill({
                   : "첫 문장 듣기"}
               </button>
             </div>
+            <nav
+              className="mobile-drill-navigation"
+              aria-label="모바일 학습 카드 이동"
+            >
+              <button
+                className="navigation-button"
+                type="button"
+                aria-label="이전 카드"
+                disabled={!canGoPrevious}
+                onClick={(event) => activateButton(event, goPrevious)}
+              >
+                <span aria-hidden="true">‹</span> 이전
+              </button>
+              <button
+                className="navigation-button"
+                type="button"
+                aria-label="다음 카드"
+                disabled={!canGoNext}
+                onClick={(event) => activateButton(event, goNext)}
+              >
+                다음 <span aria-hidden="true">›</span>
+              </button>
+            </nav>
             {showFirstLine ? (
               <div
                 className="first-line-box"

@@ -11,6 +11,7 @@ import { extractMyFirstLine } from "../utils/myAnswerStorage";
 import { createModelAnswerSource, createMyAnswerSource, type ShadowingSource } from "../utils/shadowingPlayer";
 import { segmentEnglishText } from "../utils/sentenceSegmenter";
 import { readTtsRate, stripQuestionPrefix } from "../utils/ttsSettings";
+import { isFirstLineOnlyCard } from "../utils/cardContent";
 
 type Props = {
   card: OpicCard;
@@ -67,10 +68,11 @@ export function AnswerLearning({
   const { isSupported, activeTarget, message, speak, stop } = useSpeechSynthesis(ttsRate);
   const modelText = card.back.join("\n");
   const resolvedSource = answerSource === "my-answer" && myAnswer ? "my-answer" : "default";
+  const missingFullAnswer = isFirstLineOnlyCard(card) && resolvedSource === "default";
   const answerText = resolvedSource === "my-answer" ? myAnswer! : modelText;
   const firstLine = resolvedSource === "my-answer" ? extractMyFirstLine(answerText) : card.firstLine;
   const sentences = useMemo(() => segmentEnglishText(answerText), [answerText]);
-  const shadowingSource = resolvedSource === "my-answer"
+  const shadowingSource = missingFullAnswer ? null : resolvedSource === "my-answer"
     ? createMyAnswerSource(card, answerText)
     : createModelAnswerSource(card);
 
@@ -130,8 +132,10 @@ export function AnswerLearning({
         <div className="answer-learning-reveal-buttons">
           <button type="button" aria-expanded={reveal.hint} aria-pressed={reveal.hint} onClick={() => toggle("hint")}>힌트</button>
           <button type="button" aria-expanded={reveal.firstLine} aria-pressed={reveal.firstLine} onClick={() => toggle("firstLine")}>첫 문장</button>
-          <button type="button" aria-expanded={reveal.answer} aria-pressed={reveal.answer} onClick={() => toggle("answer")}>전체 답변</button>
+          <button type="button" aria-expanded={reveal.answer} aria-pressed={reveal.answer} disabled={missingFullAnswer} onClick={() => toggle("answer")}>전체 답변</button>
         </div>
+
+        {missingFullAnswer && <p className="first-line-only-notice" role="note">전체 답변이 아직 없어요. 첫 문장은 첫 문장 연습에서 그대로 사용할 수 있습니다.</p>}
 
         {reveal.hint && (
           <div className="answer-learning-hint-box">
@@ -188,9 +192,10 @@ export function AnswerLearning({
           </button>
           <button type="button" className="text-button utility-action" disabled={!status} onClick={onReset}>현재 상태 초기화</button>
         </div>
-        <button type="button" className="secondary-button answer-learning-shadowing" onClick={() => { stop(); onStartShadowing(shadowingSource); }}>
+        <button type="button" className="secondary-button answer-learning-shadowing" disabled={!shadowingSource} aria-describedby={!shadowingSource ? `shadowing-unavailable-${card.id}` : undefined} onClick={() => { if (!shadowingSource) return; stop(); onStartShadowing(shadowingSource); }}>
           이 답변 쉐도잉하기
         </button>
+        {!shadowingSource && <p id={`shadowing-unavailable-${card.id}`} className="disabled-reason">전체 답변이 없어 쉐도잉을 시작할 수 없습니다.</p>}
         <p className="answer-learning-feedback" aria-live="polite">{feedbackMessage || message}</p>
       </section>
 

@@ -18,6 +18,8 @@ import { CardDataManager } from "./components/CardDataManager";
 import { CardDetail } from "./components/CardDetail";
 import { DirectTextPractice } from "./components/DirectTextPractice";
 import { FirstLineDrill } from "./components/FirstLineDrill";
+import { FirstLineSetup } from "./components/FirstLineSetup";
+import { FirstLineMockResult } from "./components/FirstLineMockResult";
 import { HomeCardDashboard } from "./components/HomeCardDashboard";
 import { HomeManagement } from "./components/HomeManagement";
 import { HomeQuickStart } from "./components/HomeQuickStart";
@@ -77,6 +79,19 @@ import { applyTheme, readInitialTheme, saveTheme } from "./utils/themeStorage";
 import { readActiveCards } from "./utils/cardStorage";
 import { readStoredStatuses, saveStatuses } from "./utils/statusStorage";
 import {
+  matchesAnswerContentFilter,
+  type AnswerContentFilter,
+} from "./utils/cardContent";
+import {
+  clearFirstLineMockSession,
+  createFirstLineMockSession,
+  readFirstLineMockSession,
+  saveFirstLineMockSession,
+  type FirstLineMode,
+  type FirstLineMockSession,
+  type MockQuestionCount,
+} from "./utils/firstLineMockSession";
+import {
   deleteMyAnswer,
   readMyAnswers,
   setMyAnswer,
@@ -129,6 +144,7 @@ type View =
   | "list"
   | "library"
   | "detail"
+  | "drillSetup"
   | "drill"
   | "answerSetup"
   | "answerLearning"
@@ -244,6 +260,12 @@ function App() {
   const [selectedTag, setSelectedTag] = useState(initialNavigation.selectedTag);
   const [finalOnly, setFinalOnly] = useState(initialNavigation.finalOnly);
   const [hardOnly, setHardOnly] = useState(initialNavigation.hardOnly);
+  const [answerContentFilter, setAnswerContentFilter] = useState<AnswerContentFilter>("all");
+  const [firstLineMode, setFirstLineMode] = useState<FirstLineMode>("practice");
+  const [mockQuestionCount, setMockQuestionCount] = useState<MockQuestionCount>(10);
+  const [mockSession, setMockSession] = useState<FirstLineMockSession | null>(() =>
+    readFirstLineMockSession(initialCardState.cards.map((card) => card.id)),
+  );
   const [answerLearningStatusFilter, setAnswerLearningStatusFilter] = useState<
     "all" | "unlearned" | AnswerLearningStatus
   >("all");
@@ -361,6 +383,7 @@ function App() {
         const matchesFinal = !finalOnly || card.tags.includes("final_rep");
         const matchesHard = !hardOnly || statuses[card.id] === "hard";
         const matchesScope = cardScope === "all" || statuses[card.id] == null;
+        const matchesContent = matchesAnswerContentFilter(card, answerContentFilter);
         const answerStatus = answerLearningStatuses[card.id];
         const matchesAnswerLearning =
           answerLearningStatusFilter === "all" ||
@@ -374,6 +397,7 @@ function App() {
           matchesFinal &&
           matchesHard &&
           matchesScope &&
+          matchesContent &&
           matchesAnswerLearning
         );
       }),
@@ -381,6 +405,7 @@ function App() {
       cardCatalog,
       answerLearningStatuses,
       answerLearningStatusFilter,
+      answerContentFilter,
       cardScope,
       finalOnly,
       hardOnly,
@@ -410,6 +435,7 @@ function App() {
     cardScope,
     studyOrder,
     answerLearningStatusFilter,
+    answerContentFilter,
   ]);
   const filterSummary = useMemo(() => {
     const parts: string[] = [];
@@ -418,10 +444,12 @@ function App() {
     if (finalOnly) parts.push("final_rep");
     if (hardOnly) parts.push("첫 문장 어려움");
     if (cardScope === "new") parts.push("새 카드");
+    if (answerContentFilter === "first-line-only") parts.push("첫 문장 전용");
+    if (answerContentFilter === "full-answer") parts.push("전체 답변 있음");
     if (studyOrder === "random") parts.push("랜덤 순서");
     if (studyOrder === "least-practiced") parts.push("연습 횟수 적은 순");
     return parts.length > 0 ? parts.join(" · ") : "필터 없음 · 기본 순서";
-  }, [cardScope, finalOnly, hardOnly, selectedDeck, selectedTag, studyOrder]);
+  }, [answerContentFilter, cardScope, finalOnly, hardOnly, selectedDeck, selectedTag, studyOrder]);
   const drillCards = useMemo(() => {
     const byId = new Map(cardCatalog.map((card) => [card.id, card]));
     return drillCardIds.flatMap((cardId) => {
@@ -503,6 +531,7 @@ function App() {
           ? "detail"
           : "home"
         : view === "list" ||
+            view === "drillSetup" ||
             view === "personalMemos" ||
             view === "answerSetup" ||
             view === "answerLearning"
@@ -696,12 +725,59 @@ function App() {
     const firstCardId = nextDrillCardIds[0];
     if (!firstCardId) return;
 
+    clearFirstLineMockSession();
+    setMockSession(null);
+
     setLastUndo(null);
     setFeedbackMessage(null);
     setMemoFocus(null);
     setDrillCardIds(nextDrillCardIds);
     setSelectedCardId(firstCardId);
     setDrillReturnView("list");
+    setView("drill");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function openFirstLineSetup() {
+    // The answer-learning status filter is not shown in this setup screen.
+    setAnswerLearningStatusFilter("all");
+    setSelectedCardId(null);
+    setView("drillSetup");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function startFirstLineFromSetup() {
+    if (firstLineMode === "practice") {
+      startFilteredDrill();
+      return;
+    }
+    const session = createFirstLineMockSession(
+      orderedFilteredCards.map((card) => card.id),
+      mockQuestionCount,
+    );
+    const firstCardId = session.cardOrder[0];
+    if (!firstCardId) return;
+    saveFirstLineMockSession(session);
+    setMockSession(session);
+    setDrillCardIds(session.cardOrder);
+    setSelectedCardId(firstCardId);
+    setDrillReturnView("list");
+    setLastUndo(null);
+    setFeedbackMessage(null);
+    setView("drill");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function restartMock(sourceIds: string[], count: MockQuestionCount) {
+    const valid = new Set(cardCatalog.map((card) => card.id));
+    const session = createFirstLineMockSession(sourceIds.filter((id) => valid.has(id)), count);
+    if (!session.cardOrder[0]) return;
+    saveFirstLineMockSession(session);
+    setMockSession(session);
+    setDrillCardIds(session.cardOrder);
+    setSelectedCardId(session.cardOrder[0]);
+    setLastUndo(null);
+    setFeedbackMessage(null);
     setView("drill");
     window.scrollTo({ top: 0, behavior: "auto" });
   }
@@ -953,6 +1029,18 @@ function App() {
       attemptTimestamp: attempt.timestamp,
     });
     setFeedbackMessage(null);
+    if (mockSession?.screen === "exam" && mockSession.cardOrder.includes(cardId)) {
+      const answers = { ...mockSession.answers, [cardId]: status };
+      const nextMock: FirstLineMockSession = {
+        ...mockSession,
+        answers,
+        screen: mockSession.cardOrder.every((id) => Boolean(answers[id]))
+          ? "complete"
+          : "exam",
+      };
+      saveFirstLineMockSession(nextMock);
+      setMockSession(nextMock);
+    }
   }
 
   function undoLastStatus() {
@@ -976,6 +1064,14 @@ function App() {
       ),
     );
     setLastUndo(null);
+
+    if (mockSession?.answers[lastEntry.cardId]) {
+      const answers = { ...mockSession.answers };
+      delete answers[lastEntry.cardId];
+      const nextMock = { ...mockSession, answers, screen: "exam" as const };
+      saveFirstLineMockSession(nextMock);
+      setMockSession(nextMock);
+    }
 
     if (
       view === "drill" &&
@@ -1156,6 +1252,7 @@ function App() {
     setCardScope("all");
     setStudyOrder("default");
     setAnswerLearningStatusFilter("all");
+    setAnswerContentFilter("all");
   }
 
   function handleCardsChange(nextCards: OpicCard[]) {
@@ -1236,6 +1333,40 @@ function App() {
           window.scrollTo({ top: 0, behavior: "auto" });
         }}
       />
+    );
+  }
+
+  if (view === "drillSetup") {
+    return (
+      <div className="app-shell">
+        <AppHeader theme={theme} studyTitle="첫 문장 연습 준비" onBack={() => setView("list")} onToggleTheme={toggleTheme} />
+        <FirstLineSetup
+          cardCount={orderedFilteredCards.length}
+          decks={decks}
+          tags={tags}
+          selectedDeck={selectedDeck}
+          selectedTag={selectedTag}
+          finalOnly={finalOnly}
+          hardOnly={hardOnly}
+          cardScope={cardScope}
+          studyOrder={studyOrder}
+          answerContentFilter={answerContentFilter}
+          mode={firstLineMode}
+          questionCount={mockQuestionCount}
+          onDeckChange={setSelectedDeck}
+          onTagChange={setSelectedTag}
+          onFinalOnlyChange={setFinalOnly}
+          onHardOnlyChange={setHardOnly}
+          onCardScopeChange={setCardScope}
+          onStudyOrderChange={setStudyOrder}
+          onAnswerContentFilterChange={setAnswerContentFilter}
+          onModeChange={setFirstLineMode}
+          onQuestionCountChange={setMockQuestionCount}
+          onReset={resetFilters}
+          onStart={startFirstLineFromSetup}
+          onBack={() => setView("list")}
+        />
+      </div>
     );
   }
 
@@ -1392,7 +1523,24 @@ function App() {
           onSelect={(card) => openCard(card, "library")}
           answerLearningStatusFilter={answerLearningStatusFilter}
           onAnswerLearningStatusFilterChange={setAnswerLearningStatusFilter}
+          answerContentFilter={answerContentFilter}
+          onAnswerContentFilterChange={setAnswerContentFilter}
           onOpenMemoCard={openMemoCard}
+        />
+      </div>
+    );
+  }
+
+  if (view === "drill" && mockSession?.screen === "complete") {
+    return (
+      <div className="app-shell">
+        <AppHeader theme={theme} studyTitle="첫 문장 모의고사 결과" onBack={() => { clearFirstLineMockSession(); setMockSession(null); setSelectedCardId(null); setView("list"); }} onToggleTheme={toggleTheme} />
+        <FirstLineMockResult
+          session={mockSession}
+          cards={cardCatalog}
+          onRetryHard={() => restartMock(mockSession.cardOrder.filter((id) => mockSession.answers[id] === "hard"), "all")}
+          onRestart={() => restartMock(mockSession.sourceCardIds, mockSession.questionCount)}
+          onHome={() => { clearFirstLineMockSession(); setMockSession(null); setDrillCardIds([]); setSelectedCardId(null); setView("list"); window.scrollTo({ top: 0, behavior: "auto" }); }}
         />
       </div>
     );
@@ -1403,6 +1551,8 @@ function App() {
       ? cardCatalog.find((card) => card.id === lastUndo.cardId) ?? null
       : null;
     const leaveDrill = () => {
+      clearFirstLineMockSession();
+      setMockSession(null);
       setLastUndo(null);
       setFeedbackMessage(null);
       if (drillReturnView === "list") {
@@ -1448,6 +1598,7 @@ function App() {
           onBack={leaveDrill}
           onPrevious={() => navigateCard(-1, "manual")}
           onNext={(source) => navigateCard(1, source)}
+          mode={mockSession ? "mock" : "practice"}
         />
       </div>
     );
@@ -1481,6 +1632,8 @@ function App() {
               nextDrillCardIds.unshift(selectedCard.id);
             }
             setLastUndo(null);
+            clearFirstLineMockSession();
+            setMockSession(null);
             setFeedbackMessage(null);
             setMemoFocus(null);
             setDrillCardIds(nextDrillCardIds);
@@ -1525,7 +1678,7 @@ function App() {
 
             <HomeQuickStart
               canStartFirstLine={orderedFilteredCards.length > 0}
-              onStartFirstLine={startFilteredDrill}
+              onStartFirstLine={openFirstLineSetup}
               onStartAnswerLearning={openAnswerLearningSetup}
               onOpenShadowing={() =>
                 document.getElementById("direct-practice-title")?.scrollIntoView({ behavior: "smooth" })
@@ -1546,7 +1699,7 @@ function App() {
                 filteredCount={orderedFilteredCards.length}
                 filterSummary={filterSummary}
                 onOpenLibrary={openCardLibrary}
-                onStartDrill={startFilteredDrill}
+                onStartDrill={openFirstLineSetup}
               />
 
               <DirectTextPractice

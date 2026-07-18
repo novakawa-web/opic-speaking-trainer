@@ -299,7 +299,17 @@ export function parseCardTsv(
           ...(frontKo ? { frontKo } : {}),
           firstLine,
           hint: {
-            title: get("hintTitle") || id,
+            // Preserve an intentionally empty title for first-line-only cards.
+            // Older complete rows without a title keep the historical id fallback.
+            title:
+              answerLines.length === 1 &&
+              !get("hintTitle") &&
+              !get("memoryTip") &&
+              !subjectTip &&
+              !get("minimum") &&
+              splitLines(get("flow")).length === 0
+                ? ""
+                : get("hintTitle") || id,
             memoryTip: get("memoryTip"),
             ...(subjectTip ? { subjectTip } : {}),
             minimum: get("minimum"),
