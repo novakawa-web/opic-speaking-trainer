@@ -29,6 +29,11 @@ export type CloudBackupUser = {
   email: string | null;
 };
 
+export type CloudBackupAccess = {
+  allowed: boolean;
+  label?: string;
+};
+
 export type PreparedCloudBackup = {
   backupId: string;
   json: string;

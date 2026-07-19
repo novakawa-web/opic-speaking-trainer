@@ -12,6 +12,12 @@ import { EMPTY_SAVED_PASSAGE_DATASET } from "../src/utils/savedPassageStorage.ts
 import { EMPTY_PERSONAL_MEMO_DATASET } from "../src/utils/personalMemoStorage.ts";
 import { readCloudBackupConfiguration } from "../src/config/cloudBackup.ts";
 import {
+  CLOUD_BACKUP_ACCESS_DENIED_MESSAGE,
+  classifyCloudBackupAccessError,
+  getCloudBackupAccessErrorMessage,
+  parseCloudBackupAccess,
+} from "../src/services/cloudBackupAccess.ts";
+import {
   CLOUD_BACKUP_CONTENT_TYPE,
   CloudBackupError,
   calculateSha256,
@@ -120,6 +126,37 @@ await test("완전한 공개 Web config를 정규화", () => {
   });
   assert.equal(config.firebaseOptions?.apiKey, "key");
   assert.equal(config.useEmulators, false);
+});
+
+await test("allowlist 문서가 없거나 enabled가 true가 아니면 미허용", () => {
+  assert.deepEqual(parseCloudBackupAccess(undefined), { allowed: false });
+  assert.deepEqual(parseCloudBackupAccess({ enabled: false }), { allowed: false });
+  assert.deepEqual(parseCloudBackupAccess({ enabled: "true" }), { allowed: false });
+});
+
+await test("enabled true allowlist만 허용하고 label을 정규화", () => {
+  assert.deepEqual(parseCloudBackupAccess({ enabled: true, label: "  Primary account  " }), {
+    allowed: true,
+    label: "Primary account",
+  });
+});
+
+await test("allowlist permission-denied와 네트워크 오류를 구분", () => {
+  assert.equal(
+    classifyCloudBackupAccessError({ code: "firestore/permission-denied" }),
+    "permission-denied",
+  );
+  assert.equal(
+    classifyCloudBackupAccessError({ code: "firestore/unavailable" }),
+    "network-error",
+  );
+});
+
+await test("미허용 안내는 로컬 기능 유지 사실을 포함", () => {
+  assert.match(CLOUD_BACKUP_ACCESS_DENIED_MESSAGE, /사용 권한이 없습니다/);
+  assert.match(CLOUD_BACKUP_ACCESS_DENIED_MESSAGE, /로컬 학습 기능은 계속 사용할 수 있습니다/);
+  assert.match(getCloudBackupAccessErrorMessage("permission-denied"), /권한/);
+  assert.match(getCloudBackupAccessErrorMessage("network-error"), /네트워크/);
 });
 
 await test("backupId는 UTC 시각과 UUID 조합", () => {
@@ -289,9 +326,20 @@ await test("클라우드 서비스는 localStorage를 조작하지 않음", asyn
   assert.equal(JSON.stringify({ one: "same", two: "same" }), before);
 });
 
-const [featureSource, serviceSource, panelSource, firestoreRules, storageRules, gitignore] = await Promise.all([
+const [
+  featureSource,
+  serviceSource,
+  accessServiceSource,
+  firebaseServiceSource,
+  panelSource,
+  firestoreRules,
+  storageRules,
+  gitignore,
+] = await Promise.all([
   readFile(new URL("../src/components/CloudBackupFeature.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/services/cloudBackup.ts", import.meta.url), "utf8"),
+  readFile(new URL("../src/services/cloudBackupAccess.ts", import.meta.url), "utf8"),
+  readFile(new URL("../src/services/firebaseCloudBackup.ts", import.meta.url), "utf8"),
   readFile(new URL("../src/components/CloudBackupPanel.tsx", import.meta.url), "utf8"),
   readFile(new URL("../firestore.rules", import.meta.url), "utf8"),
   readFile(new URL("../storage.rules", import.meta.url), "utf8"),
@@ -304,6 +352,29 @@ await test("OFF일 때 lazy 패널을 렌더링하지 않음", () => {
 
 await test("서비스에 localStorage/sessionStorage 쓰기 없음", () => {
   assert.doesNotMatch(serviceSource, /localStorage|sessionStorage|setItem|removeItem/);
+  assert.doesNotMatch(accessServiceSource, /localStorage|sessionStorage|setItem|removeItem/);
+  assert.doesNotMatch(firebaseServiceSource, /localStorage|sessionStorage|setItem|removeItem/);
+});
+
+await test("로그인 후 자기 allowlist 문서를 단건 조회", () => {
+  assert.match(firebaseServiceSource, /"cloudBackupAllowedUsers",\s*uid/);
+  assert.match(firebaseServiceSource, /getDoc\(accessReference\)/);
+  assert.doesNotMatch(firebaseServiceSource, /collection\([^)]*cloudBackupAllowedUsers/);
+});
+
+await test("허용된 사용자만 목록 조회와 업로드 UI 진입", () => {
+  assert.match(panelSource, /if \(!access\.allowed\)/);
+  assert.match(panelSource, /setAccessStatus\("allowed"\);\s*await refreshBackups/);
+  assert.match(panelSource, /accessStatus !== "allowed"/);
+  assert.match(panelSource, /accessStatus === "allowed"/);
+});
+
+await test("미허용·확인 중·네트워크·permission-denied UI를 구분", () => {
+  assert.match(panelSource, /accessStatus === "checking"/);
+  assert.match(panelSource, /accessStatus === "denied"/);
+  assert.match(panelSource, /accessStatus === "network-error"/);
+  assert.match(panelSource, /accessStatus === "permission-denied"/);
+  assert.match(panelSource, /권한 다시 확인/);
 });
 
 await test("UI에 다운로드·복원·병합·삭제 버튼 없음", () => {
@@ -311,7 +382,7 @@ await test("UI에 다운로드·복원·병합·삭제 버튼 없음", () => {
 });
 
 await test("업로드 중 중복 클릭은 handler와 disabled 상태에서 이중 차단", () => {
-  assert.match(panelSource, /if \(!user \|\| isUploading\) return/);
+  assert.match(panelSource, /if \(!user \|\| accessStatus !== "allowed" \|\| isUploading\) return/);
   assert.match(panelSource, /disabled=\{isUploading\}/);
 });
 
@@ -319,6 +390,14 @@ await test("Firestore 규칙은 로그인 uid와 자기 경로만 허용", () =>
   assert.match(firestoreRules, /request\.auth\.uid == uid/);
   assert.match(firestoreRules, /match \/users\/\{uid\}\/backups\/\{backupId\}/);
   assert.match(firestoreRules, /allow update, delete: if false/);
+});
+
+await test("Firestore 규칙은 allowlist를 우회할 넓은 허용 규칙이 없음", () => {
+  assert.match(firestoreRules, /cloudBackupAllowed\(uid\)/);
+  assert.match(firestoreRules, /match \/cloudBackupAllowedUsers\/\{uid\}/);
+  assert.match(firestoreRules, /allow get: if signedInAs\(uid\)/);
+  assert.match(firestoreRules, /allow list, create, update, delete: if false/);
+  assert.doesNotMatch(firestoreRules, /allow read, write: if true/);
 });
 
 await test("Firestore metadata 필드와 server timestamp 검증", () => {
@@ -332,6 +411,13 @@ await test("Storage 규칙은 uid, JSON, 10MB, 불변 생성 검증", () => {
   assert.match(storageRules, /resource == null/);
   assert.match(storageRules, /request\.resource\.contentType == 'application\/json'/);
   assert.match(storageRules, /request\.resource\.size <= 10 \* 1024 \* 1024/);
+});
+
+await test("Storage 규칙은 Firestore allowlist enabled true를 요구", () => {
+  assert.match(storageRules, /firestore\.exists/);
+  assert.match(storageRules, /firestore\.get/);
+  assert.match(storageRules, /cloudBackupAllowedUsers\/\$\(uid\)/);
+  assert.match(storageRules, /\.data\.enabled == true/);
 });
 
 await test("실제 환경 파일은 ignore하고 예제만 추적 가능", () => {

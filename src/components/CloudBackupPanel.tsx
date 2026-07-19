@@ -15,7 +15,16 @@ import {
   listRecentCloudBackups,
   MAX_DEVICE_LABEL_LENGTH,
 } from "../services/cloudBackup.ts";
-import { getFirebaseCloudBackupGateway } from "../services/firebaseCloudBackup.ts";
+import {
+  CLOUD_BACKUP_ACCESS_DENIED_MESSAGE,
+  classifyCloudBackupAccessError,
+  getCloudBackupAccessErrorMessage,
+  type CloudBackupAccessStatus,
+} from "../services/cloudBackupAccess.ts";
+import {
+  getFirebaseCloudBackupAccess,
+  getFirebaseCloudBackupGateway,
+} from "../services/firebaseCloudBackup.ts";
 import type { AppBackupV1 } from "../utils/appBackup.ts";
 
 function formatBytes(byteSize: number) {
@@ -40,11 +49,13 @@ export default function CloudBackupPanel({
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoadingList, setIsLoadingList] = useState(false);
+  const [accessStatus, setAccessStatus] = useState<CloudBackupAccessStatus>("idle");
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const mountedRef = useRef(true);
   const uploadAbortRef = useRef<AbortController | null>(null);
   const listRequestIdRef = useRef(0);
+  const accessRequestIdRef = useRef(0);
 
   async function refreshBackups(nextUser: CloudBackupUser) {
     const requestId = ++listRequestIdRef.current;
@@ -61,6 +72,27 @@ export default function CloudBackupPanel({
       if (mountedRef.current && requestId === listRequestIdRef.current) {
         setIsLoadingList(false);
       }
+    }
+  }
+
+  async function checkAccess(nextUser: CloudBackupUser) {
+    const requestId = ++accessRequestIdRef.current;
+    listRequestIdRef.current += 1;
+    setBackups([]);
+    setIsLoadingList(false);
+    setAccessStatus("checking");
+    try {
+      const access = await getFirebaseCloudBackupAccess(nextUser.uid);
+      if (!mountedRef.current || requestId !== accessRequestIdRef.current) return;
+      if (!access.allowed) {
+        setAccessStatus("denied");
+        return;
+      }
+      setAccessStatus("allowed");
+      await refreshBackups(nextUser);
+    } catch (error) {
+      if (!mountedRef.current || requestId !== accessRequestIdRef.current) return;
+      setAccessStatus(classifyCloudBackupAccessError(error));
     }
   }
 
@@ -83,9 +115,11 @@ export default function CloudBackupPanel({
             setUser(nextUser);
             setErrorMessage("");
             setIsInitializing(false);
-            if (nextUser) void refreshBackups(nextUser);
+            if (nextUser) void checkAccess(nextUser);
             else {
+              accessRequestIdRef.current += 1;
               listRequestIdRef.current += 1;
+              setAccessStatus("idle");
               setBackups([]);
               setIsLoadingList(false);
             }
@@ -105,6 +139,7 @@ export default function CloudBackupPanel({
 
     return () => {
       mountedRef.current = false;
+      accessRequestIdRef.current += 1;
       listRequestIdRef.current += 1;
       uploadAbortRef.current?.abort();
       unsubscribe?.();
@@ -145,7 +180,7 @@ export default function CloudBackupPanel({
   }
 
   async function handleUpload() {
-    if (!user || isUploading) return;
+    if (!user || accessStatus !== "allowed" || isUploading) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       setErrorMessage("오프라인에서는 클라우드 백업을 만들 수 없습니다.");
       return;
@@ -249,6 +284,27 @@ export default function CloudBackupPanel({
             </button>
           </div>
 
+          {accessStatus === "checking" ? (
+            <p className="cloud-backup-access-note" role="status" aria-live="polite">
+              클라우드 백업 사용 권한을 확인하고 있어요.
+            </p>
+          ) : accessStatus === "denied" ? (
+            <p className="cloud-backup-access-note is-denied" role="status" aria-live="polite">
+              {CLOUD_BACKUP_ACCESS_DENIED_MESSAGE}
+            </p>
+          ) : accessStatus === "network-error" || accessStatus === "permission-denied" ? (
+            <div className="cloud-backup-access-note is-error" role="alert">
+              <p>{getCloudBackupAccessErrorMessage(accessStatus)}</p>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => void checkAccess(user)}
+              >
+                권한 다시 확인
+              </button>
+            </div>
+          ) : accessStatus === "allowed" ? (
+            <>
           <label className="cloud-backup-device-field">
             <span>기기 이름 (선택)</span>
             <input
@@ -305,6 +361,8 @@ export default function CloudBackupPanel({
               ))}
             </ol>
           )}
+            </>
+          ) : null}
         </>
       )}
 

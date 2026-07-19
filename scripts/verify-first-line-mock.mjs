@@ -90,7 +90,7 @@ test("모바일 카드 이동은 기존 이전 다음 handler를 재사용", () 
 });
 test("모바일 이동 행은 700px 이하에서만 2열로 표시", () => {
   const styles = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
-  assert.ok(styles.includes(".mobile-drill-navigation {\n  display: none;"));
+  assert.match(styles, /\.mobile-drill-navigation \{\r?\n  display: none;/);
   assert.match(styles, /@media \(max-width: 700px\)[\s\S]*\.mobile-drill-navigation \{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.mobile-drill-navigation \.navigation-button \{[\s\S]*min-height: 42px;[\s\S]*font-size: 0\.92rem;/);
 });

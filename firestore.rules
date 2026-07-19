@@ -6,6 +6,15 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
+    function cloudBackupAllowed(uid) {
+      return exists(
+          /databases/$(database)/documents/cloudBackupAllowedUsers/$(uid)
+        )
+        && get(
+          /databases/$(database)/documents/cloudBackupAllowedUsers/$(uid)
+        ).data.enabled == true;
+    }
+
     function isCount(value) {
       return value is int && value >= 0;
     }
@@ -85,10 +94,19 @@ service cloud.firestore {
     }
 
     match /users/{uid}/backups/{backupId} {
-      allow get: if signedInAs(uid);
-      allow list: if signedInAs(uid) && request.query.limit <= 20;
-      allow create: if signedInAs(uid) && validBackupMetadata(uid, backupId);
+      allow get: if signedInAs(uid) && cloudBackupAllowed(uid);
+      allow list: if signedInAs(uid)
+        && cloudBackupAllowed(uid)
+        && request.query.limit <= 20;
+      allow create: if signedInAs(uid)
+        && cloudBackupAllowed(uid)
+        && validBackupMetadata(uid, backupId);
       allow update, delete: if false;
+    }
+
+    match /cloudBackupAllowedUsers/{uid} {
+      allow get: if signedInAs(uid);
+      allow list, create, update, delete: if false;
     }
 
     match /{document=**} {

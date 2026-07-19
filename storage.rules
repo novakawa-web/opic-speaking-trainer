@@ -6,6 +6,15 @@ service firebase.storage {
       return request.auth != null && request.auth.uid == uid;
     }
 
+    function cloudBackupAllowed(uid) {
+      return firestore.exists(
+          /databases/(default)/documents/cloudBackupAllowedUsers/$(uid)
+        )
+        && firestore.get(
+          /databases/(default)/documents/cloudBackupAllowedUsers/$(uid)
+        ).data.enabled == true;
+    }
+
     function validBackupUpload(fileName) {
       return resource == null
         && request.resource != null
@@ -20,8 +29,9 @@ service firebase.storage {
     }
 
     match /users/{uid}/backups/{fileName} {
-      allow read: if signedInAs(uid);
+      allow read: if signedInAs(uid) && cloudBackupAllowed(uid);
       allow write: if signedInAs(uid)
+        && cloudBackupAllowed(uid)
         && (
           request.resource == null
           || validBackupUpload(fileName)

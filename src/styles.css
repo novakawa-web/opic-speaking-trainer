@@ -1814,6 +1814,34 @@ input:focus-visible + .toggle-switch {
   margin: 6px 0 0;
 }
 
+.cloud-backup-access-note {
+  margin: 18px 0 0;
+  padding: 13px 15px;
+  overflow-wrap: anywhere;
+  color: var(--body-copy);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--blue);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.cloud-backup-access-note.is-denied,
+.cloud-backup-access-note.is-error {
+  border-color: var(--status-hard-border);
+  background: var(--status-hard-bg);
+}
+
+.cloud-backup-access-note.is-error p {
+  margin: 0;
+}
+
+.cloud-backup-access-note.is-error .secondary-button {
+  min-height: 44px;
+  margin-top: 12px;
+}
+
 .cloud-backup-config-error code,
 .cloud-backup-integrity code {
   overflow-wrap: anywhere;

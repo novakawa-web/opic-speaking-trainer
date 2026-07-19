@@ -10,7 +10,7 @@
 
 - 개인용 OPIc 말하기 학습 PWA다.
 - 영어 질문 카드를 보고 먼저 말한 뒤 첫 문장, 힌트, 기본 답변 또는 나만의 답변을 확인하는 흐름이 중심이다.
-- 기술 스택은 React, TypeScript, Vite, 일반 CSS다. 외부 백엔드 없이 브라우저 저장소와 Web API를 사용한다.
+- 기술 스택은 React, TypeScript, Vite, 일반 CSS다. 핵심 학습 데이터는 브라우저 저장소를 원본으로 유지하며, 기본 OFF인 실험적 Firebase 수동 백업 기능만 선택적으로 분리되어 있다.
 - 모바일, 특히 갤럭시 Chrome에서 실제 학습하는 사용 흐름을 우선한다. 360px, 390px, 412px 폭과 터치 조작을 중요한 기준으로 삼는다.
 - 저장소: <https://github.com/novakawa-web/opic-speaking-trainer>
 - 배포: <https://novakawa-web.github.io/opic-speaking-trainer/>
@@ -76,7 +76,10 @@
 - TSV는 기본/활성 카드 데이터 전용이다. 나만의 답변, 카드별 메모, 개인 학습 메모, 저장 지문, 상태와 시도 기록을 TSV에 넣지 않는다.
 - JSON 전체 백업·검증·미리보기·전체 복구가 구현되어 있다. 복구 직전 전체 안전 백업 1회와 직전 복구 되돌리기가 있다.
 - 실험적 클라우드 백업 1단계는 기능 플래그 뒤에서 Google 로그인과 **수동 전체 JSON 백업 업로드 및 최근 metadata 목록 확인만** 제공한다. 클라우드 다운로드·복원·병합·삭제·자동 동기화는 구현하지 않았다.
+- 클라우드 백업은 Firestore `cloudBackupAllowedUsers/{uid}` 문서의 `enabled === true`인 사용자만 사용할 수 있다. 앱은 로그인 후 자기 문서를 단건 조회하며, 미허용 사용자는 백업 목록을 조회하거나 업로드할 수 없다. 클라이언트는 자기 allowlist 문서의 `get`만 가능하고 목록 조회와 모든 쓰기는 Security Rules에서 거부한다.
+- Firestore와 Storage의 백업 경로 모두 인증 UID와 allowlist를 함께 검사한다. Storage Rules는 기본 Firestore 데이터베이스의 allowlist 문서를 `firestore.exists/get`으로 확인하고 기존 JSON·10MB·불변 업로드·부분 실패 정리 조건을 유지한다.
 - Firebase 공개 Web 설정은 `.env.local`에서만 읽고 저장소에는 빈 `.env.example`만 둔다. 운영 빌드의 기능 플래그는 기본 OFF이며, OFF에서는 Firebase 패널·SDK 초기화·외부 요청이 발생하지 않는다.
+- allowlist Rules와 앱 통합은 로컬 Emulator에서만 검증했다. 실제 Firebase Rules 배포, 실제 allowlist 문서 생성, 실제 UID 입력과 운영 기능 활성화는 아직 하지 않았다.
 - PWA manifest, 아이콘, service worker, 오프라인 precache, 오래된 캐시 정리, 새 버전 prompt 업데이트가 구현되어 있다.
 - `scripts/create-spa-fallback.mjs`가 build 후 `dist/404.html`을 만들어 GitHub Pages SPA 새로고침을 보완한다.
 - `main` push 시 GitHub Actions가 테스트, production build, PWA 검증 후 Pages에 자동 배포한다.
@@ -293,11 +296,11 @@ npm.cmd run test:pwa
 | `test:first-line-mock` | 첫 문장 전용 카드·모의고사·모바일 이동 | 18 |
 | `test:home-layout` | 홈 공통 레일·반응형 구조 | 10 |
 | `test:card-management` | 카드 수정·보관·완전 삭제·공통 toast·JSON 호환 | 31 |
-| `test:cloud-backup` | 기능 플래그·수동 업로드·무결성·부분 실패 정리 | 33 |
-| `test:cloud-rules` | Firestore/Storage Emulator Security Rules | 12 |
+| `test:cloud-backup` | 기능 플래그·수동 업로드·allowlist·무결성·부분 실패 정리 | 42 |
+| `test:cloud-rules` | Firestore/Storage Emulator Security Rules와 allowlist | 22 |
 | `test:ui-system` | compact UI·복구 후 이동·간격 체계 | 21 |
 
-- 2026-07-19 현재 `npm.cmd run test:all`: **496/496 통과**. `test:cloud-rules`는 실행 중인 Emulator가 필요한 별도 검사이며 **12/12 통과**해 고유 검증 합계는 **508개**다.
+- 2026-07-19 현재 `npm.cmd run test:all`: **505/505 통과**. `test:cloud-rules`는 실행 중인 Emulator가 필요한 별도 검사이며 **22/22 통과**해 고유 검증 합계는 **527개**다.
 - 같은 확인에서 `npm.cmd run build`: TypeScript와 Vite production build 통과.
 - 같은 확인에서 `npm.cmd run test:pwa`: Pages/PWA 산출물 검증 통과. `manifest.webmanifest`, `sw.js`, `404.html`이 생성됨.
 - `test:pwa`는 `test:all`에 포함되지 않으므로 build 후 별도로 실행한다.
@@ -314,7 +317,7 @@ npm.cmd run test:pwa
 
 ## 9. Git 현재 상태
 
-- 현재 개발 브랜치: `feature/cloud-backup` (기준 운영 커밋 `e59d3362c7e00b4e6041ad431cf94583eaff4b61`에서 분기)
+- 현재 개발 브랜치: `feature/cloud-backup-allowlist` (기준 `main` 커밋 `58fe13afef769b443f1ab683e6a5006fdaee5c0e`에서 분기)
 - 운영 브랜치와 Pages 배포 기준: `main`, `origin/main`
 - remote: `https://github.com/novakawa-web/opic-speaking-trainer.git`
 - 이 문서는 저장소 코드와 함께 버전 관리한다. 최신 커밋은 `git log -1 --oneline`, 동기화 여부는 `git status --short --branch`와 `git rev-parse origin/main`으로 확인한다.
@@ -357,6 +360,7 @@ npm.cmd run test:pwa
 24. `feature/cloud-backup`에는 수동 Firebase 전체 백업 업로드 1단계를 구현했다. AppBackupV1을 다시 검증해 10MB 이하 JSON을 사용자별 Storage 경로에 저장하고 SHA-256·byteSize·요약 metadata를 Firestore에 생성한다. Storage 성공 후 metadata 실패 시 업로드 파일을 정리한다.
 25. Authentication/Firestore/Storage Emulator와 개발 Firebase 프로젝트에서 격리된 합성 백업 1건을 검증했다. Storage 경로, byteSize, SHA-256이 일치했고 업로드 전후 `localStorage` raw snapshot이 동일했다. 실제 사용자 학습 데이터는 업로드하지 않았다.
 26. 클라우드 기능의 운영 플래그는 아직 OFF다. main 병합·Pages 배포 전에는 실제 운영 활성화, 비용·보존·다운로드/복원 정책을 별도로 승인받아야 한다.
+27. `feature/cloud-backup-allowlist`에서는 `cloudBackupAllowedUsers/{uid}`의 `enabled === true`인 사용자에게만 Firestore metadata와 Storage JSON 백업 접근을 허용한다. 자기 allowlist 문서 단건 조회 외의 클라이언트 접근은 거부하며, Emulator Rules 22개와 앱 통합 검증을 통과했다. 실제 Firebase Rules와 allowlist 문서는 아직 배포·생성하지 않았다.
 현재 다음 기능은 정해져 있지 않다. 새 요청을 받으면 먼저 `git status`, `git log -3`, 현재 저장소 코드를 확인하고 이어서 작업한다.
 
 ## 11. 보류하거나 하지 않기로 한 기능

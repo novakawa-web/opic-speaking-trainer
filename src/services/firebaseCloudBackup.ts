@@ -1,10 +1,12 @@
 import type {
+  CloudBackupAccess,
   CloudBackupGateway,
   CloudBackupMetadata,
   CloudBackupMetadataInput,
 } from "../cloudBackupTypes.ts";
 import { getFirebaseCloudClient } from "../config/firebase.ts";
 import { CLOUD_BACKUP_CONTENT_TYPE } from "./cloudBackup.ts";
+import { parseCloudBackupAccess } from "./cloudBackupAccess.ts";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -167,4 +169,22 @@ export function getFirebaseCloudBackupGateway() {
     throw error;
   });
   return gatewayPromise;
+}
+
+export async function getFirebaseCloudBackupAccess(
+  uid: string,
+): Promise<CloudBackupAccess> {
+  const [client, firestoreModule] = await Promise.all([
+    getFirebaseCloudClient(),
+    import("firebase/firestore/lite"),
+  ]);
+  const accessReference = firestoreModule.doc(
+    client.firestore,
+    "cloudBackupAllowedUsers",
+    uid,
+  );
+  const snapshot = await firestoreModule.getDoc(accessReference);
+  return snapshot.exists()
+    ? parseCloudBackupAccess(snapshot.data())
+    : { allowed: false };
 }
