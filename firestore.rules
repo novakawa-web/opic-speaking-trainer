@@ -1,0 +1,98 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedInAs(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function isCount(value) {
+      return value is int && value >= 0;
+    }
+
+    function validSummary(summary) {
+      return summary is map
+        && summary.keys().hasAll([
+          'cardCount',
+          'archivedCardCount',
+          'firstLineAttemptCount',
+          'answerLearningAttemptCount',
+          'cardMemoCount',
+          'personalMemoCount',
+          'savedPassageCount'
+        ])
+        && summary.keys().hasOnly([
+          'cardCount',
+          'archivedCardCount',
+          'firstLineAttemptCount',
+          'answerLearningAttemptCount',
+          'cardMemoCount',
+          'personalMemoCount',
+          'savedPassageCount'
+        ])
+        && isCount(summary.cardCount)
+        && isCount(summary.archivedCardCount)
+        && isCount(summary.firstLineAttemptCount)
+        && isCount(summary.answerLearningAttemptCount)
+        && isCount(summary.cardMemoCount)
+        && isCount(summary.personalMemoCount)
+        && isCount(summary.savedPassageCount);
+    }
+
+    function validBackupMetadata(uid, backupId) {
+      let data = request.resource.data;
+      return data.keys().hasAll([
+          'backupId',
+          'schemaVersion',
+          'exportedAt',
+          'uploadedAt',
+          'byteSize',
+          'sha256',
+          'appVersion',
+          'storagePath',
+          'summary'
+        ])
+        && data.keys().hasOnly([
+          'backupId',
+          'schemaVersion',
+          'exportedAt',
+          'uploadedAt',
+          'byteSize',
+          'sha256',
+          'appVersion',
+          'deviceLabel',
+          'storagePath',
+          'summary'
+        ])
+        && data.backupId == backupId
+        && backupId.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{6}Z-[0-9a-fA-F-]{36}$')
+        && data.schemaVersion == 1
+        && data.exportedAt is string
+        && data.exportedAt.size() <= 40
+        && data.uploadedAt == request.time
+        && data.byteSize is int
+        && data.byteSize > 0
+        && data.byteSize <= 10 * 1024 * 1024
+        && data.sha256 is string
+        && data.sha256.matches('^[0-9a-f]{64}$')
+        && data.appVersion is string
+        && data.appVersion.size() > 0
+        && data.appVersion.size() <= 40
+        && data.get('deviceLabel', '') is string
+        && data.get('deviceLabel', '').size() <= 80
+        && data.storagePath == 'users/' + uid + '/backups/' + backupId + '.json'
+        && validSummary(data.summary);
+    }
+
+    match /users/{uid}/backups/{backupId} {
+      allow get: if signedInAs(uid);
+      allow list: if signedInAs(uid) && request.query.limit <= 20;
+      allow create: if signedInAs(uid) && validBackupMetadata(uid, backupId);
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

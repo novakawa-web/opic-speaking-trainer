@@ -1,0 +1,35 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedInAs(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function validBackupUpload(fileName) {
+      return resource == null
+        && request.resource != null
+        && request.resource.metadata.backupId is string
+        && fileName == request.resource.metadata.backupId + '.json'
+        && request.resource.metadata.backupId.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{6}Z-[0-9a-fA-F-]{36}$')
+        && request.resource.size > 0
+        && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType == 'application/json'
+        && request.resource.metadata.schemaVersion == '1'
+        && request.resource.metadata.sha256.matches('^[0-9a-f]{64}$');
+    }
+
+    match /users/{uid}/backups/{fileName} {
+      allow read: if signedInAs(uid);
+      allow write: if signedInAs(uid)
+        && (
+          request.resource == null
+          || validBackupUpload(fileName)
+        );
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1753,6 +1753,313 @@ input:focus-visible + .toggle-switch {
   display: none;
 }
 
+.cloud-backup-panel {
+  min-width: 0;
+  margin-top: 28px;
+  padding: 28px 30px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--surface-translucent);
+  box-shadow: 0 10px 35px rgba(28, 45, 74, 0.045);
+}
+
+.cloud-backup-heading {
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.cloud-backup-heading p:not(.eyebrow) {
+  max-width: 700px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.cloud-backup-mode-badge {
+  flex: 0 0 auto;
+  padding: 7px 11px;
+  color: var(--blue);
+  border: 1px solid rgba(47, 111, 237, 0.32);
+  border-radius: 999px;
+  background: var(--blue-soft);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.cloud-backup-safety-note,
+.cloud-backup-config-error {
+  margin: 18px 0 0;
+  padding: 13px 15px;
+  color: var(--body-copy);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.cloud-backup-safety-note {
+  border-left: 3px solid var(--blue);
+}
+
+.cloud-backup-config-error {
+  color: var(--status-hard-text);
+  border-color: var(--status-hard-border);
+  background: var(--status-hard-bg);
+}
+
+.cloud-backup-config-error p {
+  margin: 6px 0 0;
+}
+
+.cloud-backup-config-error code,
+.cloud-backup-integrity code {
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.cloud-backup-account-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.cloud-backup-account-card p {
+  margin: 0;
+  color: var(--body-copy);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.cloud-backup-account-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.cloud-backup-account-copy span,
+.cloud-backup-account-copy small {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.cloud-backup-account-copy strong {
+  overflow-wrap: anywhere;
+  color: var(--heading);
+  font-size: 15px;
+}
+
+.cloud-backup-device-field {
+  display: grid;
+  gap: 7px;
+  margin-top: 18px;
+  color: var(--body-copy);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cloud-backup-device-field input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 13px;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--input-bg);
+  font: inherit;
+}
+
+.cloud-backup-device-field small {
+  justify-self: end;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.cloud-backup-upload-button {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 16px;
+  padding: 0 16px;
+  color: white;
+  border: 1px solid var(--primary-action);
+  border-radius: 11px;
+  background: var(--primary-action);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.cloud-backup-upload-button:hover:not(:disabled) {
+  background: var(--primary-action-hover);
+}
+
+.cloud-backup-upload-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.cloud-backup-list-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.cloud-backup-list-heading h3 {
+  margin: 0;
+  color: var(--heading);
+  font-size: 16px;
+}
+
+.cloud-backup-list-heading span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.cloud-backup-list {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cloud-backup-list > li {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--surface);
+}
+
+.cloud-backup-item-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cloud-backup-item-heading strong,
+.cloud-backup-item-heading time {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.cloud-backup-item-heading strong {
+  color: var(--heading);
+  font-size: 14px;
+}
+
+.cloud-backup-item-heading time,
+.cloud-backup-list > li > p {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.cloud-backup-list > li > p {
+  margin: 5px 0 0;
+}
+
+.cloud-backup-list dl {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  margin: 12px 0 0;
+}
+
+.cloud-backup-list dl > div {
+  min-width: 0;
+  padding: 8px 5px;
+  text-align: center;
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.cloud-backup-list dt {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.cloud-backup-list dd {
+  overflow-wrap: anywhere;
+  margin: 4px 0 0;
+  color: var(--heading);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.cloud-backup-integrity {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.cloud-backup-result,
+.cloud-backup-error {
+  margin: 14px 0 0;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-soft);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.cloud-backup-result {
+  color: var(--saved-message);
+}
+
+.cloud-backup-result:empty {
+  display: none;
+}
+
+.cloud-backup-error {
+  color: var(--status-hard-text);
+  border-color: var(--status-hard-border);
+  background: var(--status-hard-bg);
+}
+
+@media (max-width: 700px) {
+  .cloud-backup-panel {
+    margin-top: 22px;
+    padding: 22px 18px;
+    border-radius: 18px;
+  }
+
+  .cloud-backup-heading,
+  .cloud-backup-account-card,
+  .cloud-backup-item-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .cloud-backup-account-card .primary-button,
+  .cloud-backup-account-card .secondary-button {
+    width: 100%;
+    min-height: 46px;
+  }
+
+  .cloud-backup-list dl {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 380px) {
+  .cloud-backup-list dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .backup-preview {
   margin-top: 20px;
   padding: 20px;

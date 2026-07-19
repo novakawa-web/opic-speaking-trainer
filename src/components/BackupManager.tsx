@@ -31,6 +31,7 @@ import {
 } from "../utils/appBackup";
 import { activateButton } from "../utils/buttonFocus";
 import { savePostRestoreNavigation } from "../utils/postRestoreNavigation";
+import { CloudBackupFeature } from "./CloudBackupFeature.tsx";
 
 type BackupManagerProps = {
   cards: OpicCard[];
@@ -264,6 +265,7 @@ export function BackupManager({
         : "선택한 백업 파일이 없어요.";
 
   return (
+    <>
     <section id="backup-manager" className="backup-manager" aria-labelledby="backup-manager-title">
       <div className="section-title-row backup-manager-heading">
         <div>
@@ -521,5 +523,7 @@ export function BackupManager({
         {message}
       </p>
     </section>
+    <CloudBackupFeature createBackup={createCurrentBackup} />
+    </>
   );
 }
