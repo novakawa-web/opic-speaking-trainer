@@ -10,10 +10,18 @@ import {
   subscribeToCloudUser,
 } from "../services/cloudAuth.ts";
 import {
+  createCloudBackupDiagnosticLogEntry,
   createAndUploadCloudBackup,
+  createCloudBackupFailureDiagnostic,
+  CloudBackupError,
   getCloudBackupErrorMessage,
+  getCloudBackupFailureGuidance,
+  getCloudBackupStageMessage,
   listRecentCloudBackups,
   MAX_DEVICE_LABEL_LENGTH,
+  type CloudBackupFailureDiagnostic,
+  type CloudBackupProgress,
+  type CloudBackupUploadStage,
 } from "../services/cloudBackup.ts";
 import {
   CLOUD_BACKUP_ACCESS_DENIED_MESSAGE,
@@ -34,7 +42,33 @@ function formatBytes(byteSize: number) {
 }
 
 function displayUser(user: CloudBackupUser) {
-  return user.displayName || user.email || "Google 사용자";
+  return user.displayName || "Google 사용자";
+}
+
+type UploadSuccessSummary = {
+  createdAt: string;
+  cardCount: number;
+  byteSize: number;
+  deviceLabel: string;
+};
+
+type UploadFeedback = {
+  stage: CloudBackupUploadStage;
+  byteSize?: number;
+  failure?: CloudBackupFailureDiagnostic;
+  success?: UploadSuccessSummary;
+};
+
+const INITIAL_UPLOAD_FEEDBACK: UploadFeedback = { stage: "idle" };
+
+function logCloudBackupDiagnostic(
+  value: CloudBackupProgress | CloudBackupFailureDiagnostic,
+) {
+  if (!import.meta.env.DEV) return;
+  console.info(
+    "[OPIc Cloud Backup]",
+    createCloudBackupDiagnosticLogEntry(value),
+  );
 }
 
 export default function CloudBackupPanel({
@@ -52,6 +86,9 @@ export default function CloudBackupPanel({
   const [accessStatus, setAccessStatus] = useState<CloudBackupAccessStatus>("idle");
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [uploadFeedback, setUploadFeedback] = useState<UploadFeedback>(
+    INITIAL_UPLOAD_FEEDBACK,
+  );
   const mountedRef = useRef(true);
   const uploadAbortRef = useRef<AbortController | null>(null);
   const listRequestIdRef = useRef(0);
@@ -180,45 +217,87 @@ export default function CloudBackupPanel({
   }
 
   async function handleUpload() {
-    if (!user || accessStatus !== "allowed" || isUploading) return;
+    if (
+      !user ||
+      accessStatus !== "allowed" ||
+      isUploading ||
+      uploadAbortRef.current
+    ) {
+      return;
+    }
     if (typeof navigator !== "undefined" && !navigator.onLine) {
-      setErrorMessage("오프라인에서는 클라우드 백업을 만들 수 없습니다.");
+      const failure = createCloudBackupFailureDiagnostic(new Error("offline"), {
+        online: false,
+      });
+      setUploadFeedback({ stage: failure.stage, failure });
+      logCloudBackupDiagnostic(failure);
       return;
     }
 
     const controller = new AbortController();
     uploadAbortRef.current = controller;
     setIsUploading(true);
-    setMessage("현재 전체 JSON 백업을 검증하고 업로드하고 있어요.");
+    setUploadFeedback({ stage: "preparing" });
     setErrorMessage("");
+    setMessage("");
+    logCloudBackupDiagnostic({ stage: "preparing" });
+    let byteSize: number | undefined;
     try {
-      const backup = createBackup();
+      let backup: AppBackupV1;
+      try {
+        backup = createBackup();
+      } catch (error) {
+        throw new CloudBackupError(
+          "BACKUP_CREATION_FAILED",
+          "기기 백업 데이터를 준비하지 못했습니다.",
+          { cause: error },
+        );
+      }
       const gateway = await getFirebaseCloudBackupGateway();
       const prepared = await createAndUploadCloudBackup(
         gateway,
         user.uid,
         backup,
         deviceLabel,
-        { signal: controller.signal },
+        {
+          signal: controller.signal,
+          onProgress(progress) {
+            byteSize = progress.byteSize ?? byteSize;
+            if (!mountedRef.current || uploadAbortRef.current !== controller) return;
+            setUploadFeedback({
+              stage: progress.stage,
+              ...(typeof progress.byteSize === "number"
+                ? { byteSize: progress.byteSize }
+                : {}),
+            });
+            logCloudBackupDiagnostic(progress);
+          },
+        },
       );
       if (!mountedRef.current || controller.signal.aborted) return;
-      setMessage(
-        `새 클라우드 백업을 저장했습니다. ${formatBytes(prepared.byteSize)} · SHA-256 ${prepared.sha256.slice(0, 12)}…`,
-      );
+      setUploadFeedback({
+        stage: "success",
+        byteSize: prepared.byteSize,
+        success: {
+          createdAt: prepared.metadata.exportedAt,
+          cardCount: prepared.metadata.summary.cardCount,
+          byteSize: prepared.byteSize,
+          deviceLabel: prepared.metadata.deviceLabel || "이름 없는 기기",
+        },
+      });
       await refreshBackups(user);
     } catch (error) {
-      if (!mountedRef.current || controller.signal.aborted) return;
-      if (
-        error &&
-        typeof error === "object" &&
-        "orphanStoragePath" in error &&
-        typeof error.orphanStoragePath === "string"
-      ) {
-        console.error("[OPIc Cloud Backup] orphan storage object", {
-          storagePath: error.orphanStoragePath,
-        });
-      }
-      setErrorMessage(getCloudBackupErrorMessage(error));
+      if (!mountedRef.current) return;
+      const failure = createCloudBackupFailureDiagnostic(error, {
+        online: typeof navigator === "undefined" ? undefined : navigator.onLine,
+        byteSize,
+      });
+      setUploadFeedback({
+        stage: failure.stage,
+        ...(typeof byteSize === "number" ? { byteSize } : {}),
+        failure,
+      });
+      logCloudBackupDiagnostic(failure);
     } finally {
       if (mountedRef.current && uploadAbortRef.current === controller) {
         uploadAbortRef.current = null;
@@ -277,7 +356,6 @@ export default function CloudBackupPanel({
             <div className="cloud-backup-account-copy">
               <span>로그인됨</span>
               <strong>{displayUser(user)}</strong>
-              {user.email && user.email !== displayUser(user) && <small>{user.email}</small>}
             </div>
             <button type="button" className="secondary-button" onClick={() => void handleLogout()}>
               로그아웃
@@ -320,7 +398,11 @@ export default function CloudBackupPanel({
             type="button"
             className="cloud-backup-upload-button"
             disabled={isUploading}
-            aria-describedby="cloud-backup-upload-help"
+            aria-describedby={
+              uploadFeedback.stage === "idle"
+                ? "cloud-backup-upload-help"
+                : "cloud-backup-upload-help cloud-backup-upload-status"
+            }
             onClick={() => void handleUpload()}
           >
             {isUploading ? "새 백업 저장 중…" : "이 기기 데이터를 새 백업으로 저장"}
@@ -328,6 +410,54 @@ export default function CloudBackupPanel({
           <p id="cloud-backup-upload-help" className="backup-helper-text">
             버튼을 누를 때마다 기존 백업을 덮어쓰지 않고 새 JSON 파일을 만듭니다.
           </p>
+
+          {uploadFeedback.stage !== "idle" && (
+            <div
+              id="cloud-backup-upload-status"
+              className={`cloud-backup-upload-status is-${uploadFeedback.stage}`}
+              role={uploadFeedback.failure ? "alert" : "status"}
+              aria-live={uploadFeedback.failure ? "assertive" : "polite"}
+              aria-atomic="true"
+            >
+              <strong>{getCloudBackupStageMessage(uploadFeedback.stage)}</strong>
+              {uploadFeedback.failure && (
+                <>
+                  <p>{getCloudBackupFailureGuidance(uploadFeedback.failure)}</p>
+                  {uploadFeedback.failure.retryAllowed && (
+                    <button
+                      type="button"
+                      className="secondary-button cloud-backup-retry-button"
+                      disabled={isUploading}
+                      aria-label="클라우드 백업 다시 시도"
+                      onClick={() => void handleUpload()}
+                    >
+                      다시 시도
+                    </button>
+                  )}
+                </>
+              )}
+              {uploadFeedback.success && (
+                <dl className="cloud-backup-success-summary">
+                  <div>
+                    <dt>생성 시각</dt>
+                    <dd>{new Date(uploadFeedback.success.createdAt).toLocaleString("ko-KR")}</dd>
+                  </div>
+                  <div>
+                    <dt>카드</dt>
+                    <dd>{uploadFeedback.success.cardCount}장</dd>
+                  </div>
+                  <div>
+                    <dt>파일 크기</dt>
+                    <dd>{formatBytes(uploadFeedback.success.byteSize)}</dd>
+                  </div>
+                  <div>
+                    <dt>기기</dt>
+                    <dd>{uploadFeedback.success.deviceLabel}</dd>
+                  </div>
+                </dl>
+              )}
+            </div>
+          )}
 
           <div className="cloud-backup-list-heading">
             <h3>최근 클라우드 백업</h3>

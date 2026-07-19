@@ -21,8 +21,13 @@ import {
   CLOUD_BACKUP_CONTENT_TYPE,
   CloudBackupError,
   calculateSha256,
+  classifyCloudBackupFailure,
+  createCloudBackupDiagnosticLogEntry,
   createAndUploadCloudBackup,
+  createCloudBackupFailureDiagnostic,
   createCloudBackupId,
+  getCloudBackupFailureGuidance,
+  getCloudBackupStageMessage,
   listRecentCloudBackups,
   normalizeDeviceLabel,
   prepareCloudBackup,
@@ -344,6 +349,161 @@ await test("Storage 완료 직후 취소되면 업로드 파일 정리", async (
   assert.equal(calls.deleted.length, 1);
 });
 
+await test("정상 업로드 단계가 준비부터 성공까지 순서대로 보고됨", async () => {
+  const { gateway } = createGateway();
+  const stages = [];
+  await createAndUploadCloudBackup(
+    gateway,
+    "user-a",
+    createFixtureBackup(),
+    "PC",
+    {
+      digest: fixedDigest,
+      onProgress: (progress) => stages.push(progress.stage),
+    },
+  );
+  assert.deepEqual(stages, [
+    "preparing",
+    "uploading-storage",
+    "verifying-storage",
+    "writing-metadata",
+    "success",
+  ]);
+});
+
+await test("Storage 검증 실패는 정리 단계를 보고하고 안전 정리됨", async () => {
+  const stages = [];
+  const { gateway, calls } = createGateway({
+    uploadJson: async () => ({ byteSize: 1, contentType: "text/plain", sha256: null }),
+  });
+  await assert.rejects(() => createAndUploadCloudBackup(
+    gateway,
+    "user-a",
+    createFixtureBackup(),
+    "",
+    { digest: fixedDigest, onProgress: (progress) => stages.push(progress.stage) },
+  ));
+  assert.deepEqual(stages, [
+    "preparing",
+    "uploading-storage",
+    "verifying-storage",
+    "cleaning-up",
+  ]);
+  assert.equal(calls.deleted.length, 1);
+});
+
+await test("백업 생성·검증·SHA 실패를 준비 실패로 분류", async () => {
+  assert.equal(
+    classifyCloudBackupFailure(new CloudBackupError("BACKUP_CREATION_FAILED", "create")),
+    "backup-preparation-failed",
+  );
+  assert.equal(
+    classifyCloudBackupFailure(new CloudBackupError("BACKUP_INVALID", "validate")),
+    "backup-preparation-failed",
+  );
+  let shaError;
+  try {
+    await calculateSha256(new Uint8Array([1]), async () => { throw new Error("digest"); });
+  } catch (error) {
+    shaError = error;
+  }
+  assert.equal(classifyCloudBackupFailure(shaError), "backup-preparation-failed");
+});
+
+await test("Storage 업로드와 검증 오류를 서로 구분", () => {
+  assert.equal(
+    classifyCloudBackupFailure(new CloudBackupError("UPLOAD_FAILED", "upload")),
+    "storage-upload-failed",
+  );
+  assert.equal(
+    classifyCloudBackupFailure(new CloudBackupError("UPLOAD_METADATA_MISMATCH", "verify")),
+    "storage-verification-failed",
+  );
+});
+
+await test("Firestore 기록 실패는 정리 성공을 함께 보고", () => {
+  const result = createCloudBackupFailureDiagnostic(
+    new CloudBackupError("METADATA_FAILED", "metadata"),
+    { byteSize: 123, now: new Date("2026-07-20T03:00:00Z") },
+  );
+  assert.equal(result.category, "metadata-write-failed");
+  assert.equal(result.cleanupSucceeded, true);
+  assert.equal(result.byteSize, 123);
+  assert.match(getCloudBackupFailureGuidance(result), /안전하게 정리/);
+});
+
+await test("정리 실패는 추가 업로드 금지 안내와 재시도 차단", () => {
+  const result = createCloudBackupFailureDiagnostic(
+    new CloudBackupError("METADATA_AND_CLEANUP_FAILED", "cleanup", {
+      orphanStoragePath: "users/private/backups/private.json",
+    }),
+  );
+  assert.equal(result.category, "cleanup-failed");
+  assert.equal(result.cleanupSucceeded, false);
+  assert.equal(result.retryAllowed, false);
+  assert.match(getCloudBackupFailureGuidance(result), /추가 업로드를 시도하지 말고/);
+});
+
+await test("오프라인과 권한 오류를 사용자 원인으로 구분", () => {
+  assert.equal(
+    classifyCloudBackupFailure(new Error("offline"), { online: false }),
+    "network-offline",
+  );
+  assert.equal(
+    classifyCloudBackupFailure(
+      new CloudBackupError("UPLOAD_FAILED", "upload", {
+        cause: { code: "storage/unauthorized" },
+      }),
+    ),
+    "permission-denied",
+  );
+});
+
+await test("중단은 Firebase 실패와 다른 aborted 상태로 분류", () => {
+  const result = createCloudBackupFailureDiagnostic(
+    new CloudBackupError("REQUEST_CANCELLED", "cancelled"),
+  );
+  assert.equal(result.stage, "aborted");
+  assert.equal(result.category, "aborted");
+  assert.match(getCloudBackupFailureGuidance(result), /화면 이동/);
+});
+
+await test("진단 로그에는 허용된 비민감 필드만 포함", () => {
+  const diagnostic = createCloudBackupFailureDiagnostic(
+    new CloudBackupError("METADATA_AND_CLEANUP_FAILED", "cleanup", {
+      cause: { code: "storage/unknown" },
+      orphanStoragePath: "users/private/backups/private.json",
+    }),
+    { byteSize: 456, now: new Date("2026-07-20T03:00:00Z") },
+  );
+  const entry = createCloudBackupDiagnosticLogEntry(diagnostic);
+  assert.deepEqual(Object.keys(entry).sort(), [
+    "byteSize",
+    "category",
+    "cleanupSucceeded",
+    "code",
+    "occurredAt",
+    "stage",
+  ]);
+  const serialized = JSON.stringify(entry);
+  assert.doesNotMatch(serialized, /private|users\//);
+});
+
+await test("모든 단계에 사용자 상태 문구가 있음", () => {
+  for (const stage of [
+    "preparing",
+    "uploading-storage",
+    "verifying-storage",
+    "writing-metadata",
+    "cleaning-up",
+    "success",
+    "failed",
+    "aborted",
+  ]) {
+    assert.ok(getCloudBackupStageMessage(stage).length > 0);
+  }
+});
+
 await test("최근 목록은 uploadedAt 최신순", async () => {
   const { gateway } = createGateway({
     async listMetadata() {
@@ -384,6 +544,7 @@ const [
   gitignore,
   workflowSource,
   operationsGuide,
+  stylesSource,
 ] = await Promise.all([
   readFile(new URL("../src/components/CloudBackupFeature.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/services/cloudBackup.ts", import.meta.url), "utf8"),
@@ -395,6 +556,7 @@ const [
   readFile(new URL("../.gitignore", import.meta.url), "utf8"),
   readFile(new URL("../.github/workflows/deploy-pages.yml", import.meta.url), "utf8"),
   readFile(new URL("../CLOUD_BACKUP_OPERATIONS.md", import.meta.url), "utf8"),
+  readFile(new URL("../src/styles.css", import.meta.url), "utf8"),
 ]);
 
 await test("OFF일 때 lazy 패널을 렌더링하지 않음", () => {
@@ -405,6 +567,13 @@ await test("서비스에 localStorage/sessionStorage 쓰기 없음", () => {
   assert.doesNotMatch(serviceSource, /localStorage|sessionStorage|setItem|removeItem/);
   assert.doesNotMatch(accessServiceSource, /localStorage|sessionStorage|setItem|removeItem/);
   assert.doesNotMatch(firebaseServiceSource, /localStorage|sessionStorage|setItem|removeItem/);
+  assert.doesNotMatch(panelSource, /localStorage|sessionStorage|setItem|removeItem/);
+});
+
+await test("화면 이탈은 현재 요청을 중단하고 늦은 상태 갱신을 차단", () => {
+  assert.match(panelSource, /mountedRef\.current = false;[\s\S]*?uploadAbortRef\.current\?\.abort\(\)/);
+  assert.match(panelSource, /if \(!mountedRef\.current\) return/);
+  assert.match(panelSource, /failure\.stage/);
 });
 
 await test("로그인 후 자기 allowlist 문서를 단건 조회", () => {
@@ -433,8 +602,64 @@ await test("UI에 다운로드·복원·병합·삭제 버튼 없음", () => {
 });
 
 await test("업로드 중 중복 클릭은 handler와 disabled 상태에서 이중 차단", () => {
-  assert.match(panelSource, /if \(!user \|\| accessStatus !== "allowed" \|\| isUploading\) return/);
+  assert.match(panelSource, /isUploading \|\|\s*uploadAbortRef\.current/);
   assert.match(panelSource, /disabled=\{isUploading\}/);
+});
+
+await test("업로드 진단은 버튼 가까이에서 목록보다 먼저 렌더링", () => {
+  const statusIndex = panelSource.indexOf('id="cloud-backup-upload-status"');
+  const listIndex = panelSource.indexOf('className="cloud-backup-list-heading"');
+  assert.ok(statusIndex > panelSource.indexOf('className="cloud-backup-upload-button"'));
+  assert.ok(statusIndex < listIndex);
+  assert.match(panelSource, /aria-live=\{uploadFeedback\.failure \? "assertive" : "polite"\}/);
+});
+
+await test("실패 재시도는 명시적 버튼만 제공하고 자동 재시도 없음", () => {
+  assert.match(panelSource, />\s*다시 시도\s*</);
+  assert.match(panelSource, /onClick=\{\(\) => void handleUpload\(\)\}/);
+  assert.doesNotMatch(panelSource, /setTimeout\([^)]*handleUpload/);
+  assert.doesNotMatch(panelSource, /setInterval\([^)]*handleUpload/);
+});
+
+await test("성공 뒤 최근 목록은 한 번만 새로고침", () => {
+  const handler = panelSource.slice(
+    panelSource.indexOf("async function handleUpload"),
+    panelSource.indexOf("const missingConfiguration"),
+  );
+  assert.equal((handler.match(/await refreshBackups\(user\)/g) ?? []).length, 1);
+});
+
+await test("패널 로그에 전체 Storage 경로와 식별자를 출력하지 않음", () => {
+  assert.doesNotMatch(panelSource, /console\.(?:error|info|warn)\([^)]*storagePath/s);
+  assert.doesNotMatch(panelSource, /console\.(?:error|info|warn)\([^)]*(?:uid|backupId|sha256)/s);
+  assert.match(panelSource, /createCloudBackupDiagnosticLogEntry/);
+});
+
+await test("계정 카드와 진단 UI에 이메일·UID를 렌더링하지 않음", () => {
+  assert.doesNotMatch(panelSource, /\{user\.email\}/);
+  assert.doesNotMatch(panelSource, />\s*\{user\.uid\}\s*</);
+  assert.match(panelSource, /return user\.displayName \|\| "Google 사용자"/);
+});
+
+await test("진단 UI가 성공 요약과 정리 실패 재시도 차단을 표시", () => {
+  assert.match(panelSource, /uploadFeedback\.success/);
+  assert.match(panelSource, /생성 시각/);
+  assert.match(panelSource, /파일 크기/);
+  assert.match(panelSource, /uploadFeedback\.failure\.retryAllowed/);
+  assert.match(panelSource, /getCloudBackupFailureGuidance/);
+});
+
+await test("업로드 진단은 모바일 700px 이하에서 2열 요약과 전체 폭 재시도 사용", () => {
+  assert.match(stylesSource, /\.cloud-backup-upload-status\s*\{[\s\S]*?overflow-wrap: anywhere/);
+  assert.match(stylesSource, /@media \(max-width: 700px\)[\s\S]*?\.cloud-backup-success-summary\s*\{\s*grid-template-columns: repeat\(2/);
+  assert.match(stylesSource, /@media \(max-width: 700px\)[\s\S]*?\.cloud-backup-retry-button\s*\{\s*width: 100%/);
+});
+
+await test("업로드 진단은 라이트·다크 공통 상태 토큰을 사용", () => {
+  assert.match(stylesSource, /:root\s*\{[\s\S]*?--status-success-bg:[^;]+;[\s\S]*?--status-hard-bg:[^;]+;/);
+  assert.match(stylesSource, /:root\[data-theme="dark"\]\s*\{[\s\S]*?--status-success-bg:[^;]+;[\s\S]*?--status-hard-bg:[^;]+;/);
+  assert.match(stylesSource, /\.cloud-backup-upload-status\.is-success\s*\{[\s\S]*?var\(--status-success-bg\)/);
+  assert.match(stylesSource, /\.cloud-backup-upload-status\.is-failed,[\s\S]*?var\(--status-hard-bg\)/);
 });
 
 await test("Firestore 규칙은 로그인 uid와 자기 경로만 허용", () => {

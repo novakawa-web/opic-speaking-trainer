@@ -1936,6 +1936,82 @@ input:focus-visible + .toggle-switch {
   opacity: 0.65;
 }
 
+.cloud-backup-upload-status {
+  min-width: 0;
+  margin-top: 12px;
+  padding: 13px 14px;
+  color: var(--body-copy);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface-soft);
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.cloud-backup-upload-status > strong {
+  display: block;
+  color: var(--heading);
+  font-size: 13px;
+}
+
+.cloud-backup-upload-status > p {
+  margin: 6px 0 0;
+}
+
+.cloud-backup-upload-status.is-cleaning-up {
+  color: var(--status-again-text);
+  border-color: var(--status-again-border);
+  background: var(--status-again-bg);
+}
+
+.cloud-backup-upload-status.is-success {
+  color: var(--status-success-text);
+  border-color: var(--status-success-border);
+  background: var(--status-success-bg);
+}
+
+.cloud-backup-upload-status.is-failed,
+.cloud-backup-upload-status.is-aborted {
+  color: var(--status-hard-text);
+  border-color: var(--status-hard-border);
+  background: var(--status-hard-bg);
+}
+
+.cloud-backup-retry-button {
+  min-height: 42px;
+  margin-top: 10px;
+  padding-inline: 16px;
+}
+
+.cloud-backup-success-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin: 11px 0 0;
+}
+
+.cloud-backup-success-summary > div {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.cloud-backup-success-summary dt {
+  font-size: 9px;
+  opacity: 0.8;
+}
+
+.cloud-backup-success-summary dd {
+  min-width: 0;
+  margin: 4px 0 0;
+  color: var(--heading);
+  font-size: 11px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
 .cloud-backup-list-heading {
   display: flex;
   align-items: center;
@@ -2079,6 +2155,14 @@ input:focus-visible + .toggle-switch {
 
   .cloud-backup-list dl {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .cloud-backup-success-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cloud-backup-retry-button {
+    width: 100%;
   }
 }
 

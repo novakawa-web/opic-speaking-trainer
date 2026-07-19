@@ -78,8 +78,8 @@
 - 실험적 클라우드 백업 1단계는 기능 플래그 뒤에서 Google 로그인과 **수동 전체 JSON 백업 업로드 및 최근 metadata 목록 확인만** 제공한다. 클라우드 다운로드·복원·병합·삭제·자동 동기화는 구현하지 않았다.
 - 클라우드 백업은 Firestore `cloudBackupAllowedUsers/{uid}` 문서의 `enabled === true`인 사용자만 사용할 수 있다. 앱은 로그인 후 자기 문서를 단건 조회하며, 미허용 사용자는 백업 목록을 조회하거나 업로드할 수 없다. 클라이언트는 자기 allowlist 문서의 `get`만 가능하고 목록 조회와 모든 쓰기는 Security Rules에서 거부한다.
 - Firestore와 Storage의 백업 경로 모두 인증 UID와 allowlist를 함께 검사한다. Storage Rules는 기본 Firestore 데이터베이스의 allowlist 문서를 `firestore.exists/get`으로 확인하고 기존 JSON·10MB·불변 업로드·부분 실패 정리 조건을 유지한다.
-- Firebase 공개 Web 설정은 `.env.local`에서만 읽고 저장소에는 빈 `.env.example`만 둔다. 운영 빌드의 기능 플래그는 기본 OFF이며, OFF에서는 Firebase 패널·SDK 초기화·외부 요청이 발생하지 않는다.
-- allowlist Rules와 앱 통합은 Emulator 22/22 및 개발 Firebase 프로젝트에서 검증했다. 개발 Rules 배포, allowlist 문서와 허용 계정 로그인 검증은 완료됐지만 운영 기능 플래그는 아직 OFF다.
+- Firebase 공개 Web 설정은 로컬에서는 Git 제외된 `.env.local`, 운영에서는 GitHub Repository Variables에서만 받으며 저장소에는 빈 `.env.example`만 둔다. 설정 누락 또는 기능 OFF에서는 Firebase 패널·SDK 초기화·외부 요청이 발생하지 않는다.
+- 운영 수동 클라우드 백업은 2026-07-19 기준 활성화되어 있다. Allowlist Rules와 앱 통합은 Emulator 22/22 및 개발 Firebase 프로젝트에서 검증했고, 운영 PC·Galaxy Chrome·PWA의 허용 계정 로그인과 목록 0건 조회까지 확인했다. 운영에서 새 백업 업로드 성공은 아직 검증하지 않았다.
 - PWA manifest, 아이콘, service worker, 오프라인 precache, 오래된 캐시 정리, 새 버전 prompt 업데이트가 구현되어 있다.
 - `scripts/create-spa-fallback.mjs`가 build 후 `dist/404.html`을 만들어 GitHub Pages SPA 새로고침을 보완한다.
 - `main` push 시 GitHub Actions가 테스트, production build, PWA 검증 후 Pages에 자동 배포한다.
@@ -296,11 +296,11 @@ npm.cmd run test:pwa
 | `test:first-line-mock` | 첫 문장 전용 카드·모의고사·모바일 이동 | 18 |
 | `test:home-layout` | 홈 공통 레일·반응형 구조 | 10 |
 | `test:card-management` | 카드 수정·보관·완전 삭제·공통 toast·JSON 호환 | 31 |
-| `test:cloud-backup` | 기능 플래그·production 설정·Actions Variables·수동 업로드·allowlist·무결성·부분 실패 정리 | 49 |
+| `test:cloud-backup` | 기능 플래그·production 설정·Actions Variables·수동 업로드·allowlist·무결성·단계별 진단·부분 실패 정리 | 67 |
 | `test:cloud-rules` | Firestore/Storage Emulator Security Rules와 allowlist | 22 |
 | `test:ui-system` | compact UI·복구 후 이동·간격 체계 | 21 |
 
-- 2026-07-19 운영 활성화 준비 브랜치 기준 `npm.cmd run test:all`: **512/512 통과**. `test:cloud-rules`는 실행 중인 Emulator가 필요한 별도 검사이며 **22/22 통과**해 고유 검증 합계는 **534개**다.
+- 2026-07-19 업로드 진단 브랜치 기준 `npm.cmd run test:all`: **531/531 통과**. `test:cloud-rules`는 로컬 Emulator에서 별도로 **22/22 통과**해 고유 검증 합계는 **553개**다.
 - 같은 확인에서 `npm.cmd run build`: TypeScript와 Vite production build 통과.
 - 같은 확인에서 `npm.cmd run test:pwa`: Pages/PWA 산출물 검증 통과. `manifest.webmanifest`, `sw.js`, `404.html`이 생성됨.
 - `test:pwa`는 `test:all`에 포함되지 않으므로 build 후 별도로 실행한다.
@@ -311,14 +311,14 @@ npm.cmd run test:pwa
 - trigger 정의는 `main` push와 수동 `workflow_dispatch`를 유지하지만, Pages build/deploy job은 `main` push에서만 실행하도록 guard한다. feature 브랜치와 수동 실행은 운영 Pages를 배포하지 않는다.
 - pipeline: checkout -> Node LTS -> `npm ci` -> `test:all` -> build -> `test:pwa` -> Pages artifact upload -> deploy.
 - production build 단계는 Firebase 공개 Web config를 GitHub Repository Variables에서만 전달받는다. 자세한 등록 목록과 안전 조건은 `CLOUD_BACKUP_OPERATIONS.md`에 기록한다.
-- 이전 기준 배포 run: [29590301905](https://github.com/novakawa-web/opic-speaking-trainer/actions/runs/29590301905), commit `7557bf6b72708abe52e4b1f0511fa08b7ba977fe`, 성공.
+- 최신 확인 운영 배포 run: [29683742821](https://github.com/novakawa-web/opic-speaking-trainer/actions/runs/29683742821), commit `2f26cfdaa74063ae14747e2673e41e62720bb9cb`, 성공.
 - 최신 배포 상태와 커밋은 GitHub Actions의 `main` 최신 run과 `git log -1`을 source of truth로 확인한다.
 - 2026-07-18 확인 시 공개 배포 URL은 HTTP 200을 반환했다.
 - service worker 때문에 이전 bundle이 보이면 앱의 새 버전 안내를 적용하거나 페이지를 다시 연 뒤 검증한다.
 
 ## 9. Git 현재 상태
 
-- 현재 준비 브랜치: `feature/enable-production-cloud-backup` (기준 `main` 커밋 `52904d17cf3b756bbb8ee0e77074cea92fb4703e`에서 분기)
+- 현재 작업 브랜치: `feature/cloud-backup-upload-diagnostics` (기준 `main` 커밋 `2f26cfdaa74063ae14747e2673e41e62720bb9cb`에서 분기)
 - 운영 브랜치와 Pages 배포 기준: `main`, `origin/main`
 - remote: `https://github.com/novakawa-web/opic-speaking-trainer.git`
 - 이 문서는 저장소 코드와 함께 버전 관리한다. 최신 커밋은 `git log -1 --oneline`, 동기화 여부는 `git status --short --branch`와 `git rev-parse origin/main`으로 확인한다.
@@ -360,14 +360,16 @@ npm.cmd run test:pwa
 23. 카드 관리 결과는 `TransientToast`로 통합했다. 알림은 하나만 유지되고 3.5초 후 사라지며, 보관·삭제 실행 취소와 `role="status"`, `aria-live="polite"`, 모바일 safe-area 배치를 사용한다.
 24. `feature/cloud-backup`에는 수동 Firebase 전체 백업 업로드 1단계를 구현했다. AppBackupV1을 다시 검증해 10MB 이하 JSON을 사용자별 Storage 경로에 저장하고 SHA-256·byteSize·요약 metadata를 Firestore에 생성한다. Storage 성공 후 metadata 실패 시 업로드 파일을 정리한다.
 25. Authentication/Firestore/Storage Emulator와 개발 Firebase 프로젝트에서 격리된 합성 백업 1건을 검증했다. Storage 경로, byteSize, SHA-256이 일치했고 업로드 전후 `localStorage` raw snapshot이 동일했다. 실제 사용자 학습 데이터는 업로드하지 않았다.
-26. 클라우드 기능의 운영 플래그는 아직 OFF다. `feature/enable-production-cloud-backup`에서 GitHub Repository Variables 전달과 설정 누락·production Emulator 차단을 준비하지만 사용자 승인 전 commit, push, main 병합과 Pages 배포를 하지 않는다.
+26. 운영 수동 클라우드 백업 패널은 활성화되어 있으며 production Emulator 연결은 금지된다. 업로드는 사용자 버튼 클릭으로만 시작되고 localStorage는 계속 유일한 학습 데이터 원본이다.
 27. main의 allowlist 구현은 `cloudBackupAllowedUsers/{uid}`의 `enabled === true`인 사용자에게만 Firestore metadata와 Storage JSON 백업 접근을 허용한다. 자기 allowlist 문서 단건 조회 외의 클라이언트 접근은 거부하며 Emulator Rules 22개, 개발 Firebase Rules 배포와 허용 계정 로그인 검증을 완료했다.
-현재 다음 기능은 정해져 있지 않다. 새 요청을 받으면 먼저 `git status`, `git log -3`, 현재 저장소 코드를 확인하고 이어서 작업한다.
+28. `feature/cloud-backup-upload-diagnostics`는 준비·Storage 업로드·검증·Firestore metadata 기록·실패 파일 정리·성공/실패/중단 단계를 업로드 버튼 가까이에 표시한다. 실패는 준비/업로드/검증/metadata/정리/오프라인/권한/중단/알 수 없음으로 구분하고 자동 재시도하지 않는다. 개발 로그에는 단계·범주·시각·정리 결과·byteSize·일반 오류 코드만 남긴다.
+29. 업로드 진단 UI와 부분 실패 흐름은 자동 테스트와 로컬 Emulator에서 검증했지만 실제 운영 Firebase의 새 백업 성공 경로는 아직 검증하지 않았다. 운영에서 실수로 누른 1회 시도는 Firestore metadata와 Storage 파일을 만들지 않았으며 당시 콘솔·네트워크 기록이 없어 중단 원인은 확정하지 않았다.
+현재 다음 단계는 진단 브랜치를 검토해 main에 병합·배포한 뒤, 사용자가 승인한 운영 합성 백업 1회로 단계 표시와 무결성을 확인하는 것이다.
 
 ## 11. 보류하거나 하지 않기로 한 기능
 
 - 녹음 영구 저장, 카드별 녹음 히스토리, 녹음 다운로드
-- 클라우드 백업 다운로드·복원·병합·삭제·자동 동기화와 운영 기능 플래그 활성화
+- 클라우드 백업 다운로드·복원·병합·삭제·자동 동기화
 - 복잡한 Markdown 편집기, WYSIWYG, 임의 HTML/Markdown 엔진
 - STT/Whisper, AI 답변 생성·첨삭·발음 평가·피드백
 - 위 기능은 현재 범위 밖이며, 후속 단계에서 데이터/보안/비용 정책을 별도로 정한 뒤 검토한다.
