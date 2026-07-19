@@ -20,13 +20,18 @@ import {
 import {
   CLOUD_BACKUP_CONTENT_TYPE,
   CloudBackupError,
+  advanceCloudBackupAttemptDiagnostic,
   calculateSha256,
   classifyCloudBackupFailure,
+  createCloudBackupAttemptDiagnostic,
   createCloudBackupDiagnosticLogEntry,
+  createCloudBackupDiagnosticSummary,
   createAndUploadCloudBackup,
   createCloudBackupFailureDiagnostic,
   createCloudBackupId,
   getCloudBackupFailureGuidance,
+  getCloudBackupCleanupLabel,
+  getCloudBackupStorageCreationLabel,
   getCloudBackupStageMessage,
   listRecentCloudBackups,
   normalizeDeviceLabel,
@@ -85,6 +90,7 @@ const fixedDigest = async () => new Uint8Array(32).fill(0xab).buffer;
 function createGateway(overrides = {}) {
   const calls = {
     upload: [],
+    storageMetadata: [],
     metadata: [],
     deleted: [],
     listed: [],
@@ -94,10 +100,14 @@ function createGateway(overrides = {}) {
     gateway: {
       async uploadJson(path, bytes, customMetadata) {
         calls.upload.push({ path, bytes: bytes.byteLength, customMetadata });
+      },
+      async getStorageMetadata(path) {
+        calls.storageMetadata.push(path);
+        const upload = calls.upload.at(-1);
         return {
-          byteSize: bytes.byteLength,
+          byteSize: upload?.bytes ?? 0,
           contentType: CLOUD_BACKUP_CONTENT_TYPE,
-          sha256: customMetadata.sha256,
+          sha256: upload?.customMetadata.sha256 ?? null,
         };
       },
       async createMetadata(uid, backupId, metadata) {
@@ -113,6 +123,30 @@ function createGateway(overrides = {}) {
       ...overrides,
     },
   };
+}
+
+async function runDiagnosticAttempt(overrides = {}, options = {}) {
+  const { gateway, calls } = createGateway(overrides);
+  let attempt = createCloudBackupAttemptDiagnostic(new Date("2026-07-20T04:00:00Z"));
+  let error;
+  try {
+    await createAndUploadCloudBackup(
+      gateway,
+      "user-a",
+      createFixtureBackup(),
+      "test device",
+      {
+        digest: fixedDigest,
+        signal: options.signal,
+        onProgress(progress) {
+          attempt = advanceCloudBackupAttemptDiagnostic(attempt, progress);
+        },
+      },
+    );
+  } catch (caught) {
+    error = caught;
+  }
+  return { gateway, calls, attempt, error };
 }
 
 await test("기능 플래그 기본값은 OFF", () => {
@@ -308,7 +342,7 @@ await test("Storage 실패 시 Firestore metadata를 만들지 않음", async ()
 });
 
 await test("Storage metadata 불일치는 파일을 정리", async () => {
-  const { gateway, calls } = createGateway({ uploadJson: async () => ({ byteSize: 1, contentType: "text/plain", sha256: null }) });
+  const { gateway, calls } = createGateway({ getStorageMetadata: async () => ({ byteSize: 1, contentType: "text/plain", sha256: null }) });
   await assert.rejects(() => createAndUploadCloudBackup(gateway, "user-a", createFixtureBackup(), "", { digest: fixedDigest }), (error) => error instanceof CloudBackupError && error.code === "UPLOAD_METADATA_MISMATCH");
   assert.equal(calls.deleted.length, 1);
 });
@@ -338,10 +372,18 @@ await test("시작 전 취소는 네트워크 호출 없음", async () => {
 
 await test("Storage 완료 직후 취소되면 업로드 파일 정리", async () => {
   const controller = new AbortController();
+  let uploadedBytes = 0;
   const { gateway, calls } = createGateway({
     async uploadJson(_path, bytes) {
+      uploadedBytes = bytes.byteLength;
       controller.abort();
-      return { byteSize: bytes.byteLength, contentType: CLOUD_BACKUP_CONTENT_TYPE, sha256: "ab".repeat(32) };
+    },
+    async getStorageMetadata() {
+      return {
+        byteSize: uploadedBytes,
+        contentType: CLOUD_BACKUP_CONTENT_TYPE,
+        sha256: "ab".repeat(32),
+      };
     },
   });
   const prepared = await prepareCloudBackup("user-a", createFixtureBackup(), "", { digest: fixedDigest });
@@ -364,6 +406,7 @@ await test("정상 업로드 단계가 준비부터 성공까지 순서대로 �
   );
   assert.deepEqual(stages, [
     "preparing",
+    "calculating-sha",
     "uploading-storage",
     "verifying-storage",
     "writing-metadata",
@@ -374,7 +417,7 @@ await test("정상 업로드 단계가 준비부터 성공까지 순서대로 �
 await test("Storage 검증 실패는 정리 단계를 보고하고 안전 정리됨", async () => {
   const stages = [];
   const { gateway, calls } = createGateway({
-    uploadJson: async () => ({ byteSize: 1, contentType: "text/plain", sha256: null }),
+    getStorageMetadata: async () => ({ byteSize: 1, contentType: "text/plain", sha256: null }),
   });
   await assert.rejects(() => createAndUploadCloudBackup(
     gateway,
@@ -385,6 +428,7 @@ await test("Storage 검증 실패는 정리 단계를 보고하고 안전 정리
   ));
   assert.deepEqual(stages, [
     "preparing",
+    "calculating-sha",
     "uploading-storage",
     "verifying-storage",
     "cleaning-up",
@@ -392,7 +436,7 @@ await test("Storage 검증 실패는 정리 단계를 보고하고 안전 정리
   assert.equal(calls.deleted.length, 1);
 });
 
-await test("백업 생성·검증·SHA 실패를 준비 실패로 분류", async () => {
+await test("백업 생성·검증과 SHA 실패 지점을 구분", async () => {
   assert.equal(
     classifyCloudBackupFailure(new CloudBackupError("BACKUP_CREATION_FAILED", "create")),
     "backup-preparation-failed",
@@ -407,7 +451,7 @@ await test("백업 생성·검증·SHA 실패를 준비 실패로 분류", async
   } catch (error) {
     shaError = error;
   }
-  assert.equal(classifyCloudBackupFailure(shaError), "backup-preparation-failed");
+  assert.equal(classifyCloudBackupFailure(shaError), "sha-calculation-failed");
 });
 
 await test("Storage 업로드와 검증 오류를 서로 구분", () => {
@@ -453,9 +497,10 @@ await test("오프라인과 권한 오류를 사용자 원인으로 구분", () 
     classifyCloudBackupFailure(
       new CloudBackupError("UPLOAD_FAILED", "upload", {
         cause: { code: "storage/unauthorized" },
+        operation: "storage-upload",
       }),
     ),
-    "permission-denied",
+    "storage-unauthorized",
   );
 });
 
@@ -480,10 +525,18 @@ await test("진단 로그에는 허용된 비민감 필드만 포함", () => {
   assert.deepEqual(Object.keys(entry).sort(), [
     "byteSize",
     "category",
+    "cleanupAttempted",
     "cleanupSucceeded",
-    "code",
+    "failedStage",
+    "lastCompletedStage",
+    "metadataWriteCompleted",
+    "metadataWriteStarted",
     "occurredAt",
+    "safeProviderCode",
     "stage",
+    "storageUploadCompleted",
+    "storageUploadStarted",
+    "storageVerificationCompleted",
   ]);
   const serialized = JSON.stringify(entry);
   assert.doesNotMatch(serialized, /private|users\//);
@@ -492,16 +545,162 @@ await test("진단 로그에는 허용된 비민감 필드만 포함", () => {
 await test("모든 단계에 사용자 상태 문구가 있음", () => {
   for (const stage of [
     "preparing",
+    "calculating-sha",
     "uploading-storage",
     "verifying-storage",
     "writing-metadata",
     "cleaning-up",
+    "refreshing-list",
     "success",
     "failed",
     "aborted",
   ]) {
     assert.ok(getCloudBackupStageMessage(stage).length > 0);
   }
+});
+
+await test("Storage unauthorized는 업로드 실패 지점과 미생성을 보존", async () => {
+  const result = await runDiagnosticAttempt({
+    uploadJson: async () => { throw { code: "storage/unauthorized" }; },
+  });
+  const failure = createCloudBackupFailureDiagnostic(result.error, { attempt: result.attempt });
+  assert.equal(failure.category, "storage-unauthorized");
+  assert.equal(failure.safeProviderCode, "storage/unauthorized");
+  assert.equal(failure.attempt.failedStage, "storage-upload");
+  assert.equal(failure.attempt.lastCompletedStage, "sha-calculation");
+  assert.equal(failure.attempt.storageUploadStarted, true);
+  assert.equal(failure.attempt.storageUploadCompleted, false);
+  assert.equal(getCloudBackupStorageCreationLabel(failure.attempt), "완료되지 않음");
+  assert.equal(getCloudBackupCleanupLabel(failure.attempt), "필요 없음");
+  assert.equal(failure.retryAllowed, false);
+});
+
+await test("Storage metadata 조회 실패는 검증 지점과 cleanup 성공을 보존", async () => {
+  const result = await runDiagnosticAttempt({
+    getStorageMetadata: async () => { throw { code: "storage/unknown" }; },
+  });
+  const failure = createCloudBackupFailureDiagnostic(result.error, { attempt: result.attempt });
+  assert.equal(failure.category, "storage-verification-failed");
+  assert.equal(failure.attempt.failedStage, "storage-verification");
+  assert.equal(failure.attempt.storageUploadCompleted, true);
+  assert.equal(failure.attempt.storageVerificationCompleted, false);
+  assert.equal(failure.attempt.cleanupAttempted, true);
+  assert.equal(failure.attempt.cleanupSucceeded, true);
+  assert.equal(result.calls.deleted.length, 1);
+});
+
+await test("Firestore permission-denied는 목록 기록 실패와 cleanup 성공을 보존", async () => {
+  const result = await runDiagnosticAttempt({
+    createMetadata: async () => { throw { code: "permission-denied" }; },
+  });
+  const failure = createCloudBackupFailureDiagnostic(result.error, { attempt: result.attempt });
+  assert.equal(failure.category, "firestore-permission-denied");
+  assert.equal(failure.safeProviderCode, "permission-denied");
+  assert.equal(failure.attempt.failedStage, "firestore-metadata-write");
+  assert.equal(failure.attempt.storageVerificationCompleted, true);
+  assert.equal(failure.attempt.metadataWriteStarted, true);
+  assert.equal(failure.attempt.metadataWriteCompleted, false);
+  assert.equal(failure.attempt.cleanupSucceeded, true);
+  assert.equal(result.calls.deleted.length, 1);
+  assert.equal(failure.retryAllowed, false);
+});
+
+await test("Firestore invalid-argument는 metadata 검증 실패로 구분", async () => {
+  const result = await runDiagnosticAttempt({
+    createMetadata: async () => { throw { code: "invalid-argument" }; },
+  });
+  const failure = createCloudBackupFailureDiagnostic(result.error, { attempt: result.attempt });
+  assert.equal(failure.category, "metadata-validation-failed");
+  assert.equal(failure.safeProviderCode, undefined);
+  assert.equal(failure.retryAllowed, false);
+});
+
+await test("Firestore 실패 뒤 cleanup 실패는 별도 실패 지점과 재시도 차단", async () => {
+  const result = await runDiagnosticAttempt({
+    createMetadata: async () => { throw { code: "permission-denied" }; },
+    deleteStorageObject: async () => { throw { code: "storage/unknown" }; },
+  });
+  const failure = createCloudBackupFailureDiagnostic(result.error, { attempt: result.attempt });
+  assert.equal(failure.category, "cleanup-failed");
+  assert.equal(failure.attempt.failedStage, "storage-cleanup");
+  assert.equal(failure.attempt.cleanupAttempted, true);
+  assert.equal(failure.attempt.cleanupSucceeded, false);
+  assert.equal(failure.retryAllowed, false);
+});
+
+await test("명백한 Storage 네트워크 오류만 재시도 허용", async () => {
+  const result = await runDiagnosticAttempt({
+    uploadJson: async () => { throw { code: "storage/retry-limit-exceeded" }; },
+  });
+  const failure = createCloudBackupFailureDiagnostic(result.error, { attempt: result.attempt });
+  assert.equal(failure.category, "storage-network");
+  assert.equal(failure.retryAllowed, true);
+});
+
+await test("unauthenticated는 재시도하지 않고 인증 실패로 보존", async () => {
+  const result = await runDiagnosticAttempt({
+    uploadJson: async () => { throw { code: "unauthenticated" }; },
+  });
+  const failure = createCloudBackupFailureDiagnostic(result.error, { attempt: result.attempt });
+  assert.equal(failure.category, "unauthenticated");
+  assert.equal(failure.safeProviderCode, "unauthenticated");
+  assert.equal(failure.retryAllowed, false);
+});
+
+await test("시작 전 abort는 Storage 호출 없이 중단 지점을 보존", async () => {
+  const controller = new AbortController();
+  controller.abort();
+  const result = await runDiagnosticAttempt({}, { signal: controller.signal });
+  const failure = createCloudBackupFailureDiagnostic(result.error, { attempt: result.attempt });
+  assert.equal(failure.category, "aborted");
+  assert.equal(failure.attempt.failedStage, "abort");
+  assert.equal(failure.attempt.aborted, true);
+  assert.equal(result.calls.upload.length, 0);
+});
+
+await test("성공 진단은 Storage 검증과 Metadata 기록 완료를 보존", async () => {
+  const result = await runDiagnosticAttempt();
+  assert.equal(result.error, undefined);
+  assert.equal(result.attempt.storageUploadCompleted, true);
+  assert.equal(result.attempt.storageVerificationCompleted, true);
+  assert.equal(result.attempt.metadataWriteCompleted, true);
+  assert.equal(result.calls.metadata.length, 1);
+});
+
+await test("목록 갱신 실패는 저장 성공과 분리하고 재업로드를 차단", () => {
+  let attempt = createCloudBackupAttemptDiagnostic(new Date("2026-07-20T04:00:00Z"));
+  for (const stage of [
+    "calculating-sha",
+    "uploading-storage",
+    "verifying-storage",
+    "writing-metadata",
+    "success",
+    "refreshing-list",
+  ]) {
+    attempt = advanceCloudBackupAttemptDiagnostic(attempt, { stage });
+  }
+  const failure = createCloudBackupFailureDiagnostic(
+    new CloudBackupError("LIST_REFRESH_FAILED", "list", {
+      cause: { code: "unavailable" },
+      operation: "list-refresh",
+    }),
+    { attempt },
+  );
+  assert.equal(failure.category, "list-refresh-failed");
+  assert.equal(failure.attempt.failedStage, "list-refresh");
+  assert.equal(failure.attempt.metadataWriteCompleted, true);
+  assert.equal(failure.retryAllowed, false);
+});
+
+await test("진단 복사 요약은 안전 필드만 포함", async () => {
+  const result = await runDiagnosticAttempt({
+    createMetadata: async () => { throw { code: "permission-denied", message: "users/private/backups/private.json" }; },
+  });
+  const failure = createCloudBackupFailureDiagnostic(result.error, { attempt: result.attempt });
+  const summary = createCloudBackupDiagnosticSummary(failure.attempt);
+  assert.match(summary, /실패 지점: firestore-metadata-write/);
+  assert.match(summary, /오류 범주: firestore-permission-denied/);
+  assert.doesNotMatch(summary, /user-a|private|users\/|backupId|projectId|bucket|api|sha256/i);
 });
 
 await test("최근 목록은 uploadedAt 최신순", async () => {
@@ -598,7 +797,10 @@ await test("미허용·확인 중·네트워크·permission-denied UI를 구분"
 });
 
 await test("UI에 다운로드·복원·병합·삭제 버튼 없음", () => {
-  assert.doesNotMatch(panelSource, /<button[^>]*>[\s\S]*?(다운로드|복원|병합|적용|백업 삭제)[\s\S]*?<\/button>/);
+  assert.doesNotMatch(
+    panelSource,
+    /<button\b[^>]*>(?:(?!<\/button>)[\s\S])*?(다운로드|복원|병합|적용|백업 삭제)(?:(?!<\/button>)[\s\S])*?<\/button>/,
+  );
 });
 
 await test("업로드 중 중복 클릭은 handler와 disabled 상태에서 이중 차단", () => {
@@ -626,7 +828,7 @@ await test("성공 뒤 최근 목록은 한 번만 새로고침", () => {
     panelSource.indexOf("async function handleUpload"),
     panelSource.indexOf("const missingConfiguration"),
   );
-  assert.equal((handler.match(/await refreshBackups\(user\)/g) ?? []).length, 1);
+  assert.equal((handler.match(/await refreshBackups\(user, \{ showError: false \}\)/g) ?? []).length, 1);
 });
 
 await test("패널 로그에 전체 Storage 경로와 식별자를 출력하지 않음", () => {
@@ -647,12 +849,31 @@ await test("진단 UI가 성공 요약과 정리 실패 재시도 차단을 표�
   assert.match(panelSource, /파일 크기/);
   assert.match(panelSource, /uploadFeedback\.failure\.retryAllowed/);
   assert.match(panelSource, /getCloudBackupFailureGuidance/);
+  assert.match(panelSource, /CloudBackupFailureDetails/);
+  assert.match(panelSource, /진단 정보 복사/);
+  assert.match(panelSource, /실패 지점/);
+  assert.match(panelSource, /Storage 파일 생성/);
+  assert.match(panelSource, /실패 파일 정리/);
+});
+
+await test("진단 상태와 복사 내용은 브라우저 저장소에 기록하지 않음", () => {
+  const diagnosticSource = `${panelSource}\n${serviceSource}`;
+  assert.doesNotMatch(diagnosticSource, /localStorage\.(?:setItem|removeItem)/);
+  assert.doesNotMatch(diagnosticSource, /sessionStorage\.(?:setItem|removeItem)/);
+  assert.match(panelSource, /useRef<CloudBackupAttemptDiagnostic \| null>/);
+});
+
+await test("권한 오류는 재시도 차단하고 네트워크 오류만 재시도 허용", () => {
+  assert.match(serviceSource, /category === "network-offline"[\s\S]*?category === "storage-network"[\s\S]*?category === "firestore-network"/);
+  assert.doesNotMatch(serviceSource, /category === "storage-unauthorized"[\s\S]{0,80}return true/);
+  assert.doesNotMatch(serviceSource, /category === "firestore-permission-denied"[\s\S]{0,80}return true/);
 });
 
 await test("업로드 진단은 모바일 700px 이하에서 2열 요약과 전체 폭 재시도 사용", () => {
   assert.match(stylesSource, /\.cloud-backup-upload-status\s*\{[\s\S]*?overflow-wrap: anywhere/);
   assert.match(stylesSource, /@media \(max-width: 700px\)[\s\S]*?\.cloud-backup-success-summary\s*\{\s*grid-template-columns: repeat\(2/);
-  assert.match(stylesSource, /@media \(max-width: 700px\)[\s\S]*?\.cloud-backup-retry-button\s*\{\s*width: 100%/);
+  assert.match(stylesSource, /@media \(max-width: 700px\)[\s\S]*?\.cloud-backup-retry-button,[\s\S]*?\.cloud-backup-copy-diagnostic-button\s*\{\s*width: 100%/);
+  assert.match(stylesSource, /@media \(max-width: 380px\)[\s\S]*?\.cloud-backup-failure-summary\s*\{\s*grid-template-columns: 1fr/);
 });
 
 await test("업로드 진단은 라이트·다크 공통 상태 토큰을 사용", () => {

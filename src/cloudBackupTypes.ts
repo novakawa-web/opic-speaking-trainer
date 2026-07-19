@@ -55,7 +55,8 @@ export type CloudBackupGateway = {
     storagePath: string,
     bytes: Uint8Array,
     customMetadata: Record<string, string>,
-  ): Promise<CloudStorageUploadResult>;
+  ): Promise<void>;
+  getStorageMetadata(storagePath: string): Promise<CloudStorageUploadResult>;
   createMetadata(
     uid: string,
     backupId: string,

@@ -10,15 +10,23 @@ import {
   subscribeToCloudUser,
 } from "../services/cloudAuth.ts";
 import {
+  advanceCloudBackupAttemptDiagnostic,
   createCloudBackupDiagnosticLogEntry,
+  createCloudBackupDiagnosticSummary,
+  createCloudBackupAttemptDiagnostic,
   createAndUploadCloudBackup,
   createCloudBackupFailureDiagnostic,
   CloudBackupError,
+  getCloudBackupAttemptStageLabel,
+  getCloudBackupCleanupLabel,
   getCloudBackupErrorMessage,
+  getCloudBackupFailureCategoryLabel,
   getCloudBackupFailureGuidance,
+  getCloudBackupStorageCreationLabel,
   getCloudBackupStageMessage,
   listRecentCloudBackups,
   MAX_DEVICE_LABEL_LENGTH,
+  type CloudBackupAttemptDiagnostic,
   type CloudBackupFailureDiagnostic,
   type CloudBackupProgress,
   type CloudBackupUploadStage,
@@ -56,6 +64,7 @@ type UploadFeedback = {
   stage: CloudBackupUploadStage;
   byteSize?: number;
   failure?: CloudBackupFailureDiagnostic;
+  listRefreshFailure?: CloudBackupFailureDiagnostic;
   success?: UploadSuccessSummary;
 };
 
@@ -68,6 +77,66 @@ function logCloudBackupDiagnostic(
   console.info(
     "[OPIc Cloud Backup]",
     createCloudBackupDiagnosticLogEntry(value),
+  );
+}
+
+function CloudBackupFailureDetails({
+  failure,
+  copyMessage,
+  onCopy,
+}: {
+  failure: CloudBackupFailureDiagnostic;
+  copyMessage: string;
+  onCopy: () => void;
+}) {
+  const diagnostic = failure.attempt;
+  return (
+    <>
+      <dl className="cloud-backup-failure-summary">
+        <div>
+          <dt>실패 지점</dt>
+          <dd>{getCloudBackupAttemptStageLabel(diagnostic.failedStage ?? diagnostic.currentStage)}</dd>
+        </div>
+        <div>
+          <dt>마지막 완료 단계</dt>
+          <dd>
+            {diagnostic.lastCompletedStage
+              ? getCloudBackupAttemptStageLabel(diagnostic.lastCompletedStage)
+              : "없음"}
+          </dd>
+        </div>
+        <div>
+          <dt>오류 분류</dt>
+          <dd>{getCloudBackupFailureCategoryLabel(failure.category)}</dd>
+        </div>
+        {failure.safeProviderCode && (
+          <div>
+            <dt>안전 오류 코드</dt>
+            <dd><code>{failure.safeProviderCode}</code></dd>
+          </div>
+        )}
+        <div>
+          <dt>Storage 파일 생성</dt>
+          <dd>{getCloudBackupStorageCreationLabel(diagnostic)}</dd>
+        </div>
+        <div>
+          <dt>실패 파일 정리</dt>
+          <dd>{getCloudBackupCleanupLabel(diagnostic)}</dd>
+        </div>
+      </dl>
+      <button
+        type="button"
+        className="secondary-button cloud-backup-copy-diagnostic-button"
+        onClick={onCopy}
+      >
+        진단 정보 복사
+      </button>
+      {copyMessage && (
+        <p className="cloud-backup-copy-result" role="status" aria-live="polite">
+          {copyMessage}
+        </p>
+      )}
+    </>
   );
 }
 
@@ -86,28 +155,56 @@ export default function CloudBackupPanel({
   const [accessStatus, setAccessStatus] = useState<CloudBackupAccessStatus>("idle");
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [diagnosticCopyMessage, setDiagnosticCopyMessage] = useState("");
   const [uploadFeedback, setUploadFeedback] = useState<UploadFeedback>(
     INITIAL_UPLOAD_FEEDBACK,
   );
   const mountedRef = useRef(true);
   const uploadAbortRef = useRef<AbortController | null>(null);
+  const uploadAttemptRef = useRef<CloudBackupAttemptDiagnostic | null>(null);
   const listRequestIdRef = useRef(0);
   const accessRequestIdRef = useRef(0);
 
-  async function refreshBackups(nextUser: CloudBackupUser) {
+  async function refreshBackups(
+    nextUser: CloudBackupUser,
+    options: { showError?: boolean } = {},
+  ): Promise<{ ok: true } | { ok: false; error: unknown }> {
     const requestId = ++listRequestIdRef.current;
     setIsLoadingList(true);
     try {
       const gateway = await getFirebaseCloudBackupGateway();
       const result = await listRecentCloudBackups(gateway, nextUser.uid);
-      if (!mountedRef.current || requestId !== listRequestIdRef.current) return;
+      if (!mountedRef.current || requestId !== listRequestIdRef.current) {
+        return { ok: false, error: new Error("stale-list-request") };
+      }
       setBackups(result);
+      return { ok: true };
     } catch (error) {
-      if (!mountedRef.current || requestId !== listRequestIdRef.current) return;
-      setErrorMessage(`백업 목록을 불러오지 못했습니다. ${getCloudBackupErrorMessage(error)}`);
+      if (!mountedRef.current || requestId !== listRequestIdRef.current) {
+        return { ok: false, error };
+      }
+      if (options.showError !== false) {
+        setErrorMessage(`백업 목록을 불러오지 못했습니다. ${getCloudBackupErrorMessage(error)}`);
+      }
+      return { ok: false, error };
     } finally {
       if (mountedRef.current && requestId === listRequestIdRef.current) {
         setIsLoadingList(false);
+      }
+    }
+  }
+
+  async function copyDiagnostic(diagnostic: CloudBackupAttemptDiagnostic) {
+    setDiagnosticCopyMessage("");
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("clipboard-unavailable");
+      await navigator.clipboard.writeText(createCloudBackupDiagnosticSummary(diagnostic));
+      if (mountedRef.current) setDiagnosticCopyMessage("진단 정보를 복사했습니다.");
+    } catch {
+      if (mountedRef.current) {
+        setDiagnosticCopyMessage(
+          "진단 정보를 복사하지 못했습니다. 화면의 진단 내용을 직접 전달해 주세요.",
+        );
       }
     }
   }
@@ -225,10 +322,14 @@ export default function CloudBackupPanel({
     ) {
       return;
     }
+    setDiagnosticCopyMessage("");
+    uploadAttemptRef.current = createCloudBackupAttemptDiagnostic();
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       const failure = createCloudBackupFailureDiagnostic(new Error("offline"), {
         online: false,
+        attempt: uploadAttemptRef.current,
       });
+      uploadAttemptRef.current = failure.attempt;
       setUploadFeedback({ stage: failure.stage, failure });
       logCloudBackupDiagnostic(failure);
       return;
@@ -250,7 +351,7 @@ export default function CloudBackupPanel({
         throw new CloudBackupError(
           "BACKUP_CREATION_FAILED",
           "기기 백업 데이터를 준비하지 못했습니다.",
-          { cause: error },
+          { cause: error, operation: "backup-preparation" },
         );
       }
       const gateway = await getFirebaseCloudBackupGateway();
@@ -264,6 +365,10 @@ export default function CloudBackupPanel({
           onProgress(progress) {
             byteSize = progress.byteSize ?? byteSize;
             if (!mountedRef.current || uploadAbortRef.current !== controller) return;
+            uploadAttemptRef.current = advanceCloudBackupAttemptDiagnostic(
+              uploadAttemptRef.current ?? createCloudBackupAttemptDiagnostic(),
+              progress,
+            );
             setUploadFeedback({
               stage: progress.stage,
               ...(typeof progress.byteSize === "number"
@@ -275,23 +380,68 @@ export default function CloudBackupPanel({
         },
       );
       if (!mountedRef.current || controller.signal.aborted) return;
-      setUploadFeedback({
-        stage: "success",
+      const success = {
+        createdAt: prepared.metadata.exportedAt,
+        cardCount: prepared.metadata.summary.cardCount,
         byteSize: prepared.byteSize,
-        success: {
-          createdAt: prepared.metadata.exportedAt,
-          cardCount: prepared.metadata.summary.cardCount,
-          byteSize: prepared.byteSize,
-          deviceLabel: prepared.metadata.deviceLabel || "이름 없는 기기",
-        },
+        deviceLabel: prepared.metadata.deviceLabel || "이름 없는 기기",
+      };
+      const refreshingProgress: CloudBackupProgress = {
+        stage: "refreshing-list",
+        byteSize: prepared.byteSize,
+      };
+      uploadAttemptRef.current = advanceCloudBackupAttemptDiagnostic(
+        uploadAttemptRef.current ?? createCloudBackupAttemptDiagnostic(),
+        refreshingProgress,
+      );
+      setUploadFeedback({
+        stage: "refreshing-list",
+        byteSize: prepared.byteSize,
+        success,
       });
-      await refreshBackups(user);
+      logCloudBackupDiagnostic(refreshingProgress);
+      const refreshResult = await refreshBackups(user, { showError: false });
+      if (!mountedRef.current || controller.signal.aborted) return;
+      if (!refreshResult.ok) {
+        const listFailure = createCloudBackupFailureDiagnostic(
+          new CloudBackupError(
+            "LIST_REFRESH_FAILED",
+            "최근 백업 목록을 갱신하지 못했습니다.",
+            { cause: refreshResult.error, operation: "list-refresh" },
+          ),
+          {
+            online: typeof navigator === "undefined" ? undefined : navigator.onLine,
+            byteSize: prepared.byteSize,
+            attempt: uploadAttemptRef.current ?? undefined,
+          },
+        );
+        uploadAttemptRef.current = listFailure.attempt;
+        setUploadFeedback({
+          stage: "success",
+          byteSize: prepared.byteSize,
+          success,
+          listRefreshFailure: listFailure,
+        });
+        logCloudBackupDiagnostic(listFailure);
+      } else {
+        const successProgress: CloudBackupProgress = {
+          stage: "success",
+          byteSize: prepared.byteSize,
+        };
+        uploadAttemptRef.current = advanceCloudBackupAttemptDiagnostic(
+          uploadAttemptRef.current ?? createCloudBackupAttemptDiagnostic(),
+          successProgress,
+        );
+        setUploadFeedback({ stage: "success", byteSize: prepared.byteSize, success });
+      }
     } catch (error) {
       if (!mountedRef.current) return;
       const failure = createCloudBackupFailureDiagnostic(error, {
         online: typeof navigator === "undefined" ? undefined : navigator.onLine,
         byteSize,
+        attempt: uploadAttemptRef.current ?? undefined,
       });
+      uploadAttemptRef.current = failure.attempt;
       setUploadFeedback({
         stage: failure.stage,
         ...(typeof byteSize === "number" ? { byteSize } : {}),
@@ -423,6 +573,11 @@ export default function CloudBackupPanel({
               {uploadFeedback.failure && (
                 <>
                   <p>{getCloudBackupFailureGuidance(uploadFeedback.failure)}</p>
+                  <CloudBackupFailureDetails
+                    failure={uploadFeedback.failure}
+                    copyMessage={diagnosticCopyMessage}
+                    onCopy={() => void copyDiagnostic(uploadFeedback.failure!.attempt)}
+                  />
                   {uploadFeedback.failure.retryAllowed && (
                     <button
                       type="button"
@@ -437,24 +592,39 @@ export default function CloudBackupPanel({
                 </>
               )}
               {uploadFeedback.success && (
-                <dl className="cloud-backup-success-summary">
-                  <div>
-                    <dt>생성 시각</dt>
-                    <dd>{new Date(uploadFeedback.success.createdAt).toLocaleString("ko-KR")}</dd>
-                  </div>
-                  <div>
-                    <dt>카드</dt>
-                    <dd>{uploadFeedback.success.cardCount}장</dd>
-                  </div>
-                  <div>
-                    <dt>파일 크기</dt>
-                    <dd>{formatBytes(uploadFeedback.success.byteSize)}</dd>
-                  </div>
-                  <div>
-                    <dt>기기</dt>
-                    <dd>{uploadFeedback.success.deviceLabel}</dd>
-                  </div>
-                </dl>
+                <>
+                  <dl className="cloud-backup-success-summary">
+                    <div>
+                      <dt>생성 시각</dt>
+                      <dd>{new Date(uploadFeedback.success.createdAt).toLocaleString("ko-KR")}</dd>
+                    </div>
+                    <div>
+                      <dt>카드</dt>
+                      <dd>{uploadFeedback.success.cardCount}장</dd>
+                    </div>
+                    <div>
+                      <dt>파일 크기</dt>
+                      <dd>{formatBytes(uploadFeedback.success.byteSize)}</dd>
+                    </div>
+                    <div>
+                      <dt>기기</dt>
+                      <dd>{uploadFeedback.success.deviceLabel}</dd>
+                    </div>
+                  </dl>
+                  {uploadFeedback.listRefreshFailure && (
+                    <div className="cloud-backup-list-refresh-warning">
+                      <strong>백업은 완료되었지만 최근 목록을 갱신하지 못했습니다.</strong>
+                      <p>{getCloudBackupFailureGuidance(uploadFeedback.listRefreshFailure)}</p>
+                      <CloudBackupFailureDetails
+                        failure={uploadFeedback.listRefreshFailure}
+                        copyMessage={diagnosticCopyMessage}
+                        onCopy={() =>
+                          void copyDiagnostic(uploadFeedback.listRefreshFailure!.attempt)
+                        }
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

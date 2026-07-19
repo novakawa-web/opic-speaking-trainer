@@ -296,11 +296,11 @@ npm.cmd run test:pwa
 | `test:first-line-mock` | 첫 문장 전용 카드·모의고사·모바일 이동 | 18 |
 | `test:home-layout` | 홈 공통 레일·반응형 구조 | 10 |
 | `test:card-management` | 카드 수정·보관·완전 삭제·공통 toast·JSON 호환 | 31 |
-| `test:cloud-backup` | 기능 플래그·production 설정·Actions Variables·수동 업로드·allowlist·무결성·단계별 진단·부분 실패 정리 | 67 |
+| `test:cloud-backup` | 기능 플래그·production 설정·Actions Variables·수동 업로드·allowlist·무결성·실패 지점 보존·부분 실패 정리 | 81 |
 | `test:cloud-rules` | Firestore/Storage Emulator Security Rules와 allowlist | 22 |
 | `test:ui-system` | compact UI·복구 후 이동·간격 체계 | 21 |
 
-- 2026-07-19 업로드 진단 브랜치 기준 `npm.cmd run test:all`: **531/531 통과**. `test:cloud-rules`는 로컬 Emulator에서 별도로 **22/22 통과**해 고유 검증 합계는 **553개**다.
+- 2026-07-19 실패 지점 보존 브랜치 기준 `npm.cmd run test:all`: **544/544 통과**. `test:cloud-rules`는 로컬 Emulator에서 별도로 **22/22 통과**해 고유 검증 합계는 **566개**다.
 - 같은 확인에서 `npm.cmd run build`: TypeScript와 Vite production build 통과.
 - 같은 확인에서 `npm.cmd run test:pwa`: Pages/PWA 산출물 검증 통과. `manifest.webmanifest`, `sw.js`, `404.html`이 생성됨.
 - `test:pwa`는 `test:all`에 포함되지 않으므로 build 후 별도로 실행한다.
@@ -311,14 +311,14 @@ npm.cmd run test:pwa
 - trigger 정의는 `main` push와 수동 `workflow_dispatch`를 유지하지만, Pages build/deploy job은 `main` push에서만 실행하도록 guard한다. feature 브랜치와 수동 실행은 운영 Pages를 배포하지 않는다.
 - pipeline: checkout -> Node LTS -> `npm ci` -> `test:all` -> build -> `test:pwa` -> Pages artifact upload -> deploy.
 - production build 단계는 Firebase 공개 Web config를 GitHub Repository Variables에서만 전달받는다. 자세한 등록 목록과 안전 조건은 `CLOUD_BACKUP_OPERATIONS.md`에 기록한다.
-- 최신 확인 운영 배포 run: [29683742821](https://github.com/novakawa-web/opic-speaking-trainer/actions/runs/29683742821), commit `2f26cfdaa74063ae14747e2673e41e62720bb9cb`, 성공.
+- 최신 확인 운영 배포 run: [29689267443](https://github.com/novakawa-web/opic-speaking-trainer/actions/runs/29689267443), commit `1a1db04fec683b2c6d5c9d8f7774ce0557d10154`, 성공.
 - 최신 배포 상태와 커밋은 GitHub Actions의 `main` 최신 run과 `git log -1`을 source of truth로 확인한다.
 - 2026-07-18 확인 시 공개 배포 URL은 HTTP 200을 반환했다.
 - service worker 때문에 이전 bundle이 보이면 앱의 새 버전 안내를 적용하거나 페이지를 다시 연 뒤 검증한다.
 
 ## 9. Git 현재 상태
 
-- 현재 작업 브랜치: `feature/cloud-backup-upload-diagnostics` (기준 `main` 커밋 `2f26cfdaa74063ae14747e2673e41e62720bb9cb`에서 분기)
+- 현재 작업 브랜치: `feature/cloud-backup-failure-stage` (기준 `main` 커밋 `1a1db04fec683b2c6d5c9d8f7774ce0557d10154`에서 분기)
 - 운영 브랜치와 Pages 배포 기준: `main`, `origin/main`
 - remote: `https://github.com/novakawa-web/opic-speaking-trainer.git`
 - 이 문서는 저장소 코드와 함께 버전 관리한다. 최신 커밋은 `git log -1 --oneline`, 동기화 여부는 `git status --short --branch`와 `git rev-parse origin/main`으로 확인한다.
@@ -364,7 +364,8 @@ npm.cmd run test:pwa
 27. main의 allowlist 구현은 `cloudBackupAllowedUsers/{uid}`의 `enabled === true`인 사용자에게만 Firestore metadata와 Storage JSON 백업 접근을 허용한다. 자기 allowlist 문서 단건 조회 외의 클라이언트 접근은 거부하며 Emulator Rules 22개, 개발 Firebase Rules 배포와 허용 계정 로그인 검증을 완료했다.
 28. `feature/cloud-backup-upload-diagnostics`는 준비·Storage 업로드·검증·Firestore metadata 기록·실패 파일 정리·성공/실패/중단 단계를 업로드 버튼 가까이에 표시한다. 실패는 준비/업로드/검증/metadata/정리/오프라인/권한/중단/알 수 없음으로 구분하고 자동 재시도하지 않는다. 개발 로그에는 단계·범주·시각·정리 결과·byteSize·일반 오류 코드만 남긴다.
 29. 업로드 진단 UI와 부분 실패 흐름은 자동 테스트와 로컬 Emulator에서 검증했지만 실제 운영 Firebase의 새 백업 성공 경로는 아직 검증하지 않았다. 운영에서 실수로 누른 1회 시도는 Firestore metadata와 Storage 파일을 만들지 않았으며 당시 콘솔·네트워크 기록이 없어 중단 원인은 확정하지 않았다.
-현재 다음 단계는 진단 브랜치를 검토해 main에 병합·배포한 뒤, 사용자가 승인한 운영 합성 백업 1회로 단계 표시와 무결성을 확인하는 것이다.
+30. `feature/cloud-backup-failure-stage`는 시도별 진단을 메모리에만 유지하며 마지막 완료 단계, 실패 지점, Storage 생성·검증, Firestore metadata 기록, cleanup 결과를 최종 실패 화면에 보존한다. Storage 업로드와 metadata 조회를 별도 호출로 나누고, 안전 코드 allowlist와 진단 정보 복사를 제공한다. 권한·인증·cleanup 오류는 재시도를 차단하고 명백한 네트워크 오류만 사용자 재시도를 허용한다.
+현재 다음 단계는 별도 승인으로 이 브랜치를 `main`에 병합·배포한 뒤, 사용자가 승인한 운영 백업 1회에서 `진단 정보 복사` 결과로 Storage Rules 또는 Firestore Rules 실패 지점을 확인하는 것이다.
 
 ## 11. 보류하거나 하지 않기로 한 기능
 

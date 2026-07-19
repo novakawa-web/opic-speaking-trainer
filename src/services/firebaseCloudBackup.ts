@@ -109,11 +109,16 @@ async function createFirebaseCloudBackupGateway(): Promise<CloudBackupGateway> {
   return {
     async uploadJson(storagePath, bytes, customMetadata) {
       const storageReference = storageModule.ref(client.storage, storagePath);
-      const result = await storageModule.uploadBytes(storageReference, bytes, {
+      await storageModule.uploadBytes(storageReference, bytes, {
         contentType: CLOUD_BACKUP_CONTENT_TYPE,
         customMetadata,
       });
-      const metadata = await storageModule.getMetadata(result.ref);
+    },
+
+    async getStorageMetadata(storagePath) {
+      const metadata = await storageModule.getMetadata(
+        storageModule.ref(client.storage, storagePath),
+      );
       return {
         byteSize: metadata.size,
         contentType: metadata.contentType ?? null,
