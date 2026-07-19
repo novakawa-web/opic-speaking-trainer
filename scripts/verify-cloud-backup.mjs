@@ -59,6 +59,21 @@ function createFixtureBackup() {
   );
 }
 
+function createCompleteCloudEnvironment(overrides = {}) {
+  return {
+    VITE_CLOUD_BACKUP_ENABLED: "true",
+    VITE_FIREBASE_API_KEY: "test-api-key",
+    VITE_FIREBASE_AUTH_DOMAIN: "auth.example.test",
+    VITE_FIREBASE_PROJECT_ID: "test-project",
+    VITE_FIREBASE_STORAGE_BUCKET: "test-bucket.example.test",
+    VITE_FIREBASE_MESSAGING_SENDER_ID: "1234567890",
+    VITE_FIREBASE_APP_ID: "test-app-id",
+    VITE_FIREBASE_MEASUREMENT_ID: "test-measurement-id",
+    VITE_FIREBASE_USE_EMULATORS: "false",
+    ...overrides,
+  };
+}
+
 const fixedUuid = "550e8400-e29b-41d4-a716-446655440000";
 const fixedDigest = async () => new Uint8Array(32).fill(0xab).buffer;
 
@@ -99,6 +114,7 @@ await test("기능 플래그 기본값은 OFF", () => {
   const config = readCloudBackupConfiguration({});
   assert.equal(config.enabled, false);
   assert.equal(config.firebaseOptions, null);
+  assert.equal(config.useEmulators, false);
 });
 
 await test("OFF에서는 Firebase 설정 누락을 오류로 만들지 않음", () => {
@@ -108,24 +124,55 @@ await test("OFF에서는 Firebase 설정 누락을 오류로 만들지 않음", 
 
 await test("ON에서 누락된 공개 Web config를 모두 보고", () => {
   const config = readCloudBackupConfiguration({ VITE_CLOUD_BACKUP_ENABLED: "true" });
-  assert.equal(config.enabled, true);
-  assert.equal(config.missingKeys.length, 6);
+  assert.equal(config.enabled, false);
+  assert.equal(config.missingKeys.length, 7);
   assert.equal(config.firebaseOptions, null);
 });
 
 await test("완전한 공개 Web config를 정규화", () => {
-  const config = readCloudBackupConfiguration({
-    VITE_CLOUD_BACKUP_ENABLED: "true",
-    VITE_FIREBASE_API_KEY: " key ",
-    VITE_FIREBASE_AUTH_DOMAIN: "auth.example",
-    VITE_FIREBASE_PROJECT_ID: "project",
-    VITE_FIREBASE_STORAGE_BUCKET: "bucket",
-    VITE_FIREBASE_MESSAGING_SENDER_ID: "sender",
-    VITE_FIREBASE_APP_ID: "app",
-    VITE_FIREBASE_USE_EMULATORS: "false",
-  });
+  const config = readCloudBackupConfiguration(
+    createCompleteCloudEnvironment({ VITE_FIREBASE_API_KEY: " key " }),
+  );
+  assert.equal(config.enabled, true);
   assert.equal(config.firebaseOptions?.apiKey, "key");
+  assert.equal(config.firebaseOptions?.measurementId, "test-measurement-id");
   assert.equal(config.useEmulators, false);
+});
+
+await test("개발 환경은 Emulator를 명시적으로 true일 때만 사용", () => {
+  const config = readCloudBackupConfiguration(
+    createCompleteCloudEnvironment({ VITE_FIREBASE_USE_EMULATORS: "true" }),
+  );
+  assert.equal(config.enabled, true);
+  assert.equal(config.useEmulators, true);
+  assert.ok(config.firebaseOptions);
+});
+
+await test("production은 Emulator false가 명시된 완전한 설정만 활성화", () => {
+  const config = readCloudBackupConfiguration(
+    createCompleteCloudEnvironment({ PROD: true }),
+  );
+  assert.equal(config.enabled, true);
+  assert.equal(config.useEmulators, false);
+  assert.ok(config.firebaseOptions);
+});
+
+await test("production에서 Emulator true면 클라우드 기능을 차단", () => {
+  const config = readCloudBackupConfiguration(
+    createCompleteCloudEnvironment({ PROD: true, VITE_FIREBASE_USE_EMULATORS: "true" }),
+  );
+  assert.equal(config.enabled, false);
+  assert.equal(config.useEmulators, true);
+  assert.equal(config.firebaseOptions, null);
+});
+
+await test("production에서 Emulator 설정이 누락되면 클라우드 기능을 차단", () => {
+  const environment = createCompleteCloudEnvironment({ PROD: true });
+  delete environment.VITE_FIREBASE_USE_EMULATORS;
+  const config = readCloudBackupConfiguration(environment);
+  assert.equal(config.enabled, false);
+  assert.equal(config.useEmulators, false);
+  assert.equal(config.firebaseOptions, null);
 });
 
 await test("allowlist 문서가 없거나 enabled가 true가 아니면 미허용", () => {
@@ -335,6 +382,8 @@ const [
   firestoreRules,
   storageRules,
   gitignore,
+  workflowSource,
+  operationsGuide,
 ] = await Promise.all([
   readFile(new URL("../src/components/CloudBackupFeature.tsx", import.meta.url), "utf8"),
   readFile(new URL("../src/services/cloudBackup.ts", import.meta.url), "utf8"),
@@ -344,6 +393,8 @@ const [
   readFile(new URL("../firestore.rules", import.meta.url), "utf8"),
   readFile(new URL("../storage.rules", import.meta.url), "utf8"),
   readFile(new URL("../.gitignore", import.meta.url), "utf8"),
+  readFile(new URL("../.github/workflows/deploy-pages.yml", import.meta.url), "utf8"),
+  readFile(new URL("../CLOUD_BACKUP_OPERATIONS.md", import.meta.url), "utf8"),
 ]);
 
 await test("OFF일 때 lazy 패널을 렌더링하지 않음", () => {
@@ -423,6 +474,41 @@ await test("Storage 규칙은 Firestore allowlist enabled true를 요구", () =>
 await test("실제 환경 파일은 ignore하고 예제만 추적 가능", () => {
   assert.match(gitignore, /^\.env\.\*$/m);
   assert.match(gitignore, /^!\.env\.example$/m);
+});
+
+await test("Pages build는 Repository Variables 아홉 개만 전달", () => {
+  const variableNames = [
+    "VITE_CLOUD_BACKUP_ENABLED",
+    "VITE_FIREBASE_USE_EMULATORS",
+    "VITE_FIREBASE_API_KEY",
+    "VITE_FIREBASE_AUTH_DOMAIN",
+    "VITE_FIREBASE_PROJECT_ID",
+    "VITE_FIREBASE_STORAGE_BUCKET",
+    "VITE_FIREBASE_MESSAGING_SENDER_ID",
+    "VITE_FIREBASE_APP_ID",
+    "VITE_FIREBASE_MEASUREMENT_ID",
+  ];
+  for (const name of variableNames) {
+    assert.match(workflowSource, new RegExp(`${name}: \\$\\{\\{ vars\\.${name} \\}\\}`));
+  }
+  assert.doesNotMatch(workflowSource, /secrets\.VITE_/);
+});
+
+await test("Pages 배포 job은 main push에서만 실행", () => {
+  assert.match(workflowSource, /branches: \["main"\]/);
+  assert.match(workflowSource, /workflow_dispatch:/);
+  assert.match(
+    workflowSource,
+    /if: github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'/,
+  );
+});
+
+await test("운영 문서는 공개 Variables와 금지 비밀정보를 구분", () => {
+  assert.match(operationsGuide, /Settings > Secrets and variables > Actions > Variables/);
+  assert.match(operationsGuide, /Firebase Web config는 브라우저 번들에 포함되는 공개 식별자/);
+  assert.match(operationsGuide, /service account JSON/);
+  assert.match(operationsGuide, /production 빌드에서 `VITE_FIREBASE_USE_EMULATORS`가 정확히 `false`/);
+  assert.match(operationsGuide, /localStorage는 계속 유일한 학습 데이터 원본/);
 });
 
 console.log(`\nCloud backup verification: ${passed}/${passed} passed`);

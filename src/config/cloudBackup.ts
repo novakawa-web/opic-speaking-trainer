@@ -5,17 +5,19 @@ export const CLOUD_BACKUP_ENV_KEYS = [
   "VITE_FIREBASE_STORAGE_BUCKET",
   "VITE_FIREBASE_MESSAGING_SENDER_ID",
   "VITE_FIREBASE_APP_ID",
+  "VITE_FIREBASE_MEASUREMENT_ID",
 ] as const;
 
 export type CloudBackupEnvironment = Partial<
   Record<
     | "VITE_CLOUD_BACKUP_ENABLED"
-    | "VITE_FIREBASE_MEASUREMENT_ID"
     | "VITE_FIREBASE_USE_EMULATORS"
     | (typeof CLOUD_BACKUP_ENV_KEYS)[number],
     string
   >
->;
+> & {
+  PROD?: boolean;
+};
 
 export type CloudBackupConfiguration = {
   enabled: boolean;
@@ -39,11 +41,14 @@ function normalize(value: string | undefined) {
 export function readCloudBackupConfiguration(
   environment: CloudBackupEnvironment,
 ): CloudBackupConfiguration {
-  const enabled = normalize(environment.VITE_CLOUD_BACKUP_ENABLED).toLowerCase() === "true";
-  const useEmulators =
-    normalize(environment.VITE_FIREBASE_USE_EMULATORS).toLowerCase() !== "false";
+  const requested =
+    normalize(environment.VITE_CLOUD_BACKUP_ENABLED).toLowerCase() === "true";
+  const emulatorSetting = normalize(
+    environment.VITE_FIREBASE_USE_EMULATORS,
+  ).toLowerCase();
+  const useEmulators = emulatorSetting === "true";
 
-  if (!enabled) {
+  if (!requested) {
     return {
       enabled: false,
       useEmulators,
@@ -57,9 +62,20 @@ export function readCloudBackupConfiguration(
   );
   if (missingKeys.length > 0) {
     return {
-      enabled: true,
+      enabled: false,
       useEmulators,
       missingKeys: [...missingKeys],
+      firebaseOptions: null,
+    };
+  }
+
+  // Production must opt out of the local Emulator explicitly. Missing or
+  // accidentally true settings keep the cloud feature completely disabled.
+  if (environment.PROD === true && emulatorSetting !== "false") {
+    return {
+      enabled: false,
+      useEmulators,
+      missingKeys: [],
       firebaseOptions: null,
     };
   }
@@ -76,7 +92,7 @@ export function readCloudBackupConfiguration(
       storageBucket: normalize(environment.VITE_FIREBASE_STORAGE_BUCKET),
       messagingSenderId: normalize(environment.VITE_FIREBASE_MESSAGING_SENDER_ID),
       appId: normalize(environment.VITE_FIREBASE_APP_ID),
-      ...(measurementId ? { measurementId } : {}),
+      measurementId,
     },
   };
 }
