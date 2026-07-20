@@ -11,6 +11,7 @@ import {
 import { EMPTY_SAVED_PASSAGE_DATASET } from "../src/utils/savedPassageStorage.ts";
 import { EMPTY_PERSONAL_MEMO_DATASET } from "../src/utils/personalMemoStorage.ts";
 import { readCloudBackupConfiguration } from "../src/config/cloudBackup.ts";
+import { getCloudBackupAccountIdentity } from "../src/utils/cloudBackupAccount.ts";
 import {
   CLOUD_BACKUP_ACCESS_DENIED_MESSAGE,
   classifyCloudBackupAccessError,
@@ -837,10 +838,31 @@ await test("패널 로그에 전체 Storage 경로와 식별자를 출력하지 
   assert.match(panelSource, /createCloudBackupDiagnosticLogEntry/);
 });
 
-await test("계정 카드와 진단 UI에 이메일·UID를 렌더링하지 않음", () => {
-  assert.doesNotMatch(panelSource, /\{user\.email\}/);
+await test("계정 카드는 이름과 이메일의 표시 우선순위를 안전하게 적용", () => {
   assert.doesNotMatch(panelSource, />\s*\{user\.uid\}\s*</);
-  assert.match(panelSource, /return user\.displayName \|\| "Google 사용자"/);
+  assert.match(panelSource, /className="cloud-backup-account-email"/);
+  assert.deepEqual(
+    getCloudBackupAccountIdentity({ uid: "user-a", displayName: "  OPIc User  ", email: "user@example.test" }),
+    { primary: "OPIc User", secondary: "user@example.test" },
+  );
+  assert.deepEqual(
+    getCloudBackupAccountIdentity({ uid: "user-a", displayName: null, email: "user@example.test" }),
+    { primary: "user@example.test", secondary: null },
+  );
+  assert.deepEqual(
+    getCloudBackupAccountIdentity({ uid: "user-a", displayName: "OPIc User", email: null }),
+    { primary: "OPIc User", secondary: null },
+  );
+  assert.deepEqual(
+    getCloudBackupAccountIdentity({ uid: "user-a", displayName: null, email: null }),
+    { primary: "Google 사용자", secondary: null },
+  );
+});
+
+await test("계정 이메일은 표시 전용이며 저장·백업·진단 정보에 포함되지 않음", () => {
+  assert.doesNotMatch(panelSource, /(?:localStorage|sessionStorage)\.setItem\([^)]*email/s);
+  assert.doesNotMatch(serviceSource, /(?:metadata|diagnostic)[\s\S]{0,100}email/i);
+  assert.doesNotMatch(panelSource, /console\.(?:error|info|warn)\([^)]*email/s);
 });
 
 await test("진단 UI가 성공 요약과 정리 실패 재시도 차단을 표시", () => {

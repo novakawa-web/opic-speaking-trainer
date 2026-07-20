@@ -42,6 +42,7 @@ import {
   getFirebaseCloudBackupGateway,
 } from "../services/firebaseCloudBackup.ts";
 import type { AppBackupV1 } from "../utils/appBackup.ts";
+import { getCloudBackupAccountIdentity } from "../utils/cloudBackupAccount.ts";
 
 function formatBytes(byteSize: number) {
   if (byteSize < 1024) return `${byteSize} B`;
@@ -49,8 +50,17 @@ function formatBytes(byteSize: number) {
   return `${(byteSize / 1024 / 1024).toFixed(2)} MB`;
 }
 
-function displayUser(user: CloudBackupUser) {
-  return user.displayName || "Google 사용자";
+function CloudBackupAccountIdentity({ user }: { user: CloudBackupUser }) {
+  const identity = getCloudBackupAccountIdentity(user);
+
+  return (
+    <>
+      <strong>{identity.primary}</strong>
+      {identity.secondary && (
+        <small className="cloud-backup-account-email">{identity.secondary}</small>
+      )}
+    </>
+  );
 }
 
 type UploadSuccessSummary = {
@@ -505,7 +515,7 @@ export default function CloudBackupPanel({
           <div className="cloud-backup-account-card is-signed-in">
             <div className="cloud-backup-account-copy">
               <span>로그인됨</span>
-              <strong>{displayUser(user)}</strong>
+              <CloudBackupAccountIdentity user={user} />
             </div>
             <button type="button" className="secondary-button" onClick={() => void handleLogout()}>
               로그아웃
