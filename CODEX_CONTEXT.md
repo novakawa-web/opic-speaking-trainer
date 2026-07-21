@@ -2,9 +2,9 @@
 
 > 마지막 확인: 2026-07-21 (Asia/Seoul)
 >
-> 기준 브랜치: `main`
+> 기준 브랜치: `feature/storage-transaction-foundation` (기준 main: `f17cccc18e41bf1fcae74824f4c7abf57f5dd5b7`)
 >
-> 기준 커밋: `cf1ce51cd19ec2781e229150ab36b2051d030926`
+> 기준 커밋: `f17cccc18e41bf1fcae74824f4c7abf57f5dd5b7`
 
 이 문서는 새 Codex 대화에서 가장 먼저 읽는 현재 코드 구조와 작업 규칙의 source of truth다. 프로젝트 소개와 실행 방법은 [README.md](README.md), Firebase 운영 절차는 [CLOUD_BACKUP_OPERATIONS.md](CLOUD_BACKUP_OPERATIONS.md)를 우선한다.
 
@@ -17,7 +17,7 @@
 - production Vite base는 `/opic-speaking-trainer/`, 개발 base는 `/`다.
 - 기본 카드 소스는 12장이지만 활성 카드 데이터셋은 TSV 사용에 따라 달라진다. 운영 카드 수를 코드 상수처럼 문서화하지 않는다.
 - 2026-07-21 확인 시 운영 URL, `manifest.webmanifest`, `sw.js`, `404.html`은 HTTP 200이었다.
-- 최신 확인 Pages workflow는 commit `cf1ce51cd19ec2781e229150ab36b2051d030926`에서 성공했다. `test:all` 545/545와 PWA/Pages 검증이 통과했다.
+- 최신 확인 Pages workflow는 commit `f17cccc18e41bf1fcae74824f4c7abf57f5dd5b7`에서 성공했다. 이 feature 브랜치에서는 독립 storage transaction 검증 30개를 추가해 `test:all`이 575개가 되며, 아직 운영 코드에는 연결하지 않는다.
 
 ## 2. 구현된 사용자 흐름
 
@@ -133,7 +133,9 @@
 
 현재 `src/App.tsx`의 카드 완전 삭제와 실행 취소는 여러 localStorage/sessionStorage saver를 순서대로 호출한다. 일부 saver는 저장 예외를 던지고 일부는 내부에서 삼키므로, quota 또는 저장소 실패 시 일부 키만 변경되거나 React 메모리와 저장소가 달라질 수 있다.
 
-다음 우선 작업은 공통 raw storage transaction 경계를 도입하는 것이다.
+`src/utils/storageTransaction.ts`에 공통 raw storage transaction 기반을 추가했다. 호출자가 전달한 storage 인스턴스와 key를 raw string 또는 `null`로 snapshot하고, mutation 순서를 유지해 적용하며, 실패 시 snapshot 전체를 역순으로 복원하는 앱 수준 보상 rollback이다. Web Storage를 ACID 데이터베이스로 간주하지 않으며 rollback 일부 실패도 별도로 보고한다.
+
+현재 utility는 카드 삭제, 삭제 실행 취소, AppBackupV1 복구, 카드 수정·보관과 React 상태에 연결하지 않았다. 다음 적용 티켓에서 다음 순서를 지켜야 한다.
 
 1. 관련 키 원문 snapshot
 2. 모든 다음 값 사전 계산·검증·직렬화
@@ -185,10 +187,11 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 
 ### 현재 검증 기준
 
-`package.json`의 `test:all`은 다음 15개 스크립트를 순서대로 실행하며 최신 main Actions에서 545/545가 통과했다.
+`package.json`의 `test:all`은 다음 16개 스크립트를 순서대로 실행한다. 기준 main의 545개에 독립 storage transaction 검증 30개가 추가되어 이 feature 브랜치의 합계는 575개다.
 
 | 명령 | 개수 |
 | --- | ---: |
+| `test:storage-transaction` | 30 |
 | `test:backup` | 33 |
 | `test:my-answers` | 19 |
 | `test:memos` | 28 |
