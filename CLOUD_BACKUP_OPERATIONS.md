@@ -27,7 +27,7 @@
 - 자동 업로드와 자동 재시도
 - 자동 동기화
 
-localStorage가 계속 유일한 학습 데이터 원본이다. 클라우드 파일은 사용자가 명시적으로 만든 복사본이며 앱에 자동 적용되지 않는다.
+localStorage는 계속 유일한 학습 데이터 원본이다. 클라우드 파일은 사용자가 명시적으로 만든 복사본이며 앱에 자동 적용되지 않는다.
 
 ## 2. 정상 운영 절차
 
@@ -132,6 +132,8 @@ localStorage가 계속 유일한 학습 데이터 원본이다. 클라우드 파
 
 Firebase Web config는 브라우저 번들에 포함되는 공개 식별자이므로 GitHub Repository Variables에서 production build로 전달한다. 실제 값은 소스, workflow와 문서에 하드코딩하지 않는다.
 
+Repository Variables는 GitHub 저장소의 `Settings > Secrets and variables > Actions > Variables`에서 관리한다.
+
 필요한 변수 이름:
 
 - `VITE_CLOUD_BACKUP_ENABLED`
@@ -176,6 +178,8 @@ npm.cmd run test:cloud-rules
 1. `VITE_CLOUD_BACKUP_ENABLED=true`
 2. Firebase Web config 7개가 모두 존재
 3. production에서 `VITE_FIREBASE_USE_EMULATORS=false`
+
+production 빌드에서 `VITE_FIREBASE_USE_EMULATORS`가 정확히 `false`여야 하며, 다른 값이거나 누락되면 클라우드 기능을 활성화하지 않는다.
 
 설정이 누락되거나 production Emulator 값이 안전 조건과 다르면 클라우드 기능만 비활성화된다. Firebase SDK 초기화와 외부 요청 없이 기존 학습 앱은 계속 작동해야 한다.
 
