@@ -2,9 +2,9 @@
 
 > 마지막 확인: 2026-07-21 (Asia/Seoul)
 >
-> 기준 브랜치: `feature/storage-transaction-foundation` (기준 main: `f17cccc18e41bf1fcae74824f4c7abf57f5dd5b7`)
+> 기준 브랜치: `feature/card-deletion-plan` (기준 main: `ee3e5d75ba49276e9bd7d6beec84ac5e0fe46a51`)
 >
-> 기준 커밋: `f17cccc18e41bf1fcae74824f4c7abf57f5dd5b7`
+> 기준 커밋: `ee3e5d75ba49276e9bd7d6beec84ac5e0fe46a51`
 
 이 문서는 새 Codex 대화에서 가장 먼저 읽는 현재 코드 구조와 작업 규칙의 source of truth다. 프로젝트 소개와 실행 방법은 [README.md](README.md), Firebase 운영 절차는 [CLOUD_BACKUP_OPERATIONS.md](CLOUD_BACKUP_OPERATIONS.md)를 우선한다.
 
@@ -17,7 +17,7 @@
 - production Vite base는 `/opic-speaking-trainer/`, 개발 base는 `/`다.
 - 기본 카드 소스는 12장이지만 활성 카드 데이터셋은 TSV 사용에 따라 달라진다. 운영 카드 수를 코드 상수처럼 문서화하지 않는다.
 - 2026-07-21 확인 시 운영 URL, `manifest.webmanifest`, `sw.js`, `404.html`은 HTTP 200이었다.
-- 최신 확인 Pages workflow는 commit `f17cccc18e41bf1fcae74824f4c7abf57f5dd5b7`에서 성공했다. 이 feature 브랜치에서는 독립 storage transaction 검증 30개를 추가해 `test:all`이 575개가 되며, 아직 운영 코드에는 연결하지 않는다.
+- 최신 확인 Pages workflow는 commit `ee3e5d75ba49276e9bd7d6beec84ac5e0fe46a51`에서 성공했다. 독립 storage transaction 검증 30개는 main에 포함되어 있다. 이 feature 브랜치에는 순수 카드 삭제 plan 검증 40개를 추가해 `test:all`이 615개가 되며, 두 기반 모두 아직 실제 삭제 UI에는 연결하지 않는다.
 
 ## 2. 구현된 사용자 흐름
 
@@ -135,7 +135,9 @@
 
 `src/utils/storageTransaction.ts`에 공통 raw storage transaction 기반을 추가했다. 호출자가 전달한 storage 인스턴스와 key를 raw string 또는 `null`로 snapshot하고, mutation 순서를 유지해 적용하며, 실패 시 snapshot 전체를 역순으로 복원하는 앱 수준 보상 rollback이다. Web Storage를 ACID 데이터베이스로 간주하지 않으며 rollback 일부 실패도 별도로 보고한다.
 
-현재 utility는 카드 삭제, 삭제 실행 취소, AppBackupV1 복구, 카드 수정·보관과 React 상태에 연결하지 않았다. 다음 적용 티켓에서 다음 순서를 지켜야 한다.
+`src/utils/cardDeletionPlan.ts`는 현재 카드와 ID 연관 local/session 상태를 입력받아 삭제 후 semantic 상태와 기존 saver 형식의 raw `StorageMutation[]`을 메모리에서만 계산한다. 주입된 `now`를 dataset `updatedAt`에 사용하고, session 정리 → 카드 종속 local 데이터 → `opic-card-dataset` 순으로 mutation을 만든 뒤 불변 조건을 검증한다. 개인 메모와 저장 지문은 입력·mutation 범위에서 제외한다. plan 생성 중 storage 접근, React 상태 변경, UI 이동, Firebase 호출은 없다.
+
+현재 transaction과 deletion plan은 카드 삭제, 삭제 실행 취소, AppBackupV1 복구, 카드 수정·보관과 React 상태에 연결하지 않았다. 다음 적용 티켓에서 다음 순서를 지켜야 한다.
 
 1. 관련 키 원문 snapshot
 2. 모든 다음 값 사전 계산·검증·직렬화
@@ -187,10 +189,11 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 
 ### 현재 검증 기준
 
-`package.json`의 `test:all`은 다음 16개 스크립트를 순서대로 실행한다. 기준 main의 545개에 독립 storage transaction 검증 30개가 추가되어 이 feature 브랜치의 합계는 575개다.
+`package.json`의 `test:all`은 다음 17개 스크립트를 순서대로 실행한다. 기준 main의 575개에 순수 카드 삭제 plan 검증 40개가 추가되어 이 feature 브랜치의 합계는 615개다.
 
 | 명령 | 개수 |
 | --- | ---: |
+| `test:card-deletion-plan` | 40 |
 | `test:storage-transaction` | 30 |
 | `test:backup` | 33 |
 | `test:my-answers` | 19 |
@@ -250,4 +253,4 @@ git diff --check
 - 클라우드 다운로드·복원·병합·삭제 UI·자동 동기화
 - 지문 폴더·태그·공유
 - 복잡한 Markdown 편집기, WYSIWYG와 임의 HTML 렌더링
-- persistent 카드 삭제 undo journal, storage transaction, 다중 탭 잠금
+- persistent 카드 삭제 undo journal, storage transaction의 실제 삭제 연결, 다중 탭 잠금
