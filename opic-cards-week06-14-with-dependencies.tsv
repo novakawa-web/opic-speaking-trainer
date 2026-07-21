@@ -1,0 +1,496 @@
+﻿id	deck	tags	front	frontKo	firstLine	hintTitle	memoryTip	subjectTip	minimum	flow	answer	final_rep
+week5-shopping-problem-01	OPIc 05_문제해결	week5|shopping|problem|topic_shopping|type_problem|full|product|latest_rep|core|final_rep|priority_b	Tell me about a problem you had while shopping. What happened, and how did you solve it?	쇼핑 중 겪었던 문제와 해결 과정을 말해 주세요.	One day, I had a problem while shopping.	작은 티셔츠 교환하기	티셔츠가 작음 → 걱정 → 매장 방문 → 직원 도움 → 교환 → 교훈	상품 문제, 도움을 요청한 행동, 교환 결과와 배운 점을 말하기	"One day, I had a problem while shopping.
+The T-shirt was too small.
+Finally, I exchanged it."	문제 발생 → 걱정한 이유 → 매장으로 돌아감 → 직원 도움 → 교환 → 배운 점	"One day, I had a problem while shopping.
+I bought a T-shirt, but it was too small.
+I was worried because I really liked the design.
+So I went back to the store and asked the staff for help.
+The staff was kind and helped me exchange it.
+Finally, I got the right size and felt relieved.
+After that, I became more careful when buying clothes."	true
+week6-home-description-01	OPIc 03_주제별답변	week6|home|description|topic_home|type_description|full|latest_rep|core|final_rep|priority_a	Tell me about your home. What is your home like?	집의 모습과 분위기에 대해 말해 주세요.	Well, I live in an apartment.	깨끗하고 아늑한 우리 집	아파트 → 집 분위기 → 방 → 퇴근 후 행동 → 휴식	집의 형태와 분위기, 방에서 하는 일과 좋아하는 이유를 말하기	"Well, I live in an apartment.
+It is clean and cozy.
+My room is small, but I like it."	집 소개 → 집의 특징 → 방 설명 → 퇴근 후 행동 → 느낌	"Well, I live in an apartment.
+It is not too big, but it is clean and cozy.
+There is a living room, a kitchen, and my room.
+My room is small, but I like it.
+In my case, I spend a lot of time in my room after work.
+I usually watch YouTube or listen to music there.
+It helps me relax after a long day.
+So I like my home."	true
+week6-room-activity-01	OPIc 03_주제별답변	week6|room|routine|topic_room|type_routine|full|latest_rep|practice	What do you usually do in your room?	방에서 보통 무엇을 하는지 말해 주세요.	I usually spend time in my room after work.	퇴근 후 방에서 쉬는 루틴	퇴근 후 방 → 유튜브 → 음악 → 누워서 휴식 → 기분 회복	방에서 하는 구체적인 행동과 그 행동이 주는 느낌을 말하기	"I usually spend time in my room after work.
+I watch YouTube there.
+It helps me relax."	방에서 시간 보냄 → 방의 느낌 → 유튜브와 음악 → 휴식 → 마무리	"I usually spend time in my room after work.
+My room is small, but it is comfortable.
+I usually watch YouTube in my room.
+Sometimes, I listen to music.
+When I feel tired after work, I just lie down and take a rest.
+It is simple, but it makes me feel much better.
+So I spend a lot of time in my room."	false
+week6-neighborhood-description-01	OPIc 03_주제별답변	week6|neighborhood|description|topic_neighborhood|type_description|full|latest_rep|practice	Tell me about your neighborhood. What is around your home?	동네 분위기와 집 주변의 장소를 말해 주세요.	I live in a quiet neighborhood.	편리하고 조용한 동네	조용한 동네 → 주변 시설 → 카페와 공원 → 편의점 → 편안함	동네 분위기, 주변 장소와 그곳에서 하는 일을 함께 말하기	"I live in a quiet neighborhood.
+There is a park near my home.
+So I like living there."	동네 소개 → 주변 시설 → 자주 가는 장소 → 편리한 이유 → 느낌	"I live in a quiet neighborhood.
+There are many useful places near my home.
+There is a cafe, a convenience store, and a park.
+I often go to the cafe with my friends.
+Sometimes, I take a walk in the park.
+The convenience store is close to my home, so it is convenient.
+My neighborhood is comfortable, so I like living there."	false
+week6-food-favorite-01	OPIc 03_주제별답변	week6|food|preference|topic_food|type_preference|full|latest_rep|practice	What is your favorite food? Why do you like it?	가장 좋아하는 음식과 좋아하는 이유를 말해 주세요.	Well, I like Korean food.	좋아하는 김치찌개	한식 → 김치찌개 → 맛 → 밥 → 피곤할 때 → 기분	좋아하는 음식, 맛, 먹는 방법과 좋아하는 이유를 말하기	"Well, I like Korean food.
+My favorite food is kimchi stew.
+It is spicy and delicious."	음식 종류 → 최애 음식 → 맛 → 함께 먹는 것 → 이유 → 마무리	"Well, I like Korean food.
+My favorite food is kimchi stew.
+It is spicy and delicious.
+I usually eat it with rice.
+To be honest, I like hot food when I feel tired.
+It always makes me feel good.
+So I really like kimchi stew."	false
+week6-restaurant-experience-01	OPIc 03_주제별답변	week6|restaurant|experience|topic_restaurant|type_experience|full|latest_rep|core|final_rep|priority_a	Tell me about the last time you went to a restaurant. What did you eat?	마지막으로 식당에 갔던 경험과 먹은 음식을 말해 주세요.	Recently, I went to a Korean restaurant with my family.	가족과 한식당에 간 경험	가족과 식당 → 위치 → 분위기 → 음식 → 대화 → 느낌	누구와 갔는지, 무엇을 먹었고 어떻게 느꼈는지 말하기	"Recently, I went to a Korean restaurant with my family.
+We ate kimchi stew and rice.
+I had a great time."	식당 방문 → 위치와 분위기 → 음식 → 대화 → 감정 → 마무리	"Recently, I went to a Korean restaurant with my family.
+The restaurant was near my home, and it was small but clean.
+We ate kimchi stew and rice.
+The food was spicy and delicious.
+We talked a lot during dinner.
+It was a simple dinner, but I really enjoyed it.
+I felt happy because I spent time with my family.
+I had a great time."	true
+week6-shopping-experience-01	OPIc 03_주제별답변	week6|shopping|experience|topic_shopping|type_experience|full|latest_rep|practice	Tell me about your recent shopping experience. What did you buy?	최근 쇼핑 경험과 구입한 물건을 말해 주세요.	Recently, I went shopping with my friend.	친구와 쇼핑한 경험	친구와 쇼핑 → 쇼핑몰 → 산 물건 → 점심 → 느낌	누구와 어디에 갔는지, 무엇을 샀고 이후 무엇을 했는지 말하기	"Recently, I went shopping with my friend.
+I bought a T-shirt.
+I had a good time."	쇼핑 방문 → 장소 특징 → 산 물건 → 식사 → 느낌	"Recently, I went shopping with my friend.
+We went to a big and clean shopping mall near my home.
+I bought a T-shirt.
+My friend bought shoes.
+After shopping, we ate lunch together.
+It was simple, but I really enjoyed it.
+I had a good time."	false
+week6-exercise-habit-01	OPIc 03_주제별답변	week6|exercise|routine|topic_exercise|type_routine|full|latest_rep|core|final_rep|priority_b	Do you exercise? What do you usually do to stay healthy?	운동 여부와 건강을 위해 하는 일을 말해 주세요.	To be honest, I don't exercise a lot.	가볍게 산책하는 운동 습관	운동 많이 안 함 → 산책 → 집 근처 → 쉬움 → 건강과 스트레스	운동 빈도, 구체적인 활동과 건강에 도움이 되는 이유를 말하기	"To be honest, I don't exercise a lot.
+But I try to take a walk.
+It helps me feel healthy."	운동 빈도 → 산책 → 장소 → 쉬운 이유 → 효과 → 마무리	"To be honest, I don't exercise a lot.
+But I try to take a walk when I have time.
+I usually walk near a small park by my home.
+Walking is simple and easy, so I can do it often.
+It helps me feel healthy.
+It also helps me relieve stress after work.
+So I like walking."	true
+week6-walking-experience-01	OPIc 03_주제별답변	week6|walking|experience|topic_walking|type_experience|full|latest_rep|practice	Tell me about the last time you took a walk. Where did you go?	마지막으로 산책한 경험과 간 장소를 말해 주세요.	Recently, I took a walk in the park near my home.	퇴근 후 공원 산책	공원 산책 → 혼자 → 날씨 → 음악 → 30분 → 기분 회복	언제 어디서 산책했고 무엇을 하며 어떤 느낌이었는지 말하기	"Recently, I took a walk near my home.
+The weather was nice.
+I felt much better."	산책 장소 → 시간과 동행 → 날씨 → 하면서 한 일 → 느낌	"Recently, I took a walk in the park near my home.
+I went there alone after work.
+The weather was nice.
+I listened to music while walking.
+The park was quiet and peaceful.
+I walked for about thirty minutes.
+It made me feel much better, and I had a good time."	false
+week6-health-habit-01	OPIc 03_주제별답변	week6|health|routine|topic_health|type_routine|full|latest_rep|practice	What do you do to stay healthy?	건강을 유지하기 위해 무엇을 하는지 말해 주세요.	I try to stay healthy in simple ways.	물·산책·수면 건강 습관	간단한 습관 → 물 → 산책 → 수면 → 다음 날 컨디션 → 유지	건강을 위해 하는 행동을 두 가지 이상 말하고 효과를 설명하기	"I try to stay healthy in simple ways.
+I drink water and take walks.
+I also try to sleep well."	건강 관리 소개 → 물 → 산책 → 수면 → 효과 → 습관 유지	"I try to stay healthy in simple ways.
+I drink water often.
+I try to take a walk when I have time.
+I also try to sleep well.
+In my case, sleeping well is very important.
+When I sleep well, I feel better the next day.
+These habits help me a lot, so I try to keep them."	false
+week6-exercise-problem-01	OPIc 05_문제해결	week6|exercise|problem|topic_exercise|type_problem|full|latest_rep|practice	Tell me about a problem you had with exercising.	운동과 관련해 겪었던 문제와 해결 방법을 말해 주세요.	One day, I had a small problem with exercising.	바빠서 운동하지 못한 문제	운동하고 싶음 → 바쁨 → 피곤함 → 짧은 산책 → 기분 회복	운동하지 못한 이유와 대신 선택한 해결 방법을 말하기	"One day, I had a problem with exercising.
+I was too busy.
+So I took a short walk."	운동 계획 → 문제 원인 → 당시 상태 → 대체 행동 → 결과	"One day, I had a small problem with exercising.
+I wanted to exercise, but I was too busy.
+I felt tired after work.
+So I took a short walk near my home.
+After that, I felt much better."	false
+week6-health-problem-01	OPIc 05_문제해결	week6|health|problem|topic_health|type_problem|full|latest_rep|practice	Tell me about a health problem you had.	겪었던 건강 문제와 해결 방법을 말해 주세요.	One day, I had a small health problem.	잠을 잘 못 잔 건강 문제	잠을 못 잠 → 다음 날 피곤 → 일찍 자기 → 상태 회복	건강 문제, 불편했던 점, 해결 행동과 결과를 말하기	"One day, I had a health problem.
+I couldn't sleep well.
+So I went to bed earlier."	문제 발생 → 다음 날 상태 → 해결 행동 → 결과	"One day, I had a small health problem.
+I couldn't sleep well.
+I felt tired the next day.
+So I tried to go to bed earlier.
+After that, I felt better."	false
+week6-home-change-01	OPIc 06_변화질문	week6|home_time|change|topic_home_time|type_change|full|review|replaced_by_week11	How has your time at home changed over time?	집에서 보내는 시간이 어떻게 변했는지 말해 주세요.	In the past, I didn't spend much time at home.	집에서 보내는 시간 변화	예전에는 집에 적게 있음 → 지금은 방에서 쉼 → 편안함	과거와 현재의 집에서 보내는 시간과 행동을 비교하기	"In the past, I didn't spend much time at home.
+But now, I relax in my room after work.
+I like it more now."	과거 생활 → 현재 생활 → 현재 활동 → 효과 → 현재 선호	"In the past, I didn't spend much time at home.
+But now, I spend more time in my room after work.
+I watch YouTube or listen to music there.
+It helps me relax.
+So I like my time at home more now."	false
+week6-health-change-01	OPIc 06_변화질문	week6|health|change|topic_health|type_change|full|review|replaced_by_week13	How have your health habits changed over time?	건강 습관이 어떻게 변했는지 말해 주세요.	In the past, I didn't care about my health much.	건강 습관의 초기 변화	예전에는 무관심 → 지금은 물·산책·수면 → 컨디션 향상	과거의 습관과 현재의 구체적인 건강 습관을 비교하기	"In the past, I didn't care about my health.
+But now, I drink water and take walks.
+I want to keep these habits."	과거 상태 → 현재 습관 → 추가 습관 → 효과 → 계획	"In the past, I didn't care about my health much.
+But now, I drink water and take a walk more often.
+I also try to sleep well.
+These habits make me feel better.
+So I want to keep them."	false
+week6-walking-change-01	OPIc 06_변화질문	week6|walking|change|topic_walking|type_change|full|latest_rep|practice	How has your exercise habit changed over time?	운동 습관이 어떻게 변했는지 말해 주세요.	In the past, I didn't exercise much.	산책으로 바뀐 운동 습관	예전에는 운동 안 함 → 지금은 산책 → 스트레스 해소	과거와 현재 운동 습관, 현재 활동의 장점을 말하기	"In the past, I didn't exercise much.
+But now, I sometimes take a walk.
+It helps me relieve stress."	과거 운동 습관 → 현재 산책 → 장소 → 효과 → 선호	"In the past, I didn't exercise much.
+But now, I sometimes take a walk.
+I usually walk near my home.
+It helps me relieve stress.
+So I like walking more now."	false
+week7-bank-visit-01	OPIc 03_주제별답변	week7|bank|routine|topic_bank|type_routine|full|latest_rep|practice	Do you often go to the bank? Tell me about a bank you use.	은행에 얼마나 자주 가는지와 이용하는 은행을 말해 주세요.	Actually, I don't go to the bank very often.	집 근처 은행 이용	은행 자주 안 감 → 집 근처 → ATM → 직원 도움 → 편리함	은행 방문 빈도와 그곳에서 하는 일을 함께 말하기	"Actually, I don't go to the bank very often.
+There is a bank near my home.
+I usually use the ATM there."	방문 빈도 → 은행 위치와 분위기 → 하는 일 → 도움 → 편리함	"Actually, I don't go to the bank very often.
+There is a bank near my home.
+It is not very big, but it is clean and quiet.
+I usually use the ATM there.
+Sometimes, I ask the staff for help.
+The bank is close to my home, so it is convenient.
+I don't go there often, but it is useful when I need it."	false
+week7-clinic-experience-01	OPIc 03_주제별답변	week7|clinic|experience|topic_clinic|type_experience|full|latest_rep|core|final_rep|priority_b	Tell me about the last time you went to a hospital or clinic. What happened?	마지막으로 병원에 갔던 경험과 무슨 일이 있었는지 말해 주세요.	Recently, I went to a clinic because I had a cold.	감기로 병원에 간 경험	감기 → 증상 → 병원 → 의사 → 약국 → 휴식 → 회복	병원에 간 이유, 진료 과정과 이후 결과를 말하기	"Recently, I went to a clinic because I had a cold.
+The doctor checked me.
+A few days later, I felt better."	증상과 이유 → 병원 → 의사 진료 → 약 → 휴식 → 회복	"Recently, I went to a clinic because I had a cold.
+I had a sore throat and felt very tired.
+The clinic was near my home.
+The doctor was kind and checked me carefully.
+After that, I went to a pharmacy and got some medicine.
+I went home and got some rest.
+A few days later, I felt much better."	true
+week7-pharmacy-description-01	OPIc 03_주제별답변	week7|pharmacy|description|topic_pharmacy|type_description|full|latest_rep|practice	Tell me about a pharmacy near your home. What do you usually buy there?	집 근처 약국과 그곳에서 주로 사는 것을 말해 주세요.	There is a pharmacy near my home.	집 근처 편리한 약국	약국 위치 → 분위기 → 약·비타민 → 약사 → 편리함	약국의 위치와 특징, 주로 사는 물건을 함께 말하기	"There is a pharmacy near my home.
+I buy medicine there.
+It is very useful."	약국 소개 → 특징 → 방문 시점 → 구입 물품 → 약사 → 편리함	"There is a pharmacy near my home.
+It is small but clean.
+I usually go there when I need medicine.
+Sometimes, I buy cold medicine or vitamins.
+The pharmacist is kind and helpful.
+The pharmacist explains things clearly when I have a question.
+It is close to my home, so it is very useful."	false
+week7-season-favorite-01	OPIc 03_주제별답변	week7|season|preference|topic_season|type_preference|full|latest_rep|core|final_rep|priority_b	What is your favorite season? Why do you like it?	가장 좋아하는 계절과 좋아하는 이유를 말해 주세요.	My favorite season is spring.	산책하기 좋은 봄	봄 → 따뜻한 날씨 → 산책 → 꽃 → 친구와 경험 → 느낌	좋아하는 계절, 날씨 특징과 그 계절에 하는 일을 말하기	"My favorite season is spring.
+The weather is warm and nice.
+I like taking a walk in spring."	계절 소개 → 날씨 → 활동 → 꽃 → 최근 경험 → 느낌	"My favorite season is spring.
+The weather is warm and nice.
+It is not too hot or too cold.
+I like taking a walk near my home in spring.
+Sometimes, I can see beautiful flowers.
+Last spring, I took a walk in the park with my friend.
+We talked a lot, and I had a good time.
+So I really like spring."	true
+week7-rainy-day-routine-01	OPIc 03_주제별답변	week7|rainy_day|routine|topic_rainy_day|type_routine|full|latest_rep|practice	What do you usually do on rainy days?	비 오는 날에 보통 무엇을 하는지 말해 주세요.	On rainy days, I usually stay at home.	비 오는 날 집에서 쉬기	집에 있음 → 유튜브 → 음악 → 뜨거운 음식 → 휴식	비 오는 날 하는 행동을 두 가지 이상 말하고 느낌을 설명하기	"On rainy days, I usually stay at home.
+I watch YouTube in my room.
+It helps me relax."	날씨 상황 → 집에 있는 이유 → 하는 일 → 음식 → 느낌	"On rainy days, I usually stay at home.
+I don't like going outside when it rains.
+I usually watch YouTube in my room.
+Sometimes, I listen to music.
+I also like eating hot food on rainy days.
+These simple things help me relax.
+So rainy days are not too bad for me."	false
+week7-weather-problem-01	OPIc 05_문제해결	week7|weather|problem|topic_weather|type_problem|full|latest_rep|practice	Tell me about a problem you had because of the weather. What happened, and how did you solve it?	날씨 때문에 생긴 문제와 해결 과정을 말해 주세요.	One day, I had a problem because of heavy rain.	폭우 때문에 약속에 늦은 문제	폭우 → 약속 → 늦음 → 연락 → 이해 → 만남 → 교훈	날씨가 만든 문제, 연락한 행동과 결과 및 배운 점을 말하기	"One day, I had a problem because of heavy rain.
+I was late for an appointment.
+So I called my friend."	문제 원인 → 약속 → 지각 → 걱정 → 연락 → 결과 → 교훈	"One day, I had a problem because of heavy rain.
+I had an appointment with my friend.
+The rain was very heavy, so I was late.
+I was worried because my friend was waiting for me.
+So I called my friend right away.
+My friend understood me and said it was okay.
+Finally, I met my friend and felt relieved.
+After that, I started checking the weather before going out."	false
+week7-phone-habit-01	OPIc 03_주제별답변	week7|phone|routine|topic_phone|type_routine|full|latest_rep|practice	How do you usually use your phone? What do you use it for?	휴대폰을 보통 어떻게 사용하고 무엇에 쓰는지 말해 주세요.	Actually, I use my phone every day.	매일 사용하는 휴대폰	매일 사용 → 메시지 → 유튜브 → 음악 → 정보 검색 → 편리함	휴대폰으로 하는 일을 두 가지 이상 말하고 유용한 이유를 설명하기	"Actually, I use my phone every day.
+I check messages and watch YouTube.
+It makes my life easier."	사용 빈도 → 주요 기능 → 추가 기능 → 사용 시간 → 장점	"Actually, I use my phone every day.
+I use it for many things.
+I usually check messages and watch YouTube.
+Sometimes, I listen to music on my phone.
+After work, I often use it in my room.
+I can also search for information anytime.
+It makes my daily life much easier."	false
+week7-internet-habit-01	OPIc 03_주제별답변	week7|internet|routine|topic_internet|type_routine|full|latest_rep|practice	What do you usually do on the internet? How often do you use it?	인터넷을 얼마나 자주 사용하고 무엇을 하는지 말해 주세요.	I use the internet almost every day.	정보를 찾는 인터넷 사용 습관	거의 매일 → 정보 검색 → 유튜브 → 식당·상품 → 편리함	인터넷 사용 빈도, 구체적인 활동과 장점을 말하기	"I use the internet almost every day.
+I search for information online.
+It is very convenient."	사용 빈도 → 정보 검색 → 영상 → 추가 검색 → 사용 시간 → 장점	"I use the internet almost every day.
+I usually search for information online.
+I also watch YouTube videos.
+Sometimes, I look for good restaurants or useful products.
+I usually use the internet at home after work.
+I can find information quickly, so it is convenient.
+It also helps me learn new things."	false
+week7-phone-problem-01	OPIc 05_문제해결	week7|phone|problem|topic_phone|type_problem|full|battery|latest_rep|core|final_rep|priority_b	Tell me about a problem you had with your phone. What happened, and how did you solve it?	휴대폰과 관련된 문제와 해결 과정을 말해 주세요.	One day, I had a problem with my phone at work.	직장에서 생긴 배터리 문제	배터리 부족 → 연락 필요 → 동료에게 요청 → 충전 → 교훈	문제 원인, 도움을 요청한 대상, 해결 결과와 이후 습관을 말하기	"One day, I had a problem with my phone.
+My battery was almost dead.
+I borrowed a charger."	문제 장소 → 배터리 상태 → 걱정 → 도움 요청 → 해결 → 교훈	"One day, I had a problem with my phone at work.
+My phone battery was almost dead.
+I was worried because I needed to contact my friend.
+So I asked my coworker for a charger.
+My coworker was kind and helped me.
+Finally, I charged my phone and called my friend.
+I felt relieved because I solved the problem.
+After that, I started carrying a charger in my bag."	true
+week8-restaurant-reservation-01	OPIc 04_롤플레이	week8|restaurant|roleplay_reservation|topic_restaurant|type_roleplay_reservation|full|roleplay|reservation|latest_rep|core|final_rep|priority_a	You want to make a reservation at a restaurant. Call the restaurant and ask three or four questions.	식당에 전화해 예약에 필요한 질문을 세네 개 해 주세요.	Hello, I'd like to make a reservation.	식당 예약 문의	두 명 자리 → 가능한 시간 → 창가 자리 → 7시 예약 → 감사	인원, 날짜, 시간과 좌석을 질문하고 실제 예약 요청까지 하기	"Hello, I'd like to make a reservation.
+Do you have a table for two this Saturday?
+I'd like to reserve it for 7 p.m."	인사 → 인원·날짜 → 시간 → 좌석 → 예약 요청 → 감사	"Hello, I'd like to make a reservation.
+First, do you have a table for two this Saturday?
+Second, what times are available?
+Third, do you have a table by the window?
+I'd like to reserve a table for 7 p.m.
+Is that possible?
+Thank you for your help."	true
+week8-cafe-inquiry-01	OPIc 04_롤플레이	week8|cafe|roleplay_inquiry|topic_cafe|type_roleplay_inquiry|full|roleplay|inquiry|latest_rep|practice	You want to visit a cafe. Call the cafe and ask three or four questions.	카페에 전화해 방문 전에 필요한 질문을 세네 개 해 주세요.	Hello, I have a few questions about your cafe.	카페 영업·시설 문의	영업시간 → 아이스커피 → 와이파이 → 노트북 → 감사	영업시간과 메뉴, 와이파이 및 노트북 사용 여부를 질문하기	"Hello, I have a few questions about your cafe.
+What time do you open?
+Is there free Wi-Fi?"	인사 → 영업시간 → 음료 → 와이파이 → 노트북 사용 → 감사	"Hello, I have a few questions about your cafe.
+First, what time do you open?
+Second, do you have iced coffee?
+Third, is there free Wi-Fi?
+Can I use my laptop there?
+Thank you for your help."	false
+week8-hotel-inquiry-01	OPIc 04_롤플레이	week8|hotel|roleplay_inquiry|topic_hotel|type_roleplay_inquiry|full|roleplay|inquiry|latest_rep|core|final_rep|priority_b	You are planning to stay at a hotel. Call the hotel and ask three or four questions.	호텔에 전화해 숙박 전에 필요한 질문을 세네 개 해 주세요.	Hello, I have a few questions about your hotel.	호텔 객실·서비스 문의	두 명 방 → 1박 가격 → 조식 → 이른 체크인 → 감사	객실 가능 여부, 가격, 조식과 체크인 시간을 질문하기	"Hello, I have a few questions about your hotel.
+Do you have a room for two?
+Is breakfast included?"	인사 → 객실 → 가격 → 조식 → 이른 체크인 → 감사	"Hello, I have a few questions about your hotel.
+First, do you have a room for two this Saturday?
+Second, how much is it per night?
+Third, is breakfast included?
+Can I check in early?
+Thank you for your help."	true
+week8-restaurant-reservation-change-01	OPIc 04_롤플레이	week8|restaurant|roleplay_change|topic_restaurant|type_roleplay_change|full|roleplay|reservation|change|latest_rep|core|final_rep|priority_a	You have a restaurant reservation at 7 p.m., but you cannot get there on time. Call the restaurant, explain the problem, and suggest alternatives.	식당 예약 시간에 맞춰 갈 수 없습니다. 문제를 설명하고 다른 시간을 제안해 주세요.	Hello, I'm calling about my reservation this Saturday.	식당 예약 시간 변경	예약 확인 → 야근 → 8시 요청 → 일요일 대안 → 감사	원래 시간, 변경 이유, 첫 번째 요청과 두 번째 대안을 말하기	"Hello, I'm calling about my reservation this Saturday.
+I can't get there by 7 p.m.
+Can I change it to 8 p.m.?"	예약 확인 → 문제 → 새 시간 → 자리 확인 → 두 번째 대안 → 감사	"Hello, I'm calling about my reservation this Saturday.
+I'm sorry, but I have a problem.
+I can't get there by 7 p.m. because I have to work late.
+Can I change the reservation to 8 p.m.?
+Do you have a table available at that time?
+If 8 p.m. is not available, can I change it to Sunday at 7 p.m.?
+Is that possible?
+Thank you for your help."	true
+week8-hotel-room-problem-01	OPIc 04_롤플레이	week8|hotel|roleplay_problem|topic_hotel|type_roleplay_problem|full|roleplay|room|problem|latest_rep|core|final_rep|priority_a	The air conditioner in your hotel room is not working. Call the front desk, explain the problem, and ask for solutions.	호텔 객실 에어컨이 작동하지 않습니다. 프런트에 문제를 설명하고 해결책을 요청해 주세요.	Hello, I'm calling from room 305.	호텔 에어컨 문제 해결	객실 번호 → 고장 → 점검 요청 → 시간 → 방 변경 → 감사	문제를 설명하고 수리 요청과 객실 변경 대안을 모두 말하기	"Hello, I'm calling from room 305.
+The air conditioner is not working.
+Can someone check it, please?"	객실 소개 → 문제 → 불편함 → 점검 → 소요 시간 → 변경 대안	"Hello, I'm calling from room 305.
+I'm sorry, but I have a problem with the air conditioner.
+It is not working, and the room is very hot.
+Can someone come and check it, please?
+How long will it take?
+If you can't fix it soon, can I change rooms?
+Is another room available?
+Thank you for your help."	true
+week8-friend-meeting-change-01	OPIc 04_롤플레이	week8|friend_meeting|roleplay_change|topic_friend_meeting|type_roleplay_change|full|roleplay|friend|change|latest_rep|practice	You cannot meet your friend at the agreed time. Call your friend, explain the problem, and suggest another time.	약속한 시간에 친구를 만날 수 없습니다. 이유를 설명하고 다른 시간을 제안해 주세요.	Hi, this is Hyemin.	친구와 약속 시간 변경	인사 → 야근 → 2시에 못 만남 → 4시 제안 → 내일 대안	만날 수 없는 이유, 새 시간과 두 번째 대안을 말하기	"Hi, this is Hyemin.
+I can't meet you at 2 p.m.
+Can we meet at 4 p.m. instead?"	인사 → 문제 → 원래 시간 → 새 시간 → 다른 날짜 → 사과	"Hi, this is Hyemin.
+I'm sorry, but I have a problem today.
+I can't meet you at 2 p.m. because I have to work late.
+Can we meet at 4 p.m. instead?
+If 4 p.m. is not good for you, how about tomorrow?
+Please call me back when you have time.
+I'm really sorry, and I'll talk to you later."	false
+week9-hobby-description-01	OPIc 03_주제별답변	week9|hobby|description|topic_hobby|type_description|full|review|replaced_by_week13	What do you like to do in your free time? Why do you enjoy it?	여가 시간에 무엇을 하는지와 좋아하는 이유를 말해 주세요.	Actually, I like watching YouTube in my free time.	퇴근 후 즐기는 유튜브	취미 → 거의 매일 → 영상 종류 → 퇴근 후 → 긴장 해소	평소 무엇을 하는지, 언제 하는지와 좋아하는 이유를 말하기	"Actually, I like watching YouTube in my free time.
+I usually watch it after work.
+It helps me relax."	취미 소개 → 빈도 → 영상 → 시간과 장소 → 이유 → 마무리	"Actually, I like watching YouTube in my free time.
+These days, I watch it almost every day.
+I usually watch funny videos or music videos in my room after work.
+They are easy to watch, and they help me relax.
+I can choose from many different videos, so I never get bored.
+It helps me forget about work for a while.
+So watching YouTube is my favorite way to spend my free time."	false
+week9-hobby-experience-01	OPIc 03_주제별답변	week9|hobby|experience|topic_hobby|type_experience|full|latest_rep|core|final_rep|priority_a	Tell me about the last time you did your hobby. What did you do, and how did you feel?	마지막으로 취미 활동을 했던 때의 행동과 느낌을 말해 주세요.	Last Sunday evening, I watched YouTube in my room.	지난 일요일의 유튜브 경험	지난 일요일 → 피곤함 → 웃긴 영상 → 간식 → 웃음 → 회복	언제 무엇을 했는지와 경험 후의 감정을 구체적으로 말하기	"Last Sunday evening, I watched YouTube in my room.
+I watched funny videos.
+After that, I felt much better."	시간과 장소 → 당시 상태 → 영상 → 간식 → 기억나는 순간 → 감정	"Last Sunday evening, I watched YouTube in my room.
+I was tired, so I wanted to relax.
+I watched funny videos for about an hour.
+I also ate some snacks while watching them.
+One video was really funny, and I laughed a lot.
+After that, I felt less tired and much better.
+It was a simple evening, but I really enjoyed it."	true
+week9-hobby-change-01	OPIc 06_변화질문	week9|hobby|change|topic_hobby|type_change|full|review|replaced_by_week13	How has your hobby changed over time? What is different now?	취미가 과거와 비교해 어떻게 변했는지 말해 주세요.	In the past, I watched TV a lot.	TV에서 유튜브로 바뀐 취미	예전 TV → 지금 유튜브 → 원하는 영상 → 짧은 영상 → 편리함	과거와 현재의 취미, 달라진 점과 지금이 좋은 이유를 말하기	"In the past, I watched TV a lot.
+But now, I watch YouTube more often.
+So I enjoy it more now."	과거 취미 → 과거 방식 → 현재 취미 → 장점 → 현재 평가	"In the past, I watched TV a lot.
+I usually watched whatever was on at that time.
+But now, I watch YouTube more often.
+I can choose what I want to watch anytime.
+I can also watch short videos when I don't have much time.
+That is very convenient because I am often tired after work.
+So my hobby is a little different now, and I enjoy it more."	false
+week9-cafe-description-01	OPIc 03_주제별답변	week9|cafe|description|topic_cafe|type_description|full|review|replaced_by_week13	Tell me about a cafe you like. What do you usually do there?	좋아하는 카페의 모습과 그곳에서 하는 일을 말해 주세요.	I often go to a cafe near my home.	집 근처 좋아하는 카페	위치 → 분위기 → 방문 시간 → 친구·혼자 행동 → 휴식	카페 특징, 방문 시간, 하는 일과 좋아하는 이유를 말하기	"I often go to a cafe near my home.
+I drink coffee and talk with my friends.
+It helps me relax."	위치 → 분위기 → 방문 시간 → 친구와 행동 → 혼자 행동 → 장점	"I often go to a cafe near my home.
+The cafe is small, but it is clean and cozy.
+I usually go there after work or on weekends.
+When I go with my friends, we drink coffee and talk about daily life.
+Sometimes, I go there alone and watch YouTube on my phone.
+The best thing is that it is close to my home.
+It helps me relax after a long day.
+So it is one of my favorite places."	false
+week10-friend-memorable-01	OPIc 03_주제별답변	week10|friend|memorable_experience|topic_friend|type_memorable_experience|full|latest_rep|core|final_rep|priority_a	Tell me about a memorable experience you had with a friend. What happened, and why was it memorable?	친구와 있었던 기억에 남는 경험과 그 이유를 말해 주세요.	One memorable experience was meeting my friend at a cafe.	친구와 나눈 기억에 남는 대화	친구와 카페 → 커피 → 솔직한 대화 → 경청 → 스트레스 감소	함께 한 행동과 왜 기억에 남는지 모두 말하기	"One memorable experience was meeting my friend at a cafe.
+We talked a lot.
+After that, I felt much better."	친구와 카페 → 시간과 장소 → 대화 → 기억나는 순간 → 감정	"One memorable experience was meeting my friend at a cafe.
+It was last Saturday, and the cafe was near my home.
+We ordered coffee and talked about work and daily life.
+My friend listened to me carefully, so I felt comfortable.
+The best part was that we could talk honestly for a long time.
+After the conversation, I felt less stressed and much better.
+That is why the day is still memorable to me."	true
+week10-special-weekend-01	OPIc 03_주제별답변	week10|weekend|experience|topic_weekend|type_experience|full|latest_rep|practice	Tell me about a special weekend you remember. What did you do?	기억나는 특별한 주말과 한 일을 말해 주세요.	Last weekend was special because I met a close friend.	친구와 보낸 특별한 주말	친구 만남 → 카페 → 커피와 케이크 → 일과 미래 → 행복	왜 특별했는지와 그날 한 행동을 구체적으로 말하기	"Last weekend was special because I met a close friend.
+We went to a cafe.
+I really enjoyed it."	특별한 주말 → 친구 → 장소 → 행동 → 개인적인 이유 → 느낌	"Last weekend was special because I met a close friend.
+We went to a quiet cafe near my home.
+We drank coffee and shared a piece of cake.
+We talked about our jobs and our plans for the future.
+We were both busy before that, so we had a lot to talk about.
+Time passed quickly, and I felt very happy.
+It was a simple weekend, but I really enjoyed it."	false
+week10-cafe-conversation-01	OPIc 03_주제별답변	week10|cafe_conversation|memorable_experience|topic_cafe_conversation|type_memorable_experience|full|latest_rep|practice	Tell me about a memorable time you had at a cafe or restaurant. What made it special?	카페나 식당에서 있었던 기억에 남는 경험을 말해 주세요.	One time, I had a meaningful conversation with my friend at a cafe.	카페에서 나눈 의미 있는 대화	업무 스트레스 → 친구의 경청 → 고민 설명 → 조언 → 위로	그곳에서 무슨 일이 있었고 왜 특별했는지 말하기	"One time, I talked with my friend at a cafe.
+I was stressed because of work.
+The conversation meant a lot to me."	카페 대화 → 스트레스 → 친구의 질문 → 고민 → 조언 → 감정	"One time, I had a meaningful conversation with my friend at a cafe.
+I was tired and stressed because work was very busy.
+My friend asked me how I was doing and listened carefully.
+I explained what was bothering me.
+My friend gave me simple advice and made me laugh.
+I felt supported, and I felt much better after that.
+The conversation was simple, but it meant a lot to me."	false
+week10-travel-memorable-01	OPIc 03_주제별답변	week10|travel|memorable_experience|topic_travel|type_memorable_experience|full|review|replaced_by_week13	Tell me about a memorable trip you took. Where did you go, and what did you do there?	기억에 남는 여행의 장소와 한 일을 말해 주세요.	One memorable trip was my trip to Busan last year.	가족과 떠난 부산 여행	부산 → 가족과 기차 → 해변과 해산물 → 저녁 산책 → 감정	여행지, 동행, 한 일과 가장 기억나는 장면을 말하기	"One memorable trip was my trip to Busan last year.
+I went there with my family.
+We visited the beach."	여행 소개 → 동행과 교통 → 활동 → 가장 좋았던 순간 → 감정	"One memorable trip was my trip to Busan last year.
+I went there with my family by train.
+The train ride was comfortable, and it took about three hours.
+We visited the beach and ate fresh seafood.
+The best part was walking along the beach in the evening.
+The view was beautiful, and I felt relaxed and happy.
+That is why the trip is still memorable to me."	false
+week10-travel-transportation-01	OPIc 03_주제별답변	week10|travel_transportation|experience|topic_travel_transportation|type_experience|full|latest_rep|practice	Tell me about the transportation you used on your last trip. Why did you choose it?	최근 여행에서 이용한 교통수단과 선택 이유를 말해 주세요.	The last time I traveled to Busan, I took the train.	부산까지 이용한 기차	기차 → 빠르고 편안함 → 온라인 예매 → 음악과 창밖 → 편리함	교통수단, 선택한 이유와 이동 중 한 일을 말하기	"The last time I traveled to Busan, I took the train.
+It was fast and comfortable.
+I listened to music during the ride."	교통수단 → 선택 이유 → 역 접근성 → 예매 → 이동 중 행동 → 평가	"The last time I traveled to Busan, I took the train.
+I chose it because it was fast and comfortable.
+The train station was easy to get to from my home.
+I bought the tickets online before the trip.
+During the ride, I listened to music and looked out the window.
+It took about three hours, but the time passed quickly.
+I think the train is a convenient way to travel."	false
+week10-travel-problem-01	OPIc 05_문제해결	week10|travel|problem|topic_travel|type_problem|full|latest_rep|core|final_rep|priority_a	Tell me about a problem you had during a trip. What happened, and how did you solve it?	여행 중 겪었던 문제와 해결 과정을 말해 주세요.	One time, I got lost during a trip to Busan.	부산 여행 중 길을 잃은 문제	식당 찾기 → 잘못된 길 → 가족 대기 → 지도 앱 → 길 질문 → 해결	문제 원인, 해결 행동 두 가지, 결과와 교훈을 말하기	"One time, I got lost during a trip to Busan.
+I used a map app.
+Finally, I found the place."	문제 발생 → 걱정한 이유 → 지도 앱 → 길 질문 → 결과 → 교훈	"One time, I got lost during a trip to Busan.
+I was trying to find a restaurant near the beach.
+I took the wrong street and could not find the place.
+I felt worried because my family was waiting for me.
+So I used a map app on my phone and asked someone for directions.
+Finally, I found the restaurant and met my family.
+I felt relieved, and after that, I checked the map more carefully."	true
+week11-hobby-change-01	OPIc 06_변화질문	week11|hobby|change|topic_hobby|type_change|full|review|replaced_by_week13	How has your hobby changed over time? What is the biggest difference now?	취미가 어떻게 변했고 가장 큰 차이가 무엇인지 말해 주세요.	In the past, I watched TV a lot.	선택지가 많아진 취미	예전 TV → 지금 유튜브 → 원하는 영상 → 선택지 → 편리함	과거와 현재, 가장 큰 차이와 현재 장점을 말하기	"In the past, I watched TV a lot.
+But now, I watch YouTube more often.
+I have more choices now."	과거 → 현재 → 가장 큰 변화 → 현재 장점 → 평가	"In the past, I watched TV a lot.
+I usually watched whatever was on at that time.
+But now, I watch YouTube more often.
+I can choose what I want to watch anytime.
+The biggest change is that I have more choices now.
+Compared to the past, my hobby is more convenient and relaxing.
+So I enjoy watching YouTube more these days."	false
+week11-weekday-evening-change-01	OPIc 06_변화질문	week11|weekday_evening|change|topic_weekday_evening|type_change|full|latest_rep|practice	How has your weekday evening routine changed over time? What do you do differently now?	평일 저녁 일상이 어떻게 변했는지 말해 주세요.	In the past, I didn't have a clear evening routine.	균형 잡힌 평일 저녁	예전 계획 없음 → TV → 지금 시간 활용 → 영어·유튜브 → 균형	과거와 현재에 각각 구체적인 행동을 넣어 비교하기	"In the past, I didn't have a clear evening routine.
+But now, I use my evenings better.
+My evenings feel more balanced."	과거 루틴 → 현재 루틴 → 구체적인 행동 → 가장 큰 변화 → 평가	"In the past, I didn't have a clear evening routine.
+I usually came home and watched TV for a long time.
+But now, I try to use my evenings better.
+After work, I eat dinner and rest for a while.
+Then I study English or watch YouTube in my room.
+The biggest change is that I use my time more carefully now.
+Compared to the past, my evenings feel more balanced.
+So I am more satisfied with my weekday routine."	false
+week11-home-routine-change-01	OPIc 06_변화질문	week11|home_time|change|topic_home_time|type_change|full|latest_rep|core|final_rep|priority_b	How has the way you spend time at home changed over time? What is different now?	집에서 보내는 방식이 어떻게 변했는지 말해 주세요.	In the past, I didn't spend much time in my room.	거실에서 방으로 바뀐 휴식	예전 거실 TV → 지금 방 → 유튜브·음악·영어 → 편안함	시간뿐 아니라 장소와 행동이 어떻게 달라졌는지 말하기	"In the past, I watched TV in the living room.
+But now, I spend more time in my room.
+I feel more comfortable now."	과거 장소 → 현재 장소 → 현재 행동 → 주요 휴식 공간 → 평가	"In the past, I didn't spend much time in my room.
+I often watched TV in the living room.
+But now, I spend more time in my room after work.
+I watch YouTube, listen to music, or study English there.
+My room has become my main place to rest.
+Compared to the past, I feel more comfortable at home now.
+So I really enjoy spending time in my room."	true
+week11-neighborhood-change-01	OPIc 06_변화질문	week11|neighborhood|change|topic_neighborhood|type_change|full|latest_rep|practice	How has your neighborhood changed over time? What is different now?	동네가 과거와 비교해 어떻게 변했는지 말해 주세요.	In the past, there were not many useful places near my home.	더 편리해진 동네	예전 시설 적음 → 지금 카페·편의점·공원 → 생활 편리	시설 변화와 그 변화가 생활에 준 영향을 말하기	"In the past, there were not many useful places.
+But now, there are more cafes and stores.
+My neighborhood is more convenient."	과거 시설 → 현재 시설 → 생활 변화 → 가장 큰 변화 → 평가	"In the past, there were not many useful places near my home.
+There were only a few small stores.
+But now, there are more cafes, convenience stores, and parks.
+I can buy what I need or take a walk without going far.
+The biggest change is that my neighborhood is more convenient now.
+Compared to the past, I spend more time around my neighborhood.
+So I like living here more now."	false
+week11-shopping-change-01	OPIc 06_변화질문	week11|shopping|change|topic_shopping|type_change|full|review|replaced_by_week13	How have your shopping habits changed over time? What do you do differently now?	쇼핑 습관이 어떻게 변했는지 말해 주세요.	In the past, I usually went to shopping malls to buy clothes.	온라인과 오프라인 쇼핑	예전 쇼핑몰 → 지금 온라인 → 매장도 이용 → 두 방식 → 편리함	온라인과 매장을 언제 각각 사용하는지 구분해 말하기	"In the past, I went to shopping malls.
+But now, I often shop online.
+Shopping is more convenient now."	과거 쇼핑 → 현재 온라인 → 매장 이용 이유 → 가장 큰 변화 → 평가	"In the past, I usually went to shopping malls to buy clothes.
+But now, I often shop online because I am busy.
+I can compare prices and buy things at home.
+I still go to stores when I want to try on clothes.
+The biggest change is that I use both online and offline shopping.
+Compared to the past, shopping is faster and more convenient now.
+So I like my current shopping style."	false
+week11-phone-change-01	OPIc 06_변화질문	week11|phone|change|topic_phone|type_change|full|latest_rep|core|final_rep|priority_b	How has the way you use your phone changed over time? What do you use it for now?	휴대폰 사용 방식이 어떻게 변했는지 말해 주세요.	In the past, I used my phone mainly for calls and messages.	여러 기능을 쓰게 된 휴대폰	예전 통화·문자 → 지금 영상·검색·음악 → 영어 공부 → 편리함	과거 기능, 현재 기능과 생활에 준 영향을 말하기	"In the past, I used my phone for calls and messages.
+But now, I use it for many things.
+It makes my life easier."	과거 사용 → 현재 기능 → 추가 기능 → 가장 큰 변화 → 평가	"In the past, I used my phone mainly for calls and messages.
+But now, I use it for many different things.
+I watch YouTube, search for information, and listen to music.
+I also use my phone to study English sometimes.
+The biggest change is that I can do many things with one device.
+Compared to the past, my daily life is much easier now.
+So my phone is more important to me these days."	true
+week12-appointment-late-problem-01	OPIc 05_문제해결	week12|appointment|problem|topic_appointment|type_problem|full|latest_rep|core|final_rep|priority_a	Tell me about a time when you were late for an appointment. What happened, and what did you do?	약속에 늦었던 경험과 해결 방법을 말해 주세요.	One day, I was late for an appointment with my friend.	친구와의 약속에 늦은 문제	늦은 출발 → 교통 체증 → 전화 → 30분 변경 → 만남 → 교훈	늦은 이유, 연락, 시간 변경 요청과 결과를 말하기	"One day, I was late for an appointment with my friend.
+I called my friend and explained the situation.
+We met thirty minutes later."	지각 → 원인 → 걱정 → 전화와 설명 → 시간 변경 → 결과 → 교훈	"One day, I was late for an appointment with my friend.
+I left home later than planned, and the traffic was heavy.
+I was worried because my friend was waiting for me.
+So I called my friend right away and explained the situation.
+I asked if we could meet thirty minutes later.
+My friend understood and waited for me at a nearby cafe.
+Finally, I arrived, apologized again, and felt relieved.
+After that, I started leaving home earlier for important appointments."	true
+week12-wallet-left-problem-01	OPIc 05_문제해결	week12|wallet|problem|topic_wallet|type_problem|full|latest_rep|practice	Tell me about a time when you lost or left something behind. What happened, and how did you get it back?	물건을 잃어버리거나 두고 온 경험과 되찾은 방법을 말해 주세요.	One day, I left my wallet at a cafe.	카페에 두고 온 지갑	카페 → 집에서 알게 됨 → 전화 → 직원 발견 → 다시 방문 → 교훈	잃은 물건, 도움을 요청한 대상과 되찾은 과정을 말하기	"One day, I left my wallet at a cafe.
+I called the cafe.
+The staff found it."	물건 분실 → 알게 된 시점 → 걱정 → 전화 → 발견 → 회수 → 교훈	"One day, I left my wallet at a cafe.
+I noticed it after I got home.
+I was very worried because my ID and cards were inside.
+So I called the cafe and asked the staff to check my table.
+A staff member found my wallet under a chair.
+I went back to the cafe and picked it up.
+I thanked the staff and felt really relieved.
+After that, I started checking my bag before leaving a place."	false
+week12-restaurant-reservation-problem-01	OPIc 05_문제해결	week12|restaurant_reservation|problem|topic_restaurant_reservation|type_problem|full|latest_rep|core|final_rep|priority_b	Tell me about a problem you had with a restaurant reservation. What happened, and how did you solve it?	식당 예약과 관련된 문제와 해결 과정을 말해 주세요.	One day, I had a problem with a restaurant reservation.	확인되지 않은 식당 예약	7시 2명 예약 → 직원이 못 찾음 → 확인 메시지 → 다른 테이블	무엇을 보여주고 요청했으며 최종 결과가 어땠는지 말하기	"One day, I had a problem with a restaurant reservation.
+The staff could not find my reservation.
+I showed the confirmation message."	예약 → 누락 → 걱정 → 메시지 제시 → 재확인 → 대안 → 결과	"One day, I had a problem with a restaurant reservation.
+I had booked a table for two at 7 p.m.
+When I arrived, the staff could not find my reservation.
+I was worried because my friend was waiting with me.
+So I showed the confirmation message and asked the staff to check again.
+The staff apologized and offered us another table after a short wait.
+We waited for about fifteen minutes, and then we were seated.
+I felt relieved and started checking my reservations before leaving home."	true
+week13-hobby-description-01	OPIc 03_주제별답변	week13|hobby|description|topic_hobby|type_description|full|latest_rep|core|final_rep|priority_a	What do you like to do in your free time? Why do you enjoy it?	여가 시간에 무엇을 하며 왜 좋아하는지 말해 주세요.	Actually, I like watching YouTube in my free time.	일상에 잘 맞는 유튜브 취미	취미 → 퇴근 후 → 영상 종류 → 선택 → 구체적 예 → 휴식	무엇을 보는지, 구체적인 예와 개인적인 이유를 말하기	"Actually, I like watching YouTube in my free time.
+I usually watch it after work.
+It helps me relax."	취미 소개 → 시간과 장소 → 영상 종류 → 장점 → 예시 → 느낌	"Actually, I like watching YouTube in my free time.
+These days, I usually watch it in my room after work.
+I mostly watch funny videos and short travel videos.
+What I like most is that I can choose exactly what I want to watch.
+For example, when I feel tired, I watch a short funny video and laugh.
+It helps me forget about work and relax for a while.
+So watching YouTube has become an important part of my daily routine."	true
+week13-cafe-description-01	OPIc 03_주제별답변	week13|cafe|description|topic_cafe|type_description|full|latest_rep|core|final_rep|priority_a	Tell me about a cafe you like. What do you usually do there, and why do you like it?	좋아하는 카페와 그곳에서 하는 일, 좋아하는 이유를 말해 주세요.	I often go to a small cafe near my home.	조용히 쉬기 좋은 카페	위치 → 분위기 → 방문 시간 → 친구·혼자 행동 → 가까운 장점	카페 모습, 평소 행동과 가장 좋아하는 점을 말하기	"I often go to a small cafe near my home.
+It is clean and quiet.
+I can take a short break there."	위치 → 분위기 → 방문 시간 → 친구 행동 → 혼자 행동 → 장점	"I often go to a small cafe near my home.
+It is clean, quiet, and not usually crowded.
+I normally go there after work or on weekends.
+When I go with a friend, we drink coffee and talk about our daily lives.
+When I go alone, I watch YouTube or write down my plans.
+What I like most is that I can take a short break without going far.
+So I visit the cafe whenever I need some quiet time."	true
+week13-travel-memorable-01	OPIc 03_주제별답변	week13|travel|memorable_experience|topic_travel|type_memorable_experience|full|latest_rep|core|final_rep|priority_a	Tell me about a memorable trip you took. Where did you go, what did you do, and why was it memorable?	기억에 남는 여행의 장소, 활동과 이유를 말해 주세요.	One memorable trip was my trip to Busan with my family last year.	가족과 함께한 부산 여행	부산 → 가족과 기차 → 해산물·해변 → 저녁 산책 → 가족과 휴식	여행 정보, 가장 기억나는 순간과 개인적인 이유를 말하기	"One memorable trip was my trip to Busan with my family last year.
+We visited the beach.
+I felt relaxed and happy."	여행 소개 → 교통 → 활동 → 가장 기억나는 순간 → 감정 → 이유	"One memorable trip was my trip to Busan with my family last year.
+We took the train, and the ride took about three hours.
+After we arrived, we ate fresh seafood and visited the beach.
+The most memorable part was walking along the beach in the evening.
+The weather was cool, and the view was beautiful.
+I felt relaxed because I could forget about work and spend time with my family.
+That is why I still remember the trip clearly."	true
+week13-hobby-change-01	OPIc 06_변화질문	week13|hobby|change|topic_hobby|type_change|full|latest_rep|core|final_rep|priority_a	How has your hobby changed over time? What is different now, and why do you prefer it?	취미가 어떻게 변했고 왜 현재 방식을 더 선호하는지 말해 주세요.	In the past, I watched TV a lot.	일상에 더 잘 맞는 취미 변화	예전 TV → 지금 유튜브 → 선택지 → 짧은 영상 → 일상 적합	과거, 현재, 가장 큰 차이와 생활에 준 영향을 말하기	"In the past, I watched TV a lot.
+But now, I watch YouTube more often.
+It fits my routine better."	과거 → 현재 → 가장 큰 차이 → 생활에 준 영향 → 평가	"In the past, I watched TV a lot.
+I usually watched whatever was on at that time.
+But now, I watch YouTube more often.
+I can choose exactly what I want to watch, even when I am busy.
+The biggest difference is that I have more choices and can watch short videos.
+Because of that, my hobby fits my daily routine much better now.
+Compared to the past, it is more convenient and relaxing."	true
+week13-shopping-change-01	OPIc 06_변화질문	week13|shopping|change|topic_shopping|type_change|full|latest_rep|core|final_rep|priority_a	How have your shopping habits changed over time? What do you do differently now?	쇼핑 습관이 어떻게 변했고 현재 무엇을 다르게 하는지 말해 주세요.	In the past, I usually went to shopping malls to buy clothes.	필요에 따라 선택하는 쇼핑 방식	예전 쇼핑몰 → 지금 온라인 → 후기 → 매장도 이용 → 시간 절약	온라인과 오프라인을 언제 쓰는지와 현재 장점을 말하기	"In the past, I went to shopping malls.
+But now, I often shop online.
+Shopping is more convenient now."	과거 쇼핑 → 현재 온라인 → 가격·후기 → 매장 이용 → 방식 선택 → 평가	"In the past, I usually went to shopping malls to buy clothes.
+But now, I often shop online when I am busy.
+I can compare prices and read reviews at home.
+I still go to a store when I want to try on clothes.
+The biggest difference is that I choose the method based on what I need.
+Because of that, I can save time and still check clothes in person.
+Compared to the past, shopping is more flexible and convenient now."	true
+week13-health-change-01	OPIc 06_변화질문	week13|health|change|topic_health|type_change|full|latest_rep|core|final_rep|priority_b	How have your health habits changed over time? What do you do differently now?	건강 습관이 어떻게 변했고 현재 무엇을 다르게 하는지 말해 주세요.	In the past, I did not pay much attention to my health.	작지만 규칙적인 건강 습관	예전 무관심 → 지금 물·산책·수면 → 규칙성 → 다음 날 회복	과거와 현재 건강 행동, 가장 큰 변화와 효과를 말하기	"In the past, I did not care about my health much.
+But now, I drink water and take walks.
+I feel better the next day."	과거 상태 → 현재 습관 → 추가 습관 → 가장 큰 변화 → 효과	"In the past, I did not pay much attention to my health.
+I often came home tired and just rested.
+But now, I drink water more often and take a walk when I have time.
+I also try to sleep well and go to bed a little earlier.
+The biggest change is that I follow small health habits regularly.
+Because of these habits, I feel less tired and better the next day.
+Compared to the past, I feel healthier and want to keep these habits."	true
