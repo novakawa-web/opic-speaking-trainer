@@ -4831,6 +4831,38 @@ input:focus-visible + .toggle-switch {
   white-space: nowrap;
 }
 
+.card-deletion-failure {
+  width: min(100%, 760px);
+  margin: 0 auto 16px;
+  padding: 13px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-soft);
+  color: var(--body-copy);
+}
+
+.card-deletion-failure.is-high-risk {
+  border-color: var(--status-hard-border);
+  background: var(--status-hard-bg);
+}
+
+.card-deletion-failure p {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+
+.card-deletion-failure button {
+  min-height: 44px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .archive-card-badge {
   display: inline-flex;
   align-items: center;
@@ -4893,6 +4925,15 @@ input:focus-visible + .toggle-switch {
 
   .transient-toast {
     padding: 10px 12px;
+  }
+
+  .card-deletion-failure {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .card-deletion-failure button {
+    width: 100%;
   }
 }
 

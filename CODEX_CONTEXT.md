@@ -2,9 +2,9 @@
 
 > 마지막 확인: 2026-07-21 (Asia/Seoul)
 >
-> 기준 브랜치: `feature/card-deletion-plan` (기준 main: `ee3e5d75ba49276e9bd7d6beec84ac5e0fe46a51`)
+> 기준 브랜치: `feature/card-deletion-transaction-integration` (기준 main: `c9a7150a99b2a1f53ea2720c1f56beb1de9e8487`)
 >
-> 기준 커밋: `ee3e5d75ba49276e9bd7d6beec84ac5e0fe46a51`
+> 기준 커밋: `c9a7150a99b2a1f53ea2720c1f56beb1de9e8487`
 
 이 문서는 새 Codex 대화에서 가장 먼저 읽는 현재 코드 구조와 작업 규칙의 source of truth다. 프로젝트 소개와 실행 방법은 [README.md](README.md), Firebase 운영 절차는 [CLOUD_BACKUP_OPERATIONS.md](CLOUD_BACKUP_OPERATIONS.md)를 우선한다.
 
@@ -17,7 +17,7 @@
 - production Vite base는 `/opic-speaking-trainer/`, 개발 base는 `/`다.
 - 기본 카드 소스는 12장이지만 활성 카드 데이터셋은 TSV 사용에 따라 달라진다. 운영 카드 수를 코드 상수처럼 문서화하지 않는다.
 - 2026-07-21 확인 시 운영 URL, `manifest.webmanifest`, `sw.js`, `404.html`은 HTTP 200이었다.
-- 최신 확인 Pages workflow는 commit `ee3e5d75ba49276e9bd7d6beec84ac5e0fe46a51`에서 성공했다. 독립 storage transaction 검증 30개는 main에 포함되어 있다. 이 feature 브랜치에는 순수 카드 삭제 plan 검증 40개를 추가해 `test:all`이 615개가 되며, 두 기반 모두 아직 실제 삭제 UI에는 연결하지 않는다.
+- 최신 확인 Pages workflow는 commit `c9a7150a99b2a1f53ea2720c1f56beb1de9e8487`에서 성공했다. 독립 storage transaction 검증 30개와 순수 카드 삭제 plan 검증 40개는 main에 포함되어 있다. 이 feature 브랜치에서는 카드 완전 삭제와 실행 취소를 해당 두 기반에 연결하고 실패 주입 통합 검증 36개를 추가해 `test:all`이 651개가 된다.
 
 ## 2. 구현된 사용자 흐름
 
@@ -127,17 +127,17 @@
 - 보관은 카드 본문을 변경하지 않고 `opic-archived-card-ids`만 갱신한다. 학습 기록, 나만의 답변, 메모를 유지한다.
 - 완전 삭제는 카드 본문과 해당 카드 ID의 첫 문장 상태·시도, 답변 익히기 상태·시도, 나만의 답변, 카드 메모, 보관 ID 및 현재 학습 세션 참조를 정리한다.
 - 개인 학습 메모와 저장 지문은 카드와 무관하므로 삭제하지 않는다.
-- 삭제 직전 React 메모리 상태를 `DeletedCardSnapshot`으로 보관하고 새로고침 전 한 번 실행 취소할 수 있다.
+- 삭제 transaction의 raw storage snapshot과 이전 semantic 상태를 `DeletedCardUndoSnapshot`으로 메모리에 보관하고 새로고침 전 한 번 실행 취소할 수 있다.
 
-### 알려진 기술 부채: 삭제 저장의 비원자성
+### 카드 삭제 저장 트랜잭션과 남은 한계
 
-현재 `src/App.tsx`의 카드 완전 삭제와 실행 취소는 여러 localStorage/sessionStorage saver를 순서대로 호출한다. 일부 saver는 저장 예외를 던지고 일부는 내부에서 삼키므로, quota 또는 저장소 실패 시 일부 키만 변경되거나 React 메모리와 저장소가 달라질 수 있다.
+`src/App.tsx`의 카드 완전 삭제는 `src/utils/cardDeletionAdapter.ts`에서 현재 React 상태와 엄격하게 읽은 UI session을 조립한 뒤 `createCardDeletionPlan`으로 모든 다음 값을 계산·검증한다. 이어 `runStorageTransaction`이 raw snapshot을 잡고 mutation을 적용하며, 성공한 뒤에만 React 상태를 한 번에 반영한다. 실행 취소도 저장된 raw snapshot을 별도 transaction으로 복원한 뒤에만 이전 React 상태를 반영한다.
 
 `src/utils/storageTransaction.ts`에 공통 raw storage transaction 기반을 추가했다. 호출자가 전달한 storage 인스턴스와 key를 raw string 또는 `null`로 snapshot하고, mutation 순서를 유지해 적용하며, 실패 시 snapshot 전체를 역순으로 복원하는 앱 수준 보상 rollback이다. Web Storage를 ACID 데이터베이스로 간주하지 않으며 rollback 일부 실패도 별도로 보고한다.
 
 `src/utils/cardDeletionPlan.ts`는 현재 카드와 ID 연관 local/session 상태를 입력받아 삭제 후 semantic 상태와 기존 saver 형식의 raw `StorageMutation[]`을 메모리에서만 계산한다. 주입된 `now`를 dataset `updatedAt`에 사용하고, session 정리 → 카드 종속 local 데이터 → `opic-card-dataset` 순으로 mutation을 만든 뒤 불변 조건을 검증한다. 개인 메모와 저장 지문은 입력·mutation 범위에서 제외한다. plan 생성 중 storage 접근, React 상태 변경, UI 이동, Firebase 호출은 없다.
 
-현재 transaction과 deletion plan은 카드 삭제, 삭제 실행 취소, AppBackupV1 복구, 카드 수정·보관과 React 상태에 연결하지 않았다. 다음 적용 티켓에서 다음 순서를 지켜야 한다.
+카드 완전 삭제와 새로고침 전 한 번 실행 취소에는 transaction과 deletion plan이 연결되어 있다. snapshot 또는 apply 실패와 rollback 성공은 React 상태를 바꾸지 않으며, rollback 일부 실패는 추가 destructive action을 잠그고 새로고침 후 상태 재확인을 요구한다. Web Storage는 여전히 ACID 저장소가 아니고, undo snapshot은 메모리에만 있으므로 새로고침 후에는 실행 취소할 수 없다. AppBackupV1 복구와 카드 수정·보관은 이 transaction 기반에 연결하지 않았다.
 
 1. 관련 키 원문 snapshot
 2. 모든 다음 값 사전 계산·검증·직렬화
@@ -189,10 +189,11 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 
 ### 현재 검증 기준
 
-`package.json`의 `test:all`은 다음 17개 스크립트를 순서대로 실행한다. 기준 main의 575개에 순수 카드 삭제 plan 검증 40개가 추가되어 이 feature 브랜치의 합계는 615개다.
+`package.json`의 `test:all`은 다음 18개 스크립트를 순서대로 실행한다. 기준 main의 615개에 카드 삭제 transaction 통합 검증 36개가 추가되어 이 feature 브랜치의 합계는 651개다.
 
 | 명령 | 개수 |
 | --- | ---: |
+| `test:card-deletion-transaction` | 36 |
 | `test:card-deletion-plan` | 40 |
 | `test:storage-transaction` | 30 |
 | `test:backup` | 33 |
@@ -253,4 +254,4 @@ git diff --check
 - 클라우드 다운로드·복원·병합·삭제 UI·자동 동기화
 - 지문 폴더·태그·공유
 - 복잡한 Markdown 편집기, WYSIWYG와 임의 HTML 렌더링
-- persistent 카드 삭제 undo journal, storage transaction의 실제 삭제 연결, 다중 탭 잠금
+- persistent 카드 삭제 undo journal, 다중 탭 destructive action 잠금

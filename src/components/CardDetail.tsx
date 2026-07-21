@@ -64,6 +64,7 @@ type CardDetailProps = {
   onUpdateCard: (card: OpicCard) => void;
   onArchiveCard: (cardId: string, archived: boolean) => void;
   onDeleteCard: (cardId: string) => void;
+  destructiveActionsBlocked?: boolean;
 };
 
 type AnswerTab = "model" | "mine";
@@ -110,6 +111,7 @@ export function CardDetail({
   onUpdateCard,
   onArchiveCard,
   onDeleteCard,
+  destructiveActionsBlocked = false,
 }: CardDetailProps) {
   const [initialUiSession] = useState(() =>
     readCardDetailUiSession(card.id, Boolean(myAnswer)),
@@ -431,12 +433,18 @@ export function CardDetail({
           <h2 id="card-management-title">카드 관리</h2>
         </div>
         <div className="card-management-primary-actions">
-          <button type="button" className="secondary-button" onClick={startCardEditing}>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={startCardEditing}
+            disabled={destructiveActionsBlocked}
+          >
             수정
           </button>
           <button
             type="button"
             className="secondary-button"
+            disabled={destructiveActionsBlocked}
             onClick={() => {
               const nextArchived = !isArchived;
               onArchiveCard(card.id, nextArchived);
@@ -446,7 +454,9 @@ export function CardDetail({
           </button>
         </div>
         <p className="card-management-help">
-          {isArchived
+          {destructiveActionsBlocked
+            ? "저장 상태를 다시 확인할 때까지 카드 수정·보관·삭제를 사용할 수 없습니다."
+            : isArchived
             ? "보관된 카드는 학습 목록에서 숨겨져 있으며 기록은 그대로 유지됩니다."
             : "보관하면 학습 목록에서 숨길 수 있고 나중에 복원할 수 있습니다."}
         </p>
@@ -457,6 +467,7 @@ export function CardDetail({
             ref={cardDeleteTriggerRef}
             type="button"
             className="is-danger-quiet"
+            disabled={destructiveActionsBlocked}
             onClick={() => cardDeleteDialogRef.current?.showModal()}
           >
             카드 완전 삭제
