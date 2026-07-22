@@ -8,6 +8,7 @@ type AppHeaderProps = {
   currentPosition?: number;
   totalCards?: number;
   onBack?: () => void;
+  onHome: () => void;
   onToggleTheme: () => void;
 };
 
@@ -18,6 +19,7 @@ export function AppHeader({
   currentPosition = 0,
   totalCards = 0,
   onBack,
+  onHome,
   onToggleTheme,
 }: AppHeaderProps) {
   const isDark = theme === "dark";
@@ -43,13 +45,18 @@ export function AppHeader({
           <span aria-hidden="true">←</span>
         </button>
       ) : null}
-      <div className="brand-mark" aria-hidden="true">
-        O
-      </div>
-      <div className="brand-copy">
-        <p>YOUR DAILY SPEAKING ROUTINE</p>
-        <h1>OPIc Speaking Trainer</h1>
-      </div>
+      <button
+        className="brand-home"
+        type="button"
+        aria-label="홈으로 이동"
+        onClick={(event) => activateButton(event, onHome)}
+      >
+        <span className="brand-mark" aria-hidden="true">O</span>
+        <span className="brand-copy">
+          <span>YOUR DAILY SPEAKING ROUTINE</span>
+          <strong>OPIc Speaking Trainer</strong>
+        </span>
+      </button>
       {studyTitle ? <strong className="compact-header-title">{studyTitle}</strong> : null}
       {mobileSticky ? (
         <span

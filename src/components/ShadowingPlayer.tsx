@@ -8,7 +8,13 @@ import {
   flattenParagraphSentences,
   getParagraphIndexForSentence,
 } from "../utils/passageParagraphs";
-import type { ShadowingSource } from "../utils/shadowingPlayer";
+import {
+  createShadowingSourceFingerprint,
+  getSentencePressAction,
+  revealPlaybackTarget,
+  shouldHandlePlaybackScrollRequest,
+  type ShadowingSource,
+} from "../utils/shadowingPlayer";
 import {
   formatRepeatProgress,
   parseRepeatCount,
@@ -29,7 +35,9 @@ import {
   type TtsRate,
 } from "../utils/ttsSettings";
 import {
+  clearShadowingPlayerSession,
   readShadowingPlayerSession,
+  resolveRestorableShadowingPlayerSession,
   saveShadowingPlayerSession,
 } from "../utils/uiSessionStorage";
 import { isRecordingBusy, type RecordingStatus } from "../utils/audioRecorder";
@@ -48,6 +56,7 @@ type ShadowingPlayerProps = {
   canGoNextCard?: boolean;
   theme: ThemeMode;
   onBack: () => void;
+  onHome: () => void;
   onToggleTheme: () => void;
   onPreviousCard?: () => void;
   onNextCard?: () => void;
@@ -74,29 +83,12 @@ export function ShadowingPlayer({
   canGoNextCard = false,
   theme,
   onBack,
+  onHome,
   onToggleTheme,
   onPreviousCard,
   onNextCard,
   onSourceTypeChange,
 }: ShadowingPlayerProps) {
-  const restoredSession = useMemo(() => {
-    const stored =
-      source.cardId || source.savedPassageId
-        ? readShadowingPlayerSession()
-        : null;
-    if (!stored) return null;
-    if (source.sourceType === "savedPassage") {
-      return stored.sourceType === "savedPassage" &&
-        stored.savedPassageId === source.savedPassageId
-        ? stored
-        : null;
-    }
-    return stored.sourceType !== "savedPassage" &&
-      stored.cardId === source.cardId &&
-      stored.sourceType === source.sourceType
-        ? stored
-        : null;
-  }, [source.cardId, source.savedPassageId, source.sourceType]);
   const paragraphs = useMemo(
     () =>
       createPassageParagraphs(
@@ -111,11 +103,44 @@ export function ShadowingPlayer({
   const [rate, setRate] = useState<TtsRate>(readTtsRate);
   const [playbackSettings, setPlaybackSettings] =
     useState<ShadowingPlaybackSettings>(readShadowingPlaybackSettings);
+  const sourceFingerprint = useMemo(
+    () => createShadowingSourceFingerprint(sentences),
+    [sentences],
+  );
+  const storedSession = useMemo(
+    () => source.cardId || source.savedPassageId
+      ? readShadowingPlayerSession()
+      : null,
+    [source.cardId, source.savedPassageId, source.sourceType],
+  );
+  const restoredSession = useMemo(() => {
+    if (
+      source.sourceType !== "modelAnswer" &&
+      source.sourceType !== "myAnswer" &&
+      source.sourceType !== "savedPassage"
+    ) return null;
+    return resolveRestorableShadowingPlayerSession(storedSession, {
+      sourceType: source.sourceType,
+      cardId: source.cardId,
+      savedPassageId: source.savedPassageId,
+      sourceFingerprint,
+      sentenceCount: sentences.length,
+      playbackSettings,
+    });
+  }, [playbackSettings, sentences.length, source.cardId, source.savedPassageId, source.sourceType, sourceFingerprint, storedSession]);
   const [questionExpanded, setQuestionExpanded] = useState(
     restoredSession?.questionExpanded ?? false,
   );
   const [showFrontKo, setShowFrontKo] = useState(restoredSession?.showFrontKo ?? false);
   const sentenceRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const paragraphRefs = useRef<Array<HTMLElement | null>>([]);
+  const [scrollRequestVersion, setScrollRequestVersion] = useState(0);
+  const lastScrollRequestRef = useRef<{
+    targetKey: string;
+    explicitRequestVersion: number;
+  } | null>(null);
+  const inFlightScrollRef = useRef<{ targetKey: string; until: number } | null>(null);
+  const leavingRef = useRef(false);
   const recorderRef = useRef<AudioRecorderHandle | null>(null);
   const [recordingStatus, setRecordingStatus] =
     useState<RecordingStatus>("idle");
@@ -135,12 +160,14 @@ export function ShadowingPlayer({
     previousSentence,
     nextSentence,
     seekToSentence,
+    playFromSentence,
     interruptForExternalSpeech,
   } = useShadowingPlayer(
     sentences,
     rate,
     restoredSession?.currentIndex ?? 0,
     restoredSession?.status ?? "idle",
+    restoredSession?.completedRepeats ?? 0,
     playbackSettings,
     paragraphs,
     recordingStatus,
@@ -165,6 +192,7 @@ export function ShadowingPlayer({
     if (recorderBusy) return;
     if (isPlaying) pause();
     else {
+      setScrollRequestVersion((value) => value + 1);
       recorderRef.current?.stopPlayback();
       stopQuestion();
       if (status === "paused") resume();
@@ -172,12 +200,65 @@ export function ShadowingPlayer({
     }
   }, [isPlaying, pause, play, recorderBusy, resume, status, stopQuestion]);
 
+  const persistCurrentSession = useCallback((leaving = false) => {
+    if (leaving) leavingRef.current = true;
+    if (
+      status === "idle" ||
+      status === "completed" ||
+      status === "error" ||
+      source.sourceType === "custom"
+    ) {
+      clearShadowingPlayerSession();
+      return;
+    }
+    const sessionState = {
+      active: true as const,
+      currentIndex,
+      completedRepeats,
+      status: "paused" as const,
+      questionExpanded,
+      showFrontKo,
+      sourceFingerprint,
+      repeatMode: playbackSettings.repeatMode,
+      repeatCount: playbackSettings.repeatCount,
+      restLevel: playbackSettings.restLevel,
+    };
+    if (source.sourceType === "savedPassage" && source.savedPassageId) {
+      saveShadowingPlayerSession({
+        ...sessionState,
+        sourceType: "savedPassage",
+        savedPassageId: source.savedPassageId,
+      });
+      return;
+    }
+    if (
+      card &&
+      source.cardId &&
+      (source.sourceType === "modelAnswer" || source.sourceType === "myAnswer")
+    ) {
+      saveShadowingPlayerSession({
+        ...sessionState,
+        cardId: card.id,
+        sourceType: source.sourceType,
+      });
+    }
+  }, [card, completedRepeats, currentIndex, playbackSettings, questionExpanded, showFrontKo, source.cardId, source.savedPassageId, source.sourceType, sourceFingerprint, status]);
+
   const leavePlayer = useCallback(() => {
     recorderRef.current?.clearRecording();
     stopQuestion();
+    persistCurrentSession(true);
     stop();
     onBack();
-  }, [onBack, stop, stopQuestion]);
+  }, [onBack, persistCurrentSession, stop, stopQuestion]);
+
+  const goHome = useCallback(() => {
+    recorderRef.current?.clearRecording();
+    stopQuestion();
+    persistCurrentSession(true);
+    stop();
+    onHome();
+  }, [onHome, persistCurrentSession, stop, stopQuestion]);
 
   const moveCard = useCallback(
     (direction: "previous" | "next") => {
@@ -201,6 +282,18 @@ export function ShadowingPlayer({
     speakQuestion(stripQuestionPrefix(card.front), "question");
   }, [card, interruptForExternalSpeech, questionSpeechTarget, recorderBusy, speakQuestion, stopQuestion]);
 
+  const startFromSentence = useCallback((index: number) => {
+    if (recorderBusy) return;
+    recorderRef.current?.stopPlayback();
+    stopQuestion();
+    if (getSentencePressAction(status, currentIndex, index) === "pause") {
+      pause();
+      return;
+    }
+    setScrollRequestVersion((value) => value + 1);
+    playFromSentence(index);
+  }, [currentIndex, pause, playFromSentence, recorderBusy, status, stopQuestion]);
+
   useKeyboardShortcuts({
     Space: recorderBusy ? undefined : togglePlayback,
     ArrowLeft: canGoPrevious ? previousSentence : undefined,
@@ -210,59 +303,53 @@ export function ShadowingPlayer({
   });
 
   useEffect(() => {
-    const currentElement = sentenceRefs.current[currentIndex];
-    if (!currentElement) return;
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    currentElement.scrollIntoView({
-      behavior: reducedMotion ? "auto" : "smooth",
-      block: "center",
-    });
-  }, [currentIndex]);
+    if (scrollRequestVersion === 0) return;
+    let frame = 0;
+    const reveal = (retry: boolean) => {
+      const paragraphIndex = getParagraphIndexForSentence(paragraphs, currentIndex);
+      const targetIndex = playbackSettings.repeatMode === "paragraph"
+        ? paragraphIndex
+        : currentIndex;
+      const targetKey = `${sourceFingerprint}:${playbackSettings.repeatMode}:${targetIndex}`;
+      const nextRequest = {
+        targetKey,
+        explicitRequestVersion: scrollRequestVersion,
+      };
+      const currentElement = playbackSettings.repeatMode === "paragraph"
+        ? paragraphRefs.current[paragraphIndex]
+        : sentenceRefs.current[currentIndex];
+      if (!currentElement && retry) {
+        frame = window.requestAnimationFrame(() => reveal(false));
+        return;
+      }
+      if (!currentElement) return;
+      const now = window.performance.now();
+      if (!shouldHandlePlaybackScrollRequest(
+        lastScrollRequestRef.current,
+        nextRequest,
+        inFlightScrollRef.current,
+        now,
+      )) return;
+      lastScrollRequestRef.current = nextRequest;
+      const scrolled = revealPlaybackTarget(currentElement, {
+        viewportHeight: window.innerHeight,
+        reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+      });
+      if (scrolled) {
+        inFlightScrollRef.current = {
+          targetKey,
+          until: now + 700,
+        };
+      }
+    };
+    reveal(true);
+    return () => window.cancelAnimationFrame(frame);
+  }, [currentIndex, paragraphs, playbackSettings.repeatMode, scrollRequestVersion, sourceFingerprint]);
 
   useEffect(() => {
-    const sessionState = {
-      active: true,
-      currentIndex,
-      status:
-        status === "playing" ||
-        status === "loading" ||
-        status === "resting" ||
-        status === "error"
-          ? "paused"
-          : status,
-      questionExpanded,
-      showFrontKo,
-    } as const;
-    if (source.sourceType === "savedPassage" && source.savedPassageId) {
-      saveShadowingPlayerSession({
-        ...sessionState,
-        sourceType: "savedPassage",
-        savedPassageId: source.savedPassageId,
-      });
-      return;
-    }
-    if (
-      !card ||
-      !source.cardId ||
-      (source.sourceType !== "modelAnswer" && source.sourceType !== "myAnswer")
-    ) {
-      return;
-    }
-    saveShadowingPlayerSession({
-      ...sessionState,
-      cardId: card.id,
-      sourceType: source.sourceType,
-    });
-  }, [
-    card,
-    currentIndex,
-    questionExpanded,
-    showFrontKo,
-    source.cardId,
-    source.savedPassageId,
-    source.sourceType,
-    status,
-  ]);
+    if (leavingRef.current) return;
+    persistCurrentSession();
+  }, [persistCurrentSession]);
 
   function updateRate(nextRate: TtsRate) {
     setRate(nextRate);
@@ -307,13 +394,12 @@ export function ShadowingPlayer({
     ? "일시정지"
     : status === "paused"
       ? "이어 듣기"
-      : status === "completed"
-        ? "처음부터 재생"
-        : "재생";
+      : "처음부터 재생";
 
   return (
     <div className="shadowing-screen">
       <header className="shadowing-header">
+        <button type="button" className="shadowing-home" onClick={goHome} aria-label="홈으로 이동">O</button>
         <button type="button" className="shadowing-back" onClick={leavePlayer} aria-label="쉐도잉 연습에서 뒤로가기">←</button>
         <strong>쉐도잉 연습</strong>
         <span role="status" aria-label={`현재 문장 ${currentIndex + 1}, 전체 ${sentences.length}`}>
@@ -503,6 +589,9 @@ export function ShadowingPlayer({
           onStatusChange={setRecordingStatus}
         />
 
+        <p className="shadowing-sentence-hint">
+          문장을 누르면 해당 문장부터 재생됩니다.
+        </p>
         <section className="shadowing-sentence-list" aria-label="쉐도잉 문장 목록">
           {paragraphs.map((paragraph, paragraphIndex) => {
             const isCurrentParagraph = paragraphIndex === currentParagraphIndex;
@@ -512,6 +601,7 @@ export function ShadowingPlayer({
               <section
                 className={`shadowing-paragraph ${isRepeatTarget ? "is-repeat-target" : ""}`}
                 key={paragraph.id}
+                ref={(element) => { paragraphRefs.current[paragraphIndex] = element; }}
                 aria-label={`${paragraphIndex + 1}번 문단`}
               >
                 <button
@@ -535,11 +625,25 @@ export function ShadowingPlayer({
                         type="button"
                         className={`shadowing-sentence ${index === currentIndex ? "is-current" : ""}`}
                         aria-current={index === currentIndex ? "true" : undefined}
-                        aria-label={`${index + 1}번 문장${index === currentIndex ? ", 현재 문장" : ""}`}
-                        onClick={() => seekToSentence(index)}
+                        aria-label={index === currentIndex && isPlaying
+                          ? `${index + 1}번 현재 문장 일시정지`
+                          : index === currentIndex && status === "paused"
+                            ? `${index + 1}번 현재 문장을 처음부터 다시 재생`
+                            : `${index + 1}번 문장부터 재생`}
+                        onClick={() => startFromSentence(index)}
+                        disabled={recorderBusy}
                       >
                         <span>{String(index + 1).padStart(2, "0")}</span>
                         <p>{sentence}</p>
+                        <small className="shadowing-sentence-action" aria-hidden="true">
+                          {index === currentIndex
+                            ? isPlaying
+                              ? "재생 중"
+                              : status === "paused"
+                                ? "멈춤"
+                                : ""
+                            : ""}
+                        </small>
                       </button>
                     );
                   })}
@@ -551,12 +655,18 @@ export function ShadowingPlayer({
       </main>
 
       <div className="shadowing-controls" aria-label="쉐도잉 재생 컨트롤">
+        {status === "paused" && (
+          <p className="shadowing-resume-note" role="status">
+            {currentIndex + 1}번째 문장부터 이어집니다.
+          </p>
+        )}
         <div className="shadowing-control-grid">
           <button
             type="button"
             onClick={() => {
               recorderRef.current?.stopPlayback();
               restart();
+              setScrollRequestVersion((value) => value + 1);
             }}
             disabled={!isSupported || sentences.length === 0 || recorderBusy}
           >

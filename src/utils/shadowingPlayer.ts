@@ -108,6 +108,40 @@ export function getNextSentenceIndex(index: number, sentenceCount: number) {
   return clampSentenceIndex(index + 1, sentenceCount);
 }
 
+export function createShadowingSourceFingerprint(sentences: readonly string[]) {
+  const value = JSON.stringify(sentences);
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return `v1-${sentences.length}-${(hash >>> 0).toString(16).padStart(8, "0")}`;
+}
+
+export function createSentenceSelectionPlaybackState(
+  requestedIndex: number,
+  sentenceCount: number,
+) {
+  return {
+    currentIndex: clampSentenceIndex(requestedIndex, sentenceCount),
+    completedRepeats: 0,
+    status: "loading" as const,
+  };
+}
+
+export type SentencePressAction = "pause" | "restart";
+
+export function getSentencePressAction(
+  status: PlayerStatus,
+  currentIndex: number,
+  requestedIndex: number,
+): SentencePressAction {
+  const isCurrentActiveSentence =
+    requestedIndex === currentIndex &&
+    (status === "loading" || status === "playing" || status === "resting");
+  return isCurrentActiveSentence ? "pause" : "restart";
+}
+
 export function isValidDirectPracticeText(text: string) {
   const trimmed = text.trim();
   return (
@@ -131,4 +165,53 @@ export function getStatusAfterBackground(status: PlayerStatus): PlayerStatus {
   return status === "playing" || status === "loading" || status === "resting"
     ? "paused"
     : status;
+}
+
+export type PlaybackTargetRect = Pick<DOMRect, "top" | "bottom">;
+
+export type PlaybackScrollRequest = {
+  targetKey: string;
+  explicitRequestVersion: number;
+};
+
+export function shouldHandlePlaybackScrollRequest(
+  previous: PlaybackScrollRequest | null,
+  next: PlaybackScrollRequest,
+  inFlight: { targetKey: string; until: number } | null,
+  now: number,
+) {
+  const targetChanged = previous?.targetKey !== next.targetKey;
+  const explicitlyRequested =
+    previous?.explicitRequestVersion !== next.explicitRequestVersion;
+  if (!targetChanged && !explicitlyRequested) return false;
+  return !(
+    inFlight?.targetKey === next.targetKey &&
+    now < inFlight.until
+  );
+}
+
+export function isPlaybackTargetSufficientlyVisible(
+  rect: PlaybackTargetRect,
+  viewportHeight: number,
+  topInset = 72,
+  bottomInset = 136,
+) {
+  return rect.top >= topInset && rect.bottom <= viewportHeight - bottomInset;
+}
+
+export function revealPlaybackTarget(
+  element: Pick<HTMLElement, "getBoundingClientRect" | "scrollIntoView">,
+  options: { viewportHeight: number; reducedMotion: boolean; topInset?: number; bottomInset?: number },
+) {
+  if (isPlaybackTargetSufficientlyVisible(
+    element.getBoundingClientRect(),
+    options.viewportHeight,
+    options.topInset,
+    options.bottomInset,
+  )) return false;
+  element.scrollIntoView({
+    block: "center",
+    behavior: options.reducedMotion ? "auto" : "smooth",
+  });
+  return true;
 }

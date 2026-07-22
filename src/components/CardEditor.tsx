@@ -12,9 +12,10 @@ type CardEditorProps = {
   card: OpicCard;
   onSave: (card: OpicCard) => void;
   onCancel: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 };
 
-export function CardEditor({ card, onSave, onCancel }: CardEditorProps) {
+export function CardEditor({ card, onSave, onCancel, onDirtyChange }: CardEditorProps) {
   const [draft, setDraft] = useState<CardEditorDraft>(() =>
     createCardEditorDraft(card),
   );
@@ -24,6 +25,11 @@ export function CardEditor({ card, onSave, onCancel }: CardEditorProps) {
     [card, draft],
   );
   const isDirty = changedFields.length > 0;
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+    return () => onDirtyChange?.(false);
+  }, [isDirty, onDirtyChange]);
 
   useEffect(() => {
     if (!isDirty) return;

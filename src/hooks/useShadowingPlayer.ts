@@ -12,6 +12,7 @@ import {
 } from "../utils/passageParagraphs";
 import {
   clampSentenceIndex,
+  createSentenceSelectionPlaybackState,
   getNextSentenceIndex,
   getPreviousSentenceIndex,
   getStatusAfterBackground,
@@ -31,6 +32,7 @@ export function useShadowingPlayer(
   rate: TtsRate,
   initialIndex = 0,
   initialStatus: PlayerStatus = "idle",
+  initialCompletedRepeats = 0,
   playbackSettings: ShadowingPlaybackSettings =
     DEFAULT_SHADOWING_PLAYBACK_SETTINGS,
   paragraphs: PassageParagraph[] = [],
@@ -45,11 +47,11 @@ export function useShadowingPlayer(
   const [status, setStatusState] = useState<PlayerStatus>(initialStatus);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [wakeLockActive, setWakeLockActive] = useState(false);
-  const [completedRepeats, setCompletedRepeatsState] = useState(0);
+  const [completedRepeats, setCompletedRepeatsState] = useState(initialCompletedRepeats);
   const [currentRestMs, setCurrentRestMs] = useState(0);
   const currentIndexRef = useRef(initialSafeIndex);
   const statusRef = useRef<PlayerStatus>(initialStatus);
-  const completedRepeatsRef = useRef(0);
+  const completedRepeatsRef = useRef(initialCompletedRepeats);
   const rateRef = useRef(rate);
   const sentencesRef = useRef(sentences);
   const settingsRef = useRef(playbackSettings);
@@ -67,6 +69,7 @@ export function useShadowingPlayer(
   const backgroundInterruptedRef = useRef(false);
   const recorderStatusRef = useRef(recorderStatus);
   const resumeFromSentenceStartRef = useRef(false);
+  const pendingStepRef = useRef<ReturnType<typeof getNextRepeatStep> | null>(null);
 
   rateRef.current = rate;
   sentencesRef.current = sentences;
@@ -110,6 +113,7 @@ export function useShadowingPlayer(
   }, [clearTimers, isSupported]);
 
   const resetProgress = useCallback(() => {
+    pendingStepRef.current = null;
     setCompletedRepeats(0);
     setCurrentRestMs(0);
   }, [setCompletedRepeats]);
@@ -300,6 +304,7 @@ export function useShadowingPlayer(
       // The final repetition finishes immediately; a rest is only useful when
       // another sentence or repetition will actually follow.
       if (step.completed) {
+        pendingStepRef.current = null;
         setCompletedRepeats(step.completedRepeats);
         setCurrentRestMs(0);
         setStatus("completed");
@@ -315,8 +320,10 @@ export function useShadowingPlayer(
       const continuePlayback = () => {
         if (requestId !== requestIdRef.current) return;
         restTimerRef.current = null;
+        pendingStepRef.current = null;
         setCurrentRestMs(0);
         setCompletedRepeats(step.completedRepeats);
+        setCurrentIndex(step.nextIndex);
         playSentenceRef.current(step.nextIndex);
       };
 
@@ -324,11 +331,14 @@ export function useShadowingPlayer(
         continuePlayback();
         return;
       }
+      pendingStepRef.current = step;
+      setCompletedRepeats(step.completedRepeats);
+      setCurrentIndex(step.nextIndex);
       setCurrentRestMs(restMs);
       setStatus("resting");
       restTimerRef.current = window.setTimeout(continuePlayback, restMs);
     },
-    [setCompletedRepeats, setStatus],
+    [setCompletedRepeats, setCurrentIndex, setStatus],
   );
 
   finishSentenceRef.current = finishSentence;
@@ -370,6 +380,13 @@ export function useShadowingPlayer(
 
   const resume = useCallback(() => {
     if (!isSupported || statusRef.current !== "paused") return;
+    if (pendingStepRef.current) {
+      const pendingStep = pendingStepRef.current;
+      pendingStepRef.current = null;
+      setCurrentIndex(pendingStep.nextIndex);
+      playSentence(pendingStep.nextIndex);
+      return;
+    }
     if (resumeFromSentenceStartRef.current) {
       resumeFromSentenceStartRef.current = false;
       playSentence(currentIndexRef.current);
@@ -387,7 +404,7 @@ export function useShadowingPlayer(
       return;
     }
     playSentence(currentIndexRef.current);
-  }, [isSupported, playSentence, setStatus]);
+  }, [isSupported, playSentence, setCurrentIndex, setStatus]);
 
   const stop = useCallback(() => {
     cancelSpeech();
@@ -428,6 +445,22 @@ export function useShadowingPlayer(
     [cancelSpeech, playSentence, resetProgress, setCurrentIndex, setStatus],
   );
 
+  const playFromSentence = useCallback(
+    (requestedIndex: number) => {
+      if (sentencesRef.current.length === 0) return;
+      const selection = createSentenceSelectionPlaybackState(
+        requestedIndex,
+        sentencesRef.current.length,
+      );
+      cancelSpeech();
+      resetProgress();
+      setCurrentIndex(selection.currentIndex);
+      setErrorMessage(null);
+      playSentence(selection.currentIndex);
+    },
+    [cancelSpeech, playSentence, resetProgress, setCurrentIndex],
+  );
+
   const previousSentence = useCallback(() => {
     seekToSentence(
       getPreviousSentenceIndex(currentIndexRef.current, sentencesRef.current.length),
@@ -442,7 +475,9 @@ export function useShadowingPlayer(
 
   useEffect(() => {
     cancelSpeech();
-    resetProgress();
+    pendingStepRef.current = null;
+    setCompletedRepeats(initialCompletedRepeats);
+    setCurrentRestMs(0);
     setCurrentIndex(clampSentenceIndex(initialIndex, sentences.length));
     setErrorMessage(null);
     setStatus(sentences.length > 0 ? initialStatus : "error");
@@ -450,9 +485,10 @@ export function useShadowingPlayer(
   }, [
     cancelSpeech,
     initialIndex,
+    initialCompletedRepeats,
     initialStatus,
-    resetProgress,
     sentences,
+    setCompletedRepeats,
     setCurrentIndex,
     setStatus,
   ]);
@@ -571,5 +607,6 @@ export function useShadowingPlayer(
     previousSentence,
     nextSentence,
     seekToSentence,
+    playFromSentence,
   };
 }

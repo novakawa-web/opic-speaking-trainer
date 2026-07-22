@@ -183,24 +183,31 @@ export function getNextRepeatStep(
     return { completed: true, completedRepeats, nextIndex: 0 };
   }
 
+  if (repeatMode === "sentence") {
+    const nextCompletedRepeats = completedRepeats + 1;
+    if (repeatCount === "infinite" || nextCompletedRepeats < repeatCount) {
+      return { completed: false, completedRepeats: nextCompletedRepeats, nextIndex: currentIndex };
+    }
+    if (currentIndex < sentenceCount - 1) {
+      return { completed: false, completedRepeats: 0, nextIndex: currentIndex + 1 };
+    }
+    return { completed: true, completedRepeats: nextCompletedRepeats, nextIndex: currentIndex };
+  }
+
   const rangeStart =
     repeatMode === "paragraph"
       ? Math.min(
           Math.max(paragraphRange?.startSentenceIndex ?? currentIndex, 0),
           sentenceCount - 1,
         )
-      : repeatMode === "sentence"
-        ? currentIndex
-        : 0;
+      : 0;
   const rangeEnd =
     repeatMode === "paragraph"
       ? Math.min(
           Math.max(paragraphRange?.endSentenceIndex ?? currentIndex, rangeStart),
           sentenceCount - 1,
         )
-      : repeatMode === "sentence"
-        ? currentIndex
-        : sentenceCount - 1;
+      : sentenceCount - 1;
 
   if (currentIndex < rangeEnd) {
     return {

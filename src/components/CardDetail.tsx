@@ -65,6 +65,7 @@ type CardDetailProps = {
   onArchiveCard: (cardId: string, archived: boolean) => void;
   onDeleteCard: (cardId: string) => void;
   destructiveActionsBlocked?: boolean;
+  registerHomeNavigationGuard?: (guard: () => boolean) => () => void;
 };
 
 type AnswerTab = "model" | "mine";
@@ -112,6 +113,7 @@ export function CardDetail({
   onArchiveCard,
   onDeleteCard,
   destructiveActionsBlocked = false,
+  registerHomeNavigationGuard,
 }: CardDetailProps) {
   const [initialUiSession] = useState(() =>
     readCardDetailUiSession(card.id, Boolean(myAnswer)),
@@ -133,6 +135,7 @@ export function CardDetail({
   const [recordingStatus, setRecordingStatus] =
     useState<RecordingStatus>("idle");
   const [isEditingCard, setIsEditingCard] = useState(false);
+  const [isCardEditorDirty, setIsCardEditorDirty] = useState(false);
   const {
     isSupported,
     activeTarget,
@@ -175,6 +178,26 @@ export function CardDetail({
     },
     [confirmDiscard, stop],
   );
+
+  const confirmHomeNavigation = useCallback(() => {
+    if (
+      isEditingCard &&
+      isCardEditorDirty &&
+      !window.confirm("저장하지 않은 카드 수정 내용이 있습니다. 홈으로 이동할까요?")
+    ) {
+      return false;
+    }
+    if (!confirmDiscard()) return false;
+    if (!(memoSectionRef.current?.confirmDiscardAndClose() ?? true)) return false;
+    recorderRef.current?.clearRecording();
+    stop();
+    return true;
+  }, [confirmDiscard, isCardEditorDirty, isEditingCard, stop]);
+
+  useEffect(() => {
+    if (!registerHomeNavigationGuard) return;
+    return registerHomeNavigationGuard(confirmHomeNavigation);
+  }, [confirmHomeNavigation, registerHomeNavigationGuard]);
 
   // A discarded mobile tab restores the same detail controls and unsaved answer draft.
   useLayoutEffect(() => {
@@ -327,6 +350,7 @@ export function CardDetail({
         card={card}
         onSave={saveCard}
         onCancel={() => setIsEditingCard(false)}
+        onDirtyChange={setIsCardEditorDirty}
       />
     );
   }

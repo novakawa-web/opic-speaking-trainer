@@ -1,4 +1,10 @@
 import { CARD_MEMO_MAX_LENGTH } from "./cardMemoStorage.ts";
+import {
+  isRepeatCount,
+  isRepeatMode,
+  isRestLevel,
+  type ShadowingPlaybackSettings,
+} from "./shadowingSettings.ts";
 
 export const CARD_DETAIL_UI_SESSION_KEY = "opic-card-detail-ui-session";
 export const SHADOWING_PLAYER_SESSION_KEY = "opic-shadowing-player-session";
@@ -30,6 +36,11 @@ type ShadowingPlayerSessionBase = {
   status: "idle" | "paused" | "completed";
   questionExpanded: boolean;
   showFrontKo: boolean;
+  sourceFingerprint?: string;
+  completedRepeats?: number;
+  repeatMode?: ShadowingPlaybackSettings["repeatMode"];
+  repeatCount?: ShadowingPlaybackSettings["repeatCount"];
+  restLevel?: ShadowingPlaybackSettings["restLevel"];
 };
 
 export type ShadowingPlayerSession = ShadowingPlayerSessionBase &
@@ -45,6 +56,15 @@ export type ShadowingPlayerSession = ShadowingPlayerSessionBase &
         cardId?: never;
       }
   );
+
+export type RestorableShadowingSessionContext = {
+  sourceType: "modelAnswer" | "myAnswer" | "savedPassage";
+  cardId?: string;
+  savedPassageId?: string;
+  sourceFingerprint: string;
+  sentenceCount: number;
+  playbackSettings: ShadowingPlaybackSettings;
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -182,9 +202,35 @@ export function parseShadowingPlayerSession(raw: string | null) {
             }
           : null;
     if (!sourceIdentity) return null;
+    const hasProgressMetadata =
+      value.sourceFingerprint !== undefined ||
+      value.completedRepeats !== undefined ||
+      value.repeatMode !== undefined ||
+      value.repeatCount !== undefined ||
+      value.restLevel !== undefined;
+    const progressMetadata = hasProgressMetadata
+      ? typeof value.sourceFingerprint === "string" &&
+        /^v1-\d+-[0-9a-f]{8}$/.test(value.sourceFingerprint) &&
+        Number.isInteger(value.completedRepeats) &&
+        (value.completedRepeats as number) >= 0 &&
+        (value.completedRepeats as number) <= 1_000_000 &&
+        isRepeatMode(value.repeatMode) &&
+        isRepeatCount(value.repeatCount) &&
+        isRestLevel(value.restLevel)
+        ? {
+            sourceFingerprint: value.sourceFingerprint,
+            completedRepeats: value.completedRepeats as number,
+            repeatMode: value.repeatMode,
+            repeatCount: value.repeatCount,
+            restLevel: value.restLevel,
+          }
+        : null
+      : {};
+    if (progressMetadata === null) return null;
     return {
       active: true,
       ...sourceIdentity,
+      ...progressMetadata,
       currentIndex: value.currentIndex,
       status:
         value.status === "idle" ||
@@ -198,6 +244,38 @@ export function parseShadowingPlayerSession(raw: string | null) {
   } catch {
     return null;
   }
+}
+
+export function resolveRestorableShadowingPlayerSession(
+  session: ShadowingPlayerSession | null,
+  context: RestorableShadowingSessionContext,
+) {
+  if (
+    !session ||
+    session.status !== "paused" ||
+    session.sourceFingerprint !== context.sourceFingerprint ||
+    session.currentIndex >= context.sentenceCount ||
+    context.sentenceCount <= 0 ||
+    session.completedRepeats === undefined ||
+    session.repeatMode !== context.playbackSettings.repeatMode ||
+    session.repeatCount !== context.playbackSettings.repeatCount ||
+    session.restLevel !== context.playbackSettings.restLevel
+  ) {
+    return null;
+  }
+  const identityMatches = context.sourceType === "savedPassage"
+    ? session.sourceType === "savedPassage" &&
+      session.savedPassageId === context.savedPassageId
+    : session.sourceType === context.sourceType &&
+      session.cardId === context.cardId;
+  if (!identityMatches) return null;
+  if (
+    session.repeatCount !== "infinite" &&
+    session.completedRepeats >= session.repeatCount
+  ) {
+    return null;
+  }
+  return session;
 }
 
 export function readShadowingPlayerSession() {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppHeader } from "./components/AppHeader";
 import { BackupManager } from "./components/BackupManager";
 import { AnswerLearning } from "./components/AnswerLearning";
@@ -317,6 +317,13 @@ function App() {
   const [cardManagementNotice, setCardManagementNotice] =
     useState<CardManagementNotice | null>(null);
   const cardManagementNoticeIdRef = useRef(0);
+  const homeNavigationGuardRef = useRef<(() => boolean) | null>(null);
+  const registerHomeNavigationGuard = useCallback((guard: () => boolean) => {
+    homeNavigationGuardRef.current = guard;
+    return () => {
+      if (homeNavigationGuardRef.current === guard) homeNavigationGuardRef.current = null;
+    };
+  }, []);
   const [initialNavigation] = useState(() =>
     readInitialNavigationState(
       initialCardState.cards.filter((card) => !archivedCardIds.includes(card.id)),
@@ -678,7 +685,6 @@ function App() {
     if (view !== "shadowing") return;
 
     const handlePopState = () => {
-      clearShadowingPlayerSession();
       setShadowingSource(null);
       if (
         shadowingReturnView === "answerLearning" &&
@@ -1297,6 +1303,34 @@ function App() {
     closePersonalMemos();
   }
 
+  function navigateHome() {
+    if (view === "list") {
+      window.scrollTo({
+        top: 0,
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+      });
+      return;
+    }
+    if (view === "personalMemos") {
+      requestClosePersonalMemos();
+      return;
+    }
+    if (homeNavigationGuardRef.current && !homeNavigationGuardRef.current()) return;
+    clearCardDetailUiSession();
+    setLastUndo(null);
+    setFeedbackMessage(null);
+    setSelectedCardId(null);
+    setMemoFocus(null);
+    setShadowingSource(null);
+    const { opicShadowing: _shadowing, opicView: _view, ...historyState } =
+      window.history.state ?? {};
+    window.history.replaceState({ ...historyState, opicView: "list" }, "");
+    setView("list");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
   function addPersonalMemo(title: string, content: string) {
     setPersonalMemoDataset((current) =>
       createPersonalMemo(current, title, content).dataset,
@@ -1609,6 +1643,7 @@ function App() {
         canGoNextCard={Boolean(selectedCard) && canGoNext}
         theme={theme}
         onToggleTheme={toggleTheme}
+        onHome={navigateHome}
         onPreviousCard={() => navigateShadowingCard(-1)}
         onNextCard={() => navigateShadowingCard(1)}
         onSourceTypeChange={changeShadowingSource}
@@ -1617,7 +1652,6 @@ function App() {
             window.history.back();
             return;
           }
-          clearShadowingPlayerSession();
           setShadowingSource(null);
           if (shadowingReturnView === "answerLearning" && selectedCard) {
             setView("answerLearning");
@@ -1636,7 +1670,7 @@ function App() {
   if (view === "drillSetup") {
     return (
       <div className="app-shell">
-        <AppHeader theme={theme} studyTitle="첫 문장 연습 준비" onBack={() => setView("list")} onToggleTheme={toggleTheme} />
+        <AppHeader theme={theme} studyTitle="첫 문장 연습 준비" onBack={() => setView("list")} onHome={navigateHome} onToggleTheme={toggleTheme} />
         <FirstLineSetup
           cardCount={orderedFilteredCards.length}
           decks={decks}
@@ -1676,6 +1710,7 @@ function App() {
           theme={theme}
           studyTitle="답변 익히기 준비"
           onBack={closeAnswerLearning}
+          onHome={navigateHome}
           onToggleTheme={toggleTheme}
         />
         <AnswerLearningSetup
@@ -1722,6 +1757,7 @@ function App() {
           mobileSticky
           currentPosition={currentPosition}
           totalCards={activeCards.length}
+          onHome={navigateHome}
           onBack={leaveAnswerLearning}
           onToggleTheme={toggleTheme}
         />
@@ -1771,6 +1807,7 @@ function App() {
           theme={theme}
           studyTitle="개인 학습 메모"
           onBack={requestClosePersonalMemos}
+          onHome={navigateHome}
           onToggleTheme={toggleTheme}
         />
         <PersonalMemoLibrary
@@ -1793,6 +1830,7 @@ function App() {
           theme={theme}
           studyTitle="카드 라이브러리"
           onBack={closeCardLibrary}
+          onHome={navigateHome}
           onToggleTheme={toggleTheme}
         />
         <CardLibrary
@@ -1855,7 +1893,7 @@ function App() {
   if (view === "drill" && mockSession?.screen === "complete") {
     return (
       <div className="app-shell">
-        <AppHeader theme={theme} studyTitle="첫 문장 모의고사 결과" onBack={() => { clearFirstLineMockSession(); setMockSession(null); setSelectedCardId(null); setView("list"); }} onToggleTheme={toggleTheme} />
+        <AppHeader theme={theme} studyTitle="첫 문장 모의고사 결과" onBack={() => { clearFirstLineMockSession(); setMockSession(null); setSelectedCardId(null); setView("list"); }} onHome={navigateHome} onToggleTheme={toggleTheme} />
         <FirstLineMockResult
           session={mockSession}
           cards={cardCatalog}
@@ -1892,6 +1930,7 @@ function App() {
           mobileSticky
           currentPosition={currentPosition}
           totalCards={activeCards.length}
+          onHome={navigateHome}
           onBack={leaveDrill}
           onToggleTheme={toggleTheme}
         />
@@ -1931,6 +1970,7 @@ function App() {
         <AppHeader
           theme={theme}
           studyTitle="카드 상세"
+          onHome={navigateHome}
           onToggleTheme={toggleTheme}
         />
         <CardDetail
@@ -1983,6 +2023,7 @@ function App() {
           onArchiveCard={changeCardArchive}
           onDeleteCard={deleteCardPermanently}
           destructiveActionsBlocked={destructiveActionsBlocked}
+          registerHomeNavigationGuard={registerHomeNavigationGuard}
         />
         {cardDeletionFailure && (
           <CardDeletionFailureAlert notice={cardDeletionFailure} />
@@ -2001,7 +2042,7 @@ function App() {
 
   return (
     <div className="app-shell">
-      <AppHeader theme={theme} onToggleTheme={toggleTheme} />
+      <AppHeader theme={theme} onHome={navigateHome} onToggleTheme={toggleTheme} />
 
       <div className="home-layout-shell">
         <main className="home-page">

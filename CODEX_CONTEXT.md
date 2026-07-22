@@ -1,10 +1,10 @@
 # OPIc Speaking Trainer - Codex 인수인계
 
-> 마지막 확인: 2026-07-21 (Asia/Seoul)
+> 마지막 확인: 2026-07-22 (Asia/Seoul)
 >
-> 기준 브랜치: `feature/card-deletion-transaction-integration` (기준 main: `c9a7150a99b2a1f53ea2720c1f56beb1de9e8487`)
+> 기준 브랜치: `fix/navigation-shadowing-playback-ux` (기준 main: `4efd758ab06cbe8566bbdbecd8f58537ad31660f`)
 >
-> 기준 커밋: `c9a7150a99b2a1f53ea2720c1f56beb1de9e8487`
+> 기준 커밋: `4efd758ab06cbe8566bbdbecd8f58537ad31660f`
 
 이 문서는 새 Codex 대화에서 가장 먼저 읽는 현재 코드 구조와 작업 규칙의 source of truth다. 프로젝트 소개와 실행 방법은 [README.md](README.md), Firebase 운영 절차는 [CLOUD_BACKUP_OPERATIONS.md](CLOUD_BACKUP_OPERATIONS.md)를 우선한다.
 
@@ -17,7 +17,7 @@
 - production Vite base는 `/opic-speaking-trainer/`, 개발 base는 `/`다.
 - 기본 카드 소스는 12장이지만 활성 카드 데이터셋은 TSV 사용에 따라 달라진다. 운영 카드 수를 코드 상수처럼 문서화하지 않는다.
 - 2026-07-21 확인 시 운영 URL, `manifest.webmanifest`, `sw.js`, `404.html`은 HTTP 200이었다.
-- 최신 확인 Pages workflow는 commit `c9a7150a99b2a1f53ea2720c1f56beb1de9e8487`에서 성공했다. 독립 storage transaction 검증 30개와 순수 카드 삭제 plan 검증 40개는 main에 포함되어 있다. 이 feature 브랜치에서는 카드 완전 삭제와 실행 취소를 해당 두 기반에 연결하고 실패 주입 통합 검증 36개를 추가해 `test:all`이 651개가 된다.
+- 최신 확인 Pages workflow는 commit `4efd758ab06cbe8566bbdbecd8f58537ad31660f`에서 성공했다. storage transaction, 카드 삭제 plan과 transaction 통합은 main에 포함되어 있다. 이 브랜치에서는 공통 브랜드 홈 이동, 문장별 반복 자동 진행, 상태별 문장 터치 재생·일시정지, 고정된 5개 하단 조작, 중복 없는 현재 unit 가시성 스크롤과 엄격한 쉐도잉 session 복원을 추가해 `test:all`이 712개다.
 
 ## 2. 구현된 사용자 흐름
 
@@ -32,7 +32,7 @@
 - 답변 익히기 전용 상태 `hard | learning | speakable`와 별도 시도·통계·실행 취소
 - 기본 답변과 카드 ID별 나만의 답변
 - 전체·문단·문장 쉐도잉, 1·3·5·10·무한 반복, 휴식 5단계, 속도 5단계
-- 질문 확인, 이전·다음 카드, 백그라운드 복귀 시 paused 전환과 Wake Lock
+- 질문 확인, 이전·다음 카드, 문장별 반복 완료 후 다음 문장 자동 진행, 재생 unit 가시성 스크롤, 백그라운드 복귀 시 paused 전환과 Wake Lock
 
 ### 사용자 데이터와 관리
 
@@ -100,7 +100,7 @@
 | `opic-navigation-session` | 현재 화면, 카드, 필터, drill 순서와 복귀 경로 |
 | `opic-card-library-session` | 표시 개수, 필터 signature, 스크롤 위치 |
 | `opic-card-detail-ui-session` | 상세 펼침 상태, 선택 답변, 나만의 답변·메모 초안 |
-| `opic-shadowing-player-session` | 소스, 현재 문장, paused 상태, 질문 표시 |
+| `opic-shadowing-player-session` | 소스 식별자·문장 지문, 현재 문장·완료 반복 수, 반복·휴식 설정, paused 상태, 질문 표시 |
 | `opic-swipe-navigation-hint-seen` | 스와이프 안내 표시 여부 |
 | `opic-saved-passage-editor-session` | 저장 지문 작성·수정 초안 |
 | `opic-saved-passage-library-open` | 저장 지문 목록 펼침 상태 |
@@ -189,7 +189,9 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 
 ### 현재 검증 기준
 
-`package.json`의 `test:all`은 다음 18개 스크립트를 순서대로 실행한다. 기준 main의 615개에 카드 삭제 transaction 통합 검증 36개가 추가되어 이 feature 브랜치의 합계는 651개다.
+쉐도잉 session은 마지막 유효한 미완료 재생 1건만 보존한다. 카드 또는 저장 지문 식별자, 답변 문장 지문, 현재 반복 설정과 진행 범위가 모두 일치할 때만 `이어 듣기`로 복원한다. 완료됨, 손상됨, 다른 소스, 답변 변경, 범위 이탈 또는 설정 불일치는 처음부터 상태로 정규화한다. 홈·뒤로 이동은 떠나기 직전 현재 진행을 한 번 저장하며 이후 TTS 정리가 그 값을 덮어쓰지 않는다.
+
+`package.json`의 `test:all`은 다음 18개 스크립트를 순서대로 실행한다. 이 feature 브랜치의 합계는 712개다.
 
 | 명령 | 개수 |
 | --- | ---: |
@@ -202,7 +204,7 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 | `test:personal-memos` | 47 |
 | `test:passages` | 41 |
 | `test:recorder` | 66 |
-| `test:shadowing` | 49 |
+| `test:shadowing` | 110 |
 | `test:ui-session` | 20 |
 | `test:tsv` | 30 |
 | `test:answer-learning` | 50 |
@@ -255,3 +257,13 @@ git diff --check
 - 지문 폴더·태그·공유
 - 복잡한 Markdown 편집기, WYSIWYG와 임의 HTML 렌더링
 - persistent 카드 삭제 undo journal, 다중 탭 destructive action 잠금
+
+### UX backlog
+
+- 녹음 UI를 답변 익히기 화면 아래로 이동하고 답변 익히기 맥락에 맞게 문구와 디자인을 조정한다.
+- 답변 익히기에서 지문 선택 동작의 위치와 문제 글자 크기, 준비 화면 시작 버튼 위치를 함께 재검토한다.
+- 첫 문장 연습·답변 익히기·카드 라이브러리의 카드 선택 UI를 공통 패턴으로 정리한다.
+- 카드 선택 필터에 `type`·`topic`·`week` 다중 선택을 지원하고 필터 순서를 재검토한다.
+- 카드 목록 2열 전환 breakpoint를 실제 모바일·태블릿 사용성 기준으로 다시 결정한다.
+- 첫 문장 훈련에 전체 답변 보기와 첫 문장 공개 시 자동 음성 재생을 검토한다.
+- 첫 문장 훈련의 다시 도전 버튼 디자인을 다른 학습 조작과 일관되게 정리한다.
