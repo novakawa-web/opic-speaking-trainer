@@ -41,6 +41,7 @@ type CardLibraryProps = {
   onStudyOrderChange: (order: StudyOrder) => void;
   onReset: () => void;
   onSelect: (card: OpicCard) => void;
+  onCreate: () => void;
   answerLearningStatusFilter: "all" | "unlearned" | AnswerLearningStatus;
   onAnswerLearningStatusFilterChange: (value: "all" | "unlearned" | AnswerLearningStatus) => void;
   answerContentFilter: AnswerContentFilter;
@@ -76,6 +77,7 @@ export function CardLibrary({
   onStudyOrderChange,
   onReset,
   onSelect,
+  onCreate,
   answerLearningStatusFilter,
   onAnswerLearningStatusFilterChange,
   answerContentFilter,
@@ -164,7 +166,16 @@ export function CardLibrary({
           <h2 id="card-library-page-title">카드 라이브러리</h2>
           <p>필터와 학습 순서를 정한 뒤 카드를 열거나 홈에서 첫 문장 연습을 시작하세요.</p>
         </div>
-        <span className="card-count">전체 {catalogCount}장</span>
+        <div className="card-library-primary-actions">
+          <span className="card-count">전체 {catalogCount}장</span>
+          <button
+            type="button"
+            className="primary-button card-library-create-button"
+            onClick={onCreate}
+          >
+            새 카드 추가
+          </button>
+        </div>
       </section>
 
       <div className="card-library-tabs" role="tablist" aria-label="카드 라이브러리 보기">

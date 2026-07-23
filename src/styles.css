@@ -519,6 +519,19 @@ input:focus-visible + .toggle-switch {
   font-size: clamp(1.45rem, 3vw, 2rem);
 }
 
+.card-library-primary-actions {
+  display: grid;
+  justify-items: end;
+  align-content: start;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.card-library-create-button {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
 .card-library-result-count {
   margin: 0 4px -5px;
   color: var(--muted);
@@ -4754,6 +4767,29 @@ input:focus-visible + .toggle-switch {
   color: var(--status-again-text);
 }
 
+.card-editor-submission-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--danger) 58%, var(--line));
+  border-radius: 12px;
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+}
+
+.card-editor-submission-error p {
+  margin: 0;
+  font-weight: 750;
+}
+
+.card-editor-submission-error button {
+  flex: 0 0 auto;
+  min-height: 44px;
+}
+
 .card-editor-actions {
   gap: 10px;
   margin-top: 20px;
@@ -4937,6 +4973,11 @@ input:focus-visible + .toggle-switch {
     min-width: 0;
   }
 
+  .card-editor-submission-error {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .card-management-panel {
     width: calc(100% - 32px);
   }
@@ -5006,6 +5047,19 @@ input:focus-visible + .toggle-switch {
 
   .home-card-counts {
     justify-content: flex-start;
+  }
+
+  .card-library-primary-actions {
+    width: 100%;
+    justify-items: stretch;
+  }
+
+  .card-library-primary-actions .card-count {
+    justify-self: start;
+  }
+
+  .card-library-create-button {
+    width: 100%;
   }
 
   .home-filter-summary {

@@ -23,6 +23,24 @@ export type CardEditorValidation = {
   warnings: string[];
 };
 
+export function createEmptyCardEditorDraft(): CardEditorDraft {
+  return {
+    id: "__new_card_draft__",
+    deck: DECK_NAMES[0],
+    tags: "",
+    front: "",
+    frontKo: "",
+    firstLine: "",
+    hintTitle: "",
+    memoryTip: "",
+    subjectTip: "",
+    minimum: "",
+    flow: "",
+    answer: "",
+    finalRep: false,
+  };
+}
+
 const FIELD_LABELS: Record<keyof CardEditorDraft, string> = {
   id: "카드 ID",
   deck: "덱",
@@ -152,7 +170,13 @@ export function getChangedCardFields(
   original: OpicCard,
   draft: CardEditorDraft,
 ) {
-  const initial = createCardEditorDraft(original);
+  return getChangedCardEditorDraftFields(createCardEditorDraft(original), draft);
+}
+
+export function getChangedCardEditorDraftFields(
+  initial: CardEditorDraft,
+  draft: CardEditorDraft,
+) {
   return (Object.keys(initial) as Array<keyof CardEditorDraft>)
     .filter((field) => initial[field] !== draft[field])
     .map((field) => FIELD_LABELS[field]);

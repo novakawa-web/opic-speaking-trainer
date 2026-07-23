@@ -10,6 +10,7 @@ import {
   orderAnswerLearningCards,
 } from "./utils/answerLearningSelectors";
 import { CardLibrary } from "./components/CardLibrary";
+import { CardEditor } from "./components/CardEditor";
 import {
   PersonalMemoLibrary,
   PersonalMemoSummary,
@@ -163,10 +164,17 @@ import {
   type CardDeletionFailureNotice,
   type DeletedCardUndoSnapshot,
 } from "./utils/cardDeletionAdapter";
+import {
+  CardCreationError,
+  createCardCreationPlan,
+  describeCardCreationError,
+  executeCardCreationTransaction,
+} from "./utils/cardCreation";
 
 type View =
   | "list"
   | "library"
+  | "createCard"
   | "detail"
   | "drillSetup"
   | "drill"
@@ -191,6 +199,7 @@ function toNavigationView(
   shadowingReturnView: "detail" | "direct" | "answerLearning",
 ): NavigationSession["currentView"] {
   if (view === "shadowing") return shadowingReturnView === "detail" ? "detail" : "home";
+  if (view === "createCard") return "library";
   if (
     view === "list" ||
     view === "drillSetup" ||
@@ -316,6 +325,10 @@ function App() {
     useState(false);
   const [cardManagementNotice, setCardManagementNotice] =
     useState<CardManagementNotice | null>(null);
+  const [cardCreationDirty, setCardCreationDirty] = useState(false);
+  const [cardCreationError, setCardCreationError] = useState<string | null>(null);
+  const [duplicateCardId, setDuplicateCardId] = useState<string | null>(null);
+  const cardCreationExitApprovedRef = useRef(false);
   const cardManagementNoticeIdRef = useRef(0);
   const homeNavigationGuardRef = useRef<(() => boolean) | null>(null);
   const registerHomeNavigationGuard = useCallback((guard: () => boolean) => {
@@ -639,18 +652,7 @@ function App() {
   }, [answerLearningCards.length, drillCards.length, selectedCardId, selectedFilteredIndex, view]);
 
   useEffect(() => {
-    const persistedView =
-      view === "shadowing"
-        ? shadowingReturnView === "detail"
-          ? "detail"
-          : "home"
-        : view === "list" ||
-            view === "drillSetup" ||
-            view === "personalMemos" ||
-            view === "answerSetup" ||
-            view === "answerLearning"
-          ? "home"
-          : view;
+    const persistedView = toNavigationView(view, shadowingReturnView);
     saveNavigationSession({
       currentView: persistedView,
       selectedCardId: persistedView === "home" ? null : selectedCardId,
@@ -711,9 +713,29 @@ function App() {
   }, [answerSession.cardOrder, answerSession.currentIndex, cardCatalog, selectedCardId, shadowingReturnView, view]);
 
   useEffect(() => {
-    if (view !== "library" && view !== "detail") return;
+    if (view !== "library" && view !== "detail" && view !== "createCard") return;
 
     const handlePopState = () => {
+      if (view === "createCard") {
+        if (
+          !cardCreationExitApprovedRef.current &&
+          cardCreationDirty &&
+          !window.confirm("저장하지 않은 새 카드 내용이 있습니다. 화면을 나갈까요?")
+        ) {
+          window.history.pushState(
+            { ...window.history.state, opicView: "createCard" },
+            "",
+          );
+          return;
+        }
+        cardCreationExitApprovedRef.current = false;
+        setCardCreationDirty(false);
+        setCardCreationError(null);
+        setDuplicateCardId(null);
+        setView("library");
+        window.scrollTo({ top: 0, behavior: "auto" });
+        return;
+      }
       if (view === "detail") {
         clearCardDetailUiSession();
         setLastUndo(null);
@@ -728,7 +750,7 @@ function App() {
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [detailReturnView, view]);
+  }, [cardCreationDirty, detailReturnView, view]);
 
   function openCard(card: OpicCard, source: "home" | "library" = "library") {
     clearCardDetailUiSession();
@@ -748,6 +770,64 @@ function App() {
     setSelectedCardId(null);
     window.history.pushState({ ...window.history.state, opicView: "library" }, "");
     setView("library");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function openCardCreation() {
+    setCardCreationDirty(false);
+    setCardCreationError(null);
+    setDuplicateCardId(null);
+    window.history.pushState(
+      { ...window.history.state, opicView: "createCard" },
+      "",
+    );
+    setView("createCard");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function closeCardCreation() {
+    setCardCreationDirty(false);
+    setCardCreationError(null);
+    setDuplicateCardId(null);
+    if (window.history.state?.opicView === "createCard") {
+      cardCreationExitApprovedRef.current = true;
+      window.history.back();
+      return;
+    }
+    setView("library");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function requestCloseCardCreation() {
+    if (
+      cardCreationDirty &&
+      !window.confirm("저장하지 않은 새 카드 내용이 있습니다. 화면을 나갈까요?")
+    ) {
+      return;
+    }
+    closeCardCreation();
+  }
+
+  function openDuplicateCard(cardId: string) {
+    const duplicate = cardCatalog.find((card) => card.id === cardId);
+    if (!duplicate) return;
+    if (
+      cardCreationDirty &&
+      !window.confirm("저장하지 않은 새 카드 내용이 있습니다. 화면을 나갈까요?")
+    ) {
+      return;
+    }
+    setCardCreationDirty(false);
+    setCardCreationError(null);
+    setDuplicateCardId(null);
+    clearCardDetailUiSession();
+    setDetailReturnView("library");
+    setSelectedCardId(duplicate.id);
+    window.history.replaceState(
+      { ...window.history.state, opicView: "detail" },
+      "",
+    );
+    setView("detail");
     window.scrollTo({ top: 0, behavior: "auto" });
   }
 
@@ -1317,6 +1397,17 @@ function App() {
       requestClosePersonalMemos();
       return;
     }
+    if (view === "createCard") {
+      if (
+        cardCreationDirty &&
+        !window.confirm("저장하지 않은 새 카드 내용이 있습니다. 화면을 나갈까요?")
+      ) {
+        return;
+      }
+      setCardCreationDirty(false);
+      setCardCreationError(null);
+      setDuplicateCardId(null);
+    }
     if (homeNavigationGuardRef.current && !homeNavigationGuardRef.current()) return;
     clearCardDetailUiSession();
     setLastUndo(null);
@@ -1451,6 +1542,42 @@ function App() {
     setCardStorageWarning(false);
     setCardDeletionFailure(null);
     showCardManagementNotice("카드가 수정되었습니다.", "detail");
+  }
+
+  function createCard(cardDraft: OpicCard) {
+    setCardCreationError(null);
+    setDuplicateCardId(null);
+    try {
+      const plan = createCardCreationPlan({
+        card: cardDraft,
+        currentCards: cardCatalog,
+        archivedCardIds,
+        localStorage,
+        now: new Date(),
+      });
+      executeCardCreationTransaction({
+        plan,
+        commit: setCardCatalog,
+      });
+      setCardStorageWarning(false);
+      setCardCreationDirty(false);
+      setDetailReturnView("library");
+      setSelectedCardId(plan.card.id);
+      window.history.replaceState(
+        { ...window.history.state, opicView: "detail" },
+        "",
+      );
+      setView("detail");
+      showCardManagementNotice("새 카드가 추가되었습니다.", "detail");
+      window.scrollTo({ top: 0, behavior: "auto" });
+    } catch (error) {
+      setCardCreationError(describeCardCreationError(error));
+      setDuplicateCardId(
+        error instanceof CardCreationError && error.code === "duplicate-card"
+          ? error.existingCardId ?? null
+          : null,
+      );
+    }
   }
 
   function showCardManagementNotice(
@@ -1858,6 +1985,7 @@ function App() {
           onStudyOrderChange={setStudyOrder}
           onReset={resetFilters}
           onSelect={(card) => openCard(card, "library")}
+          onCreate={openCardCreation}
           answerLearningStatusFilter={answerLearningStatusFilter}
           onAnswerLearningStatusFilterChange={setAnswerLearningStatusFilter}
           answerContentFilter={answerContentFilter}
@@ -1886,6 +2014,33 @@ function App() {
             onDismiss={() => dismissCardManagementNotice(cardManagementNotice.id)}
           />
         )}
+      </div>
+    );
+  }
+
+  if (view === "createCard") {
+    return (
+      <div className="app-shell">
+        <AppHeader
+          theme={theme}
+          studyTitle="새 카드 추가"
+          onBack={requestCloseCardCreation}
+          onHome={navigateHome}
+          onToggleTheme={toggleTheme}
+        />
+        <CardEditor
+          mode="create"
+          onSave={createCard}
+          onCancel={closeCardCreation}
+          onDirtyChange={setCardCreationDirty}
+          submissionError={cardCreationError}
+          duplicateCardId={duplicateCardId}
+          onOpenDuplicate={openDuplicateCard}
+          onInputChange={() => {
+            setCardCreationError(null);
+            setDuplicateCardId(null);
+          }}
+        />
       </div>
     );
   }

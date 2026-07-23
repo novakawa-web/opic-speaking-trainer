@@ -1,10 +1,10 @@
 # OPIc Speaking Trainer - Codex 인수인계
 
-> 마지막 확인: 2026-07-22 (Asia/Seoul)
+> 마지막 확인: 2026-07-23 (Asia/Seoul)
 >
-> 기준 브랜치: `fix/navigation-shadowing-playback-ux` (기준 main: `4efd758ab06cbe8566bbdbecd8f58537ad31660f`)
+> 기준 브랜치: `feature/add-card-in-app` (기준 main: `6dc26c6931f499a942e83e51e84d8794f0a4e228`)
 >
-> 기준 커밋: `4efd758ab06cbe8566bbdbecd8f58537ad31660f`
+> 기준 커밋: `6dc26c6931f499a942e83e51e84d8794f0a4e228`
 
 이 문서는 새 Codex 대화에서 가장 먼저 읽는 현재 코드 구조와 작업 규칙의 source of truth다. 프로젝트 소개와 실행 방법은 [README.md](README.md), Firebase 운영 절차는 [CLOUD_BACKUP_OPERATIONS.md](CLOUD_BACKUP_OPERATIONS.md)를 우선한다.
 
@@ -17,7 +17,7 @@
 - production Vite base는 `/opic-speaking-trainer/`, 개발 base는 `/`다.
 - 기본 카드 소스는 12장이지만 활성 카드 데이터셋은 TSV 사용에 따라 달라진다. 운영 카드 수를 코드 상수처럼 문서화하지 않는다.
 - 2026-07-21 확인 시 운영 URL, `manifest.webmanifest`, `sw.js`, `404.html`은 HTTP 200이었다.
-- 최신 확인 Pages workflow는 commit `4efd758ab06cbe8566bbdbecd8f58537ad31660f`에서 성공했다. storage transaction, 카드 삭제 plan과 transaction 통합은 main에 포함되어 있다. 이 브랜치에서는 공통 브랜드 홈 이동, 문장별 반복 자동 진행, 상태별 문장 터치 재생·일시정지, 고정된 5개 하단 조작, 중복 없는 현재 unit 가시성 스크롤과 엄격한 쉐도잉 session 복원을 추가해 `test:all`이 712개다.
+- 최신 확인 Pages workflow는 commit `6dc26c6931f499a942e83e51e84d8794f0a4e228`에서 성공했다. storage transaction, 카드 삭제 transaction, 공통 브랜드 홈 이동과 쉐도잉 UX 개선은 main에 포함되어 있다. 이 미커밋 feature 브랜치에서는 카드 라이브러리의 단일 카드 직접 추가 흐름을 구현해 `test:all`이 753개다.
 
 ## 2. 구현된 사용자 흐름
 
@@ -41,6 +41,7 @@
 - 개인 메모 읽기 화면의 제한적 Markdown: 제목, 굵게, 단순 목록, 인용, 구분선, 인라인 코드
 - 임시 직접 지문과 여러 저장 지문
 - 카드 ID를 고정하는 직접 수정
+- 카드 라이브러리에서 자동 ID로 새 카드 한 장 직접 추가
 - 카드 본문과 학습 기록을 유지하는 보관·복원
 - 확인 후 카드 완전 삭제와 새로고침 전 메모리 snapshot 기반 한 번 실행 취소
 - TSV 13열 가져오기·내보내기와 가져오기 직전 카드 안전 복사본
@@ -61,6 +62,8 @@
 - 카드 ID를 유지하면 첫 문장 상태·시도, 답변 익히기 상태·시도, 나만의 답변과 카드 메모가 계속 연결된다.
 - TSV의 동일 ID 가져오기는 카드 본문만 덮어쓰고 ID 기반 사용자 기록과 보관 상태를 유지한다.
 - 삭제했던 ID를 다시 TSV로 가져오면 새 카드처럼 생성되며 과거 삭제 기록을 복구하지 않는다.
+- 앱에서 새 카드를 만들 때 사용자가 ID를 입력하지 않는다. `crypto.randomUUID()` 또는 `crypto.getRandomValues()`로 `custom-` ID를 만들고 활성·보관 ID와 최대 32회 충돌 검사를 한다. 안전한 난수 API가 없거나 충돌을 해소하지 못하면 저장하지 않는다.
+- 새 카드 생성은 정규화된 질문과 전체 답변이 모두 기존 카드와 같으면 중복을 차단하고 기존 카드로 이동할 수 있게 한다.
 - 첫 문장 전용 카드는 `answer/back`이 `firstLine` 한 문장인 유효 카드다. 첫 문장 연습에는 포함하지만 답변 익히기와 쉐도잉에는 전체 답변 없음 상태를 표시한다.
 - 기본 답변 배열은 `join("\n")` 후 빈 줄, 즉 줄바꿈 2회 이상을 기준으로 문단을 나눈다. 배열 항목 하나를 자동으로 독립 문단으로 보지 않는다.
 
@@ -149,6 +152,10 @@
 
 AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지 말고, snapshot·mutation·rollback primitive만 공유한다. persistent undo journal과 다중 탭 잠금은 현재 범위가 아니다.
 
+### 새 카드 생성 저장 경계
+
+`src/utils/cardCreation.ts`는 CardEditor가 검증한 카드 내용에 충돌 없는 ID를 붙이고, 기존 카드 끝에 추가한 v1 dataset raw JSON을 만든 뒤 `parseCardDataset`으로 재검증한다. mutation은 `opic-card-dataset` 한 건뿐이며 `runStorageTransaction` 성공 후에만 `setCardCatalog`을 한 번 호출한다. 실패 시 React 카드 목록, 화면, 입력 draft와 기존 저장값을 바꾸지 않는다. 생성 직후 별도 상태·시도·메모·session key를 만들지 않으며 JSON 백업과 TSV 내보내기는 기존 card dataset을 읽으므로 자동 포함된다.
+
 ## 8. 클라우드 수동 백업
 
 - 기능 플래그와 완전한 Firebase Web config가 있을 때만 패널과 Firebase 초기화 경로를 연다.
@@ -170,7 +177,7 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 
 - 앱 상태·화면 조립: `src/App.tsx`
 - 공통 타입과 기본 카드: `src/types.ts`, `src/data/cards.ts`
-- 카드 목록·상세·수정: `src/components/CardList.tsx`, `CardDetail.tsx`, `CardEditor.tsx`
+- 카드 목록·상세·생성·수정: `src/components/CardList.tsx`, `CardLibrary.tsx`, `CardDetail.tsx`, `CardEditor.tsx`, `src/utils/cardCreation.ts`
 - 카드 수정·보관·삭제 규칙: `src/utils/cardEditor.ts`, `cardArchiveStorage.ts`, `cardDeletion.ts`
 - 첫 문장: `src/components/FirstLineSetup.tsx`, `FirstLineDrill.tsx`, `src/utils/firstLineMockSession.ts`
 - 답변 익히기: `src/components/AnswerLearningSetup.tsx`, `AnswerLearning.tsx`, `src/utils/answerLearningStorage.ts`, `answerLearningSession.ts`
@@ -191,10 +198,11 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 
 쉐도잉 session은 마지막 유효한 미완료 재생 1건만 보존한다. 카드 또는 저장 지문 식별자, 답변 문장 지문, 현재 반복 설정과 진행 범위가 모두 일치할 때만 `이어 듣기`로 복원한다. 완료됨, 손상됨, 다른 소스, 답변 변경, 범위 이탈 또는 설정 불일치는 처음부터 상태로 정규화한다. 홈·뒤로 이동은 떠나기 직전 현재 진행을 한 번 저장하며 이후 TTS 정리가 그 값을 덮어쓰지 않는다.
 
-`package.json`의 `test:all`은 다음 18개 스크립트를 순서대로 실행한다. 이 feature 브랜치의 합계는 712개다.
+`package.json`의 `test:all`은 다음 19개 스크립트를 순서대로 실행한다. 이 feature 브랜치의 합계는 753개다.
 
 | 명령 | 개수 |
 | --- | ---: |
+| `test:card-creation` | 41 |
 | `test:card-deletion-transaction` | 36 |
 | `test:card-deletion-plan` | 40 |
 | `test:storage-transaction` | 30 |
