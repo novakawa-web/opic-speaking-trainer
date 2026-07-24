@@ -497,21 +497,31 @@ export function ShadowingPlayer({
               </p>
             )}
             {questionTtsMessage && <p className="tts-message">{questionTtsMessage}</p>}
-            <label className="shadowing-source-control">
-              <span>연습 답변</span>
-              <select
-                value={source.sourceType}
-                aria-label="쉐도잉 답변 종류"
-                onChange={(event) =>
-                  onSourceTypeChange?.(
-                    event.target.value as "modelAnswer" | "myAnswer",
-                  )
-                }
+            <div className="shadowing-source-row">
+              <div
+                className="shadowing-source-control"
+                role="group"
+                aria-label="연습 답변 선택"
               >
-                <option value="modelAnswer">기본 답변</option>
-                <option value="myAnswer" disabled={!myAnswer}>나만의 답변</option>
-              </select>
-            </label>
+                <button
+                  type="button"
+                  aria-pressed={source.sourceType === "modelAnswer"}
+                  onClick={() => onSourceTypeChange?.("modelAnswer")}
+                >
+                  <span className="shadowing-source-selection-mark" aria-hidden="true">✓</span>
+                  <span>기본 답변</span>
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={source.sourceType === "myAnswer"}
+                  disabled={!myAnswer}
+                  onClick={() => onSourceTypeChange?.("myAnswer")}
+                >
+                  <span className="shadowing-source-selection-mark" aria-hidden="true">✓</span>
+                  <span>나만의 답변</span>
+                </button>
+              </div>
+            </div>
           </section>
         )}
 

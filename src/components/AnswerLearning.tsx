@@ -143,7 +143,13 @@ export function AnswerLearning({
             {card.hint.memoryTip && <p>{card.hint.memoryTip}</p>}
             {card.hint.subjectTip && <p>{card.hint.subjectTip}</p>}
             {card.hint.minimum && <p><strong>최소 답변</strong> {card.hint.minimum}</p>}
-            {card.hint.flow.length > 0 && <ol>{card.hint.flow.map((step) => <li key={step}>{step}</li>)}</ol>}
+            {card.hint.flow.length > 0 && (
+              <div className="hint-flow-lines" role="list">
+                {card.hint.flow.map((step, index) => (
+                  <p key={`${index}-${step}`} role="listitem">{step}</p>
+                ))}
+              </div>
+            )}
           </div>
         )}
         {reveal.firstLine && (

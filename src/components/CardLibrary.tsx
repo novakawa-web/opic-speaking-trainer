@@ -13,12 +13,11 @@ import type { StudyCardScope, StudyOrder } from "../utils/studyPreferences";
 import type { AnswerContentFilter } from "../utils/cardContent";
 import { CardList } from "./CardList";
 import { TagFilter } from "./TagFilter";
-import { MemoSearch } from "./MemoSearch";
 import type { ArchiveFilter } from "../utils/cardArchiveStorage";
+import { normalizeCardSearchQuery } from "../utils/cardSearch";
 
 type CardLibraryProps = {
   cards: OpicCard[];
-  memoCards: OpicCard[];
   catalogCount: number;
   statuses: FirstLineStatusMap;
   answerLearningStatuses: AnswerLearningStatuses;
@@ -28,6 +27,8 @@ type CardLibraryProps = {
   tags: string[];
   selectedDeck: DeckName | "all";
   selectedTag: string;
+  searchQuery: string;
+  onSearchQueryChange: (query: string) => void;
   finalOnly: boolean;
   hardOnly: boolean;
   cardScope: StudyCardScope;
@@ -46,7 +47,6 @@ type CardLibraryProps = {
   onAnswerLearningStatusFilterChange: (value: "all" | "unlearned" | AnswerLearningStatus) => void;
   answerContentFilter: AnswerContentFilter;
   onAnswerContentFilterChange: (value: AnswerContentFilter) => void;
-  onOpenMemoCard: (cardId: string, memoId: string) => void;
   archiveFilter: ArchiveFilter;
   onArchiveFilterChange: (value: ArchiveFilter) => void;
   archivedCardIds: string[];
@@ -54,7 +54,6 @@ type CardLibraryProps = {
 
 export function CardLibrary({
   cards,
-  memoCards,
   catalogCount,
   statuses,
   answerLearningStatuses,
@@ -64,6 +63,8 @@ export function CardLibrary({
   tags,
   selectedDeck,
   selectedTag,
+  searchQuery,
+  onSearchQueryChange,
   finalOnly,
   hardOnly,
   cardScope,
@@ -82,16 +83,15 @@ export function CardLibrary({
   onAnswerLearningStatusFilterChange,
   answerContentFilter,
   onAnswerContentFilterChange,
-  onOpenMemoCard,
   archiveFilter,
   onArchiveFilterChange,
   archivedCardIds,
 }: CardLibraryProps) {
-  const [activeTab, setActiveTab] = useState<"cards" | "memos">("cards");
   const initialSessionRef = useRef(readCardLibrarySession());
   const visibleCountRef = useRef(CARD_LIBRARY_PAGE_SIZE);
   const filterSignatureRef = useRef(filterSignature);
   const previousFilterSignatureRef = useRef(filterSignature);
+  const previousSearchQueryRef = useRef(searchQuery);
   const [visibleCount, setVisibleCount] = useState(() =>
     resolveCardLibraryVisibleCount(initialSessionRef.current, filterSignature),
   );
@@ -137,6 +137,14 @@ export function CardLibrary({
     window.scrollTo({ top: 0, behavior: "auto" });
   }, [filterSignature]);
 
+  useEffect(() => {
+    if (previousSearchQueryRef.current === searchQuery) return;
+    previousSearchQueryRef.current = searchQuery;
+    visibleCountRef.current = CARD_LIBRARY_PAGE_SIZE;
+    setVisibleCount(CARD_LIBRARY_PAGE_SIZE);
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [searchQuery]);
+
   function selectCard(card: OpicCard) {
     saveCardLibrarySession({
       filterSignature,
@@ -178,21 +186,13 @@ export function CardLibrary({
         </div>
       </section>
 
-      <div className="card-library-tabs" role="tablist" aria-label="카드 라이브러리 보기">
-        <button type="button" role="tab" aria-selected={activeTab === "cards"} onClick={() => setActiveTab("cards")}>카드 목록</button>
-        <button type="button" role="tab" aria-selected={activeTab === "memos"} onClick={() => setActiveTab("memos")}>카드 메모 검색</button>
-      </div>
-
-      {activeTab === "memos" ? (
-        <MemoSearch cards={memoCards} cardMemos={cardMemos} onOpenCard={onOpenMemoCard} />
-      ) : (
-        <>
-
       <TagFilter
         decks={decks}
         tags={tags}
         selectedDeck={selectedDeck}
         selectedTag={selectedTag}
+        searchQuery={searchQuery}
+        onSearchQueryChange={onSearchQueryChange}
         finalOnly={finalOnly}
         hardOnly={hardOnly}
         cardScope={cardScope}
@@ -216,24 +216,30 @@ export function CardLibrary({
         총 {cards.length}장 중 {shownCards.length}장 표시
       </p>
 
-      <CardList
-        cards={shownCards}
-        totalCount={cards.length}
-        statuses={statuses}
-        answerLearningStatuses={answerLearningStatuses}
-        myAnswers={myAnswers}
-        cardMemos={cardMemos}
-        onSelect={selectCard}
-        archivedCardIds={archivedCardIds}
-      />
+      {cards.length === 0 && normalizeCardSearchQuery(searchQuery) ? (
+        <section className="empty-state">
+          <span className="empty-icon" aria-hidden="true">◎</span>
+          <h2>일치하는 카드를 찾지 못했습니다.</h2>
+          <p>검색어를 바꾸거나 필터를 초기화해 보세요.</p>
+        </section>
+      ) : (
+        <CardList
+          cards={shownCards}
+          totalCount={cards.length}
+          statuses={statuses}
+          answerLearningStatuses={answerLearningStatuses}
+          myAnswers={myAnswers}
+          cardMemos={cardMemos}
+          onSelect={selectCard}
+          archivedCardIds={archivedCardIds}
+        />
+      )}
 
       {hasMore && (
         <button type="button" className="card-library-more-button" onClick={showMore}>
           카드 더 보기
           <span>다음 {Math.min(CARD_LIBRARY_PAGE_SIZE, cards.length - shownCards.length)}장</span>
         </button>
-      )}
-        </>
       )}
     </main>
   );

@@ -12,6 +12,8 @@ type TagFilterProps = {
   tags: string[];
   selectedDeck: DeckName | "all";
   selectedTag: string;
+  searchQuery?: string;
+  onSearchQueryChange?: (query: string) => void;
   finalOnly: boolean;
   hardOnly: boolean;
   cardScope: StudyCardScope;
@@ -38,6 +40,8 @@ export function TagFilter({
   tags,
   selectedDeck,
   selectedTag,
+  searchQuery,
+  onSearchQueryChange,
   finalOnly,
   hardOnly,
   cardScope,
@@ -60,8 +64,8 @@ export function TagFilter({
     <section className="filter-panel" aria-labelledby="filter-title">
       <div className="filter-heading">
         <div>
-          <p className="eyebrow">STUDY FILTER</p>
-          <h2 id="filter-title">오늘 연습할 카드 고르기</h2>
+          <p className="eyebrow">Filter and select cards</p>
+          <h2 id="filter-title">카드 찾기 및 선택</h2>
         </div>
         <button className="text-button" type="button" onClick={onReset}>
           필터 초기화
@@ -69,6 +73,24 @@ export function TagFilter({
       </div>
 
       <div className="filter-grid">
+        {searchQuery !== undefined && onSearchQueryChange && (
+          <div className="card-library-search-control">
+            <label className="field-label" htmlFor="card-library-content-search">
+              <span>카드 내용 검색</span>
+              <input
+                id="card-library-content-search"
+                type="search"
+                value={searchQuery}
+                onChange={(event) => onSearchQueryChange(event.target.value)}
+                placeholder="카드 내용 검색"
+                aria-describedby="card-library-content-search-help"
+              />
+            </label>
+            <p id="card-library-content-search-help" className="sr-only">
+              질문, 첫 문장, 기본 답변, 번역, 힌트, 한글 흐름, 태그, 카드 메모와 나만의 답변에서 검색합니다.
+            </p>
+          </div>
+        )}
         {archiveFilter && onArchiveFilterChange && (
           <label className="field-label">
             <span>카드 보관 상태</span>

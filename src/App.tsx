@@ -86,6 +86,10 @@ import {
   type AnswerContentFilter,
 } from "./utils/cardContent";
 import {
+  matchesCardSearch,
+  normalizeCardSearchQuery,
+} from "./utils/cardSearch";
+import {
   clearFirstLineMockSession,
   createFirstLineMockSession,
   readFirstLineMockSession,
@@ -364,6 +368,7 @@ function App() {
     initialNavigation.selectedDeck,
   );
   const [selectedTag, setSelectedTag] = useState(initialNavigation.selectedTag);
+  const [cardSearchQuery, setCardSearchQuery] = useState("");
   const [finalOnly, setFinalOnly] = useState(initialNavigation.finalOnly);
   const [hardOnly, setHardOnly] = useState(initialNavigation.hardOnly);
   const [answerContentFilter, setAnswerContentFilter] = useState<AnswerContentFilter>("all");
@@ -501,6 +506,10 @@ function App() {
         const matchesHard = !hardOnly || statuses[card.id] === "hard";
         const matchesScope = cardScope === "all" || statuses[card.id] == null;
         const matchesContent = matchesAnswerContentFilter(card, answerContentFilter);
+        const matchesSearch = matchesCardSearch(card, cardSearchQuery, {
+          cardMemos,
+          myAnswers,
+        });
         const answerStatus = answerLearningStatuses[card.id];
         const matchesAnswerLearning =
           answerLearningStatusFilter === "all" ||
@@ -516,11 +525,15 @@ function App() {
           matchesHard &&
           matchesScope &&
           matchesContent &&
+          matchesSearch &&
           matchesAnswerLearning
         );
       }),
     [
       cardCatalog,
+      cardMemos,
+      cardSearchQuery,
+      myAnswers,
       archivedCardIds,
       archiveFilter,
       answerLearningStatuses,
@@ -569,10 +582,11 @@ function App() {
     if (answerContentFilter === "full-answer") parts.push("전체 답변 있음");
     if (archiveFilter === "archived") parts.push("보관됨");
     if (archiveFilter === "all") parts.push("사용 중+보관됨");
+    if (normalizeCardSearchQuery(cardSearchQuery)) parts.push("카드 내용 검색");
     if (studyOrder === "random") parts.push("랜덤 순서");
     if (studyOrder === "least-practiced") parts.push("연습 횟수 적은 순");
     return parts.length > 0 ? parts.join(" · ") : "필터 없음 · 기본 순서";
-  }, [answerContentFilter, archiveFilter, cardScope, finalOnly, hardOnly, selectedDeck, selectedTag, studyOrder]);
+  }, [answerContentFilter, archiveFilter, cardScope, cardSearchQuery, finalOnly, hardOnly, selectedDeck, selectedTag, studyOrder]);
   const drillCards = useMemo(() => {
     const byId = new Map(cardCatalog.map((card) => [card.id, card]));
     return drillCardIds.flatMap((cardId) => {
@@ -1457,21 +1471,6 @@ function App() {
     );
   }
 
-  function openMemoCard(cardId: string, memoId: string) {
-    const card = cardCatalog.find((candidate) => candidate.id === cardId);
-    if (!card) return;
-    clearCardDetailUiSession();
-    setLastUndo(null);
-    setFeedbackMessage(null);
-    setDrillCardIds([]);
-    setDetailReturnView("library");
-    setSelectedCardId(card.id);
-    setMemoFocus({ cardId, memoId });
-    window.history.pushState({ ...window.history.state, opicView: "detail" }, "");
-    setView("detail");
-    window.scrollTo({ top: 0, behavior: "auto" });
-  }
-
   function toggleTheme() {
     setTheme((current) => (current === "light" ? "dark" : "light"));
   }
@@ -1479,6 +1478,7 @@ function App() {
   function resetFilters() {
     setSelectedDeck("all");
     setSelectedTag("all");
+    setCardSearchQuery("");
     setFinalOnly(false);
     setHardOnly(false);
     setCardScope("all");
@@ -1962,7 +1962,8 @@ function App() {
         />
         <CardLibrary
           cards={orderedFilteredCards}
-          memoCards={cardCatalog}
+          searchQuery={cardSearchQuery}
+          onSearchQueryChange={setCardSearchQuery}
           catalogCount={cardCatalog.length}
           statuses={statuses}
           answerLearningStatuses={answerLearningStatuses}
@@ -1990,7 +1991,6 @@ function App() {
           onAnswerLearningStatusFilterChange={setAnswerLearningStatusFilter}
           answerContentFilter={answerContentFilter}
           onAnswerContentFilterChange={setAnswerContentFilter}
-          onOpenMemoCard={openMemoCard}
           archiveFilter={archiveFilter}
           onArchiveFilterChange={setArchiveFilter}
           archivedCardIds={archivedCardIds}

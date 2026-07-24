@@ -32,6 +32,7 @@ import {
 import { activateButton } from "../utils/buttonFocus";
 import { savePostRestoreNavigation } from "../utils/postRestoreNavigation";
 import { CloudBackupFeature } from "./CloudBackupFeature.tsx";
+import { TransientToast } from "./TransientToast";
 
 type BackupManagerProps = {
   cards: OpicCard[];
@@ -101,6 +102,10 @@ export function BackupManager({
   const [preview, setPreview] = useState<BackupValidationResult | null>(null);
   const [restoreConfirmed, setRestoreConfirmed] = useState(false);
   const [message, setMessage] = useState(postRestoreMessage ?? "");
+  const [exportNotice, setExportNotice] = useState<{
+    id: number;
+    message: string;
+  } | null>(null);
   const [isReading, setIsReading] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [safetyBackupAvailable, setSafetyBackupAvailable] = useState(
@@ -139,18 +144,26 @@ export function BackupManager({
   }
 
   function handleExport() {
-    const currentBackup = createCurrentBackup();
-    downloadJson(
-      serializeAppBackup(currentBackup),
-      localBackupFileName(new Date(currentBackup.exportedAt)),
-    );
-    setMessage(
-      `전체 백업을 만들었습니다: 카드 ${currentBackup.summary.cardCount}장, ` +
-        `상태 ${currentBackup.summary.statusCount}개, 시도 ${currentBackup.summary.attemptCount}건, ` +
-        `나만의 답변 ${currentBackup.summary.myAnswerCount}개, 메모 ${currentBackup.summary.memoCount}개, ` +
-        `저장 지문 ${currentBackup.summary.savedPassageCount}개, ` +
-        `개인 메모 ${currentBackup.summary.personalMemoCount}개`,
-    );
+    try {
+      const currentBackup = createCurrentBackup();
+      const fileName = localBackupFileName(new Date(currentBackup.exportedAt));
+      const contents = serializeAppBackup(currentBackup);
+      downloadJson(contents, fileName);
+      setMessage(
+        `전체 백업을 만들었습니다: 카드 ${currentBackup.summary.cardCount}장, ` +
+          `상태 ${currentBackup.summary.statusCount}개, 시도 ${currentBackup.summary.attemptCount}건, ` +
+          `나만의 답변 ${currentBackup.summary.myAnswerCount}개, 메모 ${currentBackup.summary.memoCount}개, ` +
+          `저장 지문 ${currentBackup.summary.savedPassageCount}개, ` +
+          `개인 메모 ${currentBackup.summary.personalMemoCount}개`,
+      );
+      setExportNotice((current) => ({
+        id: (current?.id ?? 0) + 1,
+        message: `${fileName} 다운로드를 시작했습니다.`,
+      }));
+    } catch {
+      setExportNotice(null);
+      setMessage("전체 백업 파일을 만들거나 다운로드를 시작하지 못했습니다. 다시 시도해 주세요.");
+    }
   }
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -524,6 +537,17 @@ export function BackupManager({
       </p>
     </section>
     <CloudBackupFeature createBackup={createCurrentBackup} />
+    {exportNotice && (
+      <TransientToast
+        message={exportNotice.message}
+        noticeId={exportNotice.id}
+        onDismiss={() =>
+          setExportNotice((current) =>
+            current?.id === exportNotice.id ? null : current
+          )
+        }
+      />
+    )}
     </>
   );
 }

@@ -530,11 +530,11 @@ export function CardDetail({
 
           <div className="flow-box">
             <h3>한글 흐름</h3>
-            <ol>
-              {card.hint.flow.map((step) => (
-                <li key={step}>{step}</li>
+            <div className="hint-flow-lines" role="list">
+              {card.hint.flow.map((step, index) => (
+                <p key={`${index}-${step}`} role="listitem">{step}</p>
               ))}
-            </ol>
+            </div>
           </div>
         </section>
       )}
@@ -609,7 +609,8 @@ export function CardDetail({
               <div className="answer-toolbar">
                 <button
                   type="button"
-                  className={`speech-button ${activeTarget === "modelAnswer" ? "is-playing" : ""}`}
+                  className={`speech-button answer-listen-button ${activeTarget === "modelAnswer" ? "is-playing" : ""}`}
+                  aria-pressed={activeTarget === "modelAnswer"}
                   disabled={!isSupported || recorderBusy}
                   onClick={() => toggleSpeech(modelAnswerText, "modelAnswer")}
                 >
@@ -682,30 +683,33 @@ export function CardDetail({
                   <div className="my-answer-toolbar">
                     <button
                       type="button"
-                      className={`speech-button ${activeTarget === "myAnswer" ? "is-playing" : ""}`}
+                      className={`speech-button answer-listen-button ${activeTarget === "myAnswer" ? "is-playing" : ""}`}
+                      aria-pressed={activeTarget === "myAnswer"}
                       disabled={!isSupported || recorderBusy}
                       onClick={() => toggleSpeech(myAnswer, "myAnswer")}
                     >
                       {activeTarget === "myAnswer" ? "전체 듣기 중지" : "전체 듣기"}
                     </button>
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      onClick={() => startEditing(myAnswer)}
-                    >
-                      수정
-                    </button>
-                    <button
-                      ref={deleteTriggerRef}
-                      type="button"
-                      className="secondary-button is-danger-quiet"
-                      onClick={() => {
-                        stop();
-                        deleteDialogRef.current?.showModal();
-                      }}
-                    >
-                      삭제
-                    </button>
+                    <div className="my-answer-management-actions">
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => startEditing(myAnswer)}
+                      >
+                        수정
+                      </button>
+                      <button
+                        ref={deleteTriggerRef}
+                        type="button"
+                        className="secondary-button is-danger-quiet"
+                        onClick={() => {
+                          stop();
+                          deleteDialogRef.current?.showModal();
+                        }}
+                      >
+                        삭제
+                      </button>
+                    </div>
                   </div>
 
                   <div className="my-first-line-box">
@@ -715,7 +719,8 @@ export function CardDetail({
                     </div>
                     <button
                       type="button"
-                      className={`speech-button ${activeTarget === "myFirstLine" ? "is-playing" : ""}`}
+                      className={`speech-button answer-listen-button ${activeTarget === "myFirstLine" ? "is-playing" : ""}`}
+                      aria-pressed={activeTarget === "myFirstLine"}
                       disabled={!isSupported || !myFirstLine || recorderBusy}
                       onClick={() => toggleSpeech(myFirstLine, "myFirstLine")}
                     >

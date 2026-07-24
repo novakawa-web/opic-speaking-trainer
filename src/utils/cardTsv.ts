@@ -409,7 +409,7 @@ export function createSampleCards(): OpicCard[] {
     {
       id: "sample-home-001",
       deck: "OPIc 03_주제별답변",
-      tags: ["home", "place"],
+      tags: ["home", "place", "topic_home", "type_description"],
       front: "Q: Tell me about your home.",
       frontKo: "당신의 집에 대해 말해 주세요.",
       firstLine: "I live in a small apartment.",
