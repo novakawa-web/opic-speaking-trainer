@@ -1,0 +1,7 @@
+interface:
+  display_name: "OPIc App Safe Development"
+  short_description: "OPIcApp 기능 변경을 안전하게 구현하고 검증"
+  default_prompt: "Use $opic-app-safe-development to implement and validate this OPIcApp change on a feature branch without merging or deploying."
+
+policy:
+  allow_implicit_invocation: true
