@@ -3127,6 +3127,16 @@ input:focus-visible + .toggle-switch {
   font: 500 17px/1.65 "DM Sans", "Noto Sans KR", sans-serif;
 }
 
+.answer-line-text {
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.answer-paragraph-break {
+  height: 1rem;
+}
+
 .answer-lines p:last-child {
   border-bottom: 0;
 }
@@ -8088,7 +8098,8 @@ input:focus-visible + .toggle-switch {
 .answer-learning-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
 .answer-learning-tabs button { min-height: 44px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--surface); font-weight: 700; }
 .answer-learning-tabs button[aria-selected="true"] { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
-.answer-learning-sentences { display: grid; gap: 8px; margin-top: 14px; }
+.answer-learning-sentences { display: grid; gap: 16px; margin-top: 14px; }
+.answer-learning-paragraph { display: grid; gap: 8px; min-width: 0; }
 .answer-learning-sentences button { display: grid; grid-template-columns: 24px 1fr; gap: 10px; width: 100%; padding: 12px; border: 0; border-radius: 10px; color: var(--ink); background: var(--surface); text-align: left; font: inherit; line-height: 1.65; cursor: pointer; }
 .answer-learning-sentences button span { color: var(--muted); font-size: .8rem; }
 .answer-learning-rating > h2,

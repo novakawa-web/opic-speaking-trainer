@@ -1,3 +1,5 @@
+import { normalizeAnswerLineBreaks } from "./answerText.ts";
+
 export const MY_ANSWERS_STORAGE_KEY = "opic-my-answers";
 
 export type MyAnswers = Record<string, string>;
@@ -6,7 +8,7 @@ export type MyAnswerPresence = "all" | "with" | "without";
 const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
 export function normalizeMyAnswerText(value: string) {
-  return value.replace(/\r\n?/g, "\n").trim();
+  return normalizeAnswerLineBreaks(value);
 }
 
 export function normalizeMyAnswers(value: unknown): MyAnswers {

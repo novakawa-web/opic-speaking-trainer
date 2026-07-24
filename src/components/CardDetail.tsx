@@ -10,6 +10,10 @@ import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
 import type { AnswerLearningStatus, FirstLineStatus, OpicCard } from "../types";
 import { activateButton } from "../utils/buttonFocus";
 import { extractMyFirstLine, normalizeMyAnswerText } from "../utils/myAnswerStorage";
+import {
+  createAnswerDisplayRows,
+  joinAnswerLines,
+} from "../utils/answerText";
 import { readTtsRate } from "../utils/ttsSettings";
 import { ShortcutHelp } from "./ShortcutHelp";
 import { StudyNavigation } from "./StudyNavigation";
@@ -144,10 +148,11 @@ export function CardDetail({
     stop,
   } = useSpeechSynthesis(ttsRate);
   const normalizedDraft = normalizeMyAnswerText(draft);
-  const originalAnswer = myAnswer ?? "";
+  const originalAnswer = myAnswer ? normalizeMyAnswerText(myAnswer) : "";
   const isDirty = isEditing && normalizedDraft !== originalAnswer;
   const myFirstLine = myAnswer ? extractMyFirstLine(myAnswer) : "";
-  const modelAnswerText = card.back.join("\n");
+  const modelAnswerText = joinAnswerLines(card.back);
+  const modelAnswerRows = createAnswerDisplayRows(modelAnswerText);
   const firstLineOnly = isFirstLineOnlyCard(card);
   const recorderBusy = isRecordingBusy(recordingStatus);
   const shadowingSource =
@@ -621,12 +626,20 @@ export function CardDetail({
                 <span>기본 답변은 수정되지 않습니다.</span>
               </div>
               <div className="answer-lines">
-                {card.back.map((line, index) => (
-                  <p key={`${card.id}-${index}`}>
-                    <span>{index + 1}</span>
-                    {line}
-                  </p>
-                ))}
+                {modelAnswerRows.map((row, index) =>
+                  row.kind === "paragraph-break" ? (
+                    <div
+                      key={`${card.id}-paragraph-break-${index}`}
+                      className="answer-paragraph-break"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <p key={`${card.id}-line-${row.number}-${index}`}>
+                      <span>{row.number}</span>
+                      <span className="answer-line-text">{row.text}</span>
+                    </p>
+                  ),
+                )}
               </div>
             </div>
           ) : (

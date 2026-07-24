@@ -1,5 +1,10 @@
 import type { DeckName, OpicCard } from "../types.ts";
 import { DECK_NAMES } from "./cardStorage.ts";
+import {
+  joinAnswerLines,
+  normalizeAnswerLineBreaks,
+  splitAnswerText,
+} from "./answerText.ts";
 
 export type CardEditorDraft = {
   id: string;
@@ -85,7 +90,7 @@ export function createCardEditorDraft(card: OpicCard): CardEditorDraft {
     subjectTip: card.hint.subjectTip ?? "",
     minimum: card.hint.minimum,
     flow: card.hint.flow.join("\n"),
-    answer: card.back.join("\n"),
+    answer: joinAnswerLines(card.back),
     finalRep: card.tags.includes("final_rep"),
   };
 }
@@ -103,19 +108,40 @@ function parseTags(value: string) {
 
 function buildAnswer(firstLine: string, answer: string) {
   const normalizedFirstLine = firstLine.trim();
-  const lines = splitNonEmptyLines(answer);
+  const normalizedAnswerText = normalizeAnswerLineBreaks(answer);
+  const lines = splitAnswerText(normalizedAnswerText);
   if (lines.length === 0) return null;
-  if (normalizeComparable(lines[0]) === normalizeComparable(normalizedFirstLine)) {
+  const firstPhysicalLine = normalizedAnswerText.split("\n")[0] ?? "";
+  if (
+    normalizeComparable(firstPhysicalLine) ===
+    normalizeComparable(normalizedFirstLine)
+  ) {
     return lines;
   }
 
-  const normalizedAnswer = normalizeComparable(answer);
+  const normalizedAnswer = normalizeComparable(normalizedAnswerText);
   const normalizedFirst = normalizeComparable(normalizedFirstLine);
   if (!normalizedAnswer.startsWith(normalizedFirst)) return null;
   const nextCharacter = normalizedAnswer.slice(normalizedFirst.length, normalizedFirst.length + 1);
   if (nextCharacter && !/\s/.test(nextCharacter)) return null;
-  const remainder = normalizedAnswer.slice(normalizedFirst.length).trim();
-  return remainder ? [normalizedFirstLine, remainder] : [normalizedFirstLine];
+
+  if (normalizedAnswerText.startsWith(normalizedFirstLine)) {
+    const rawRemainder = normalizedAnswerText
+      .slice(normalizedFirstLine.length)
+      .trimStart();
+    return rawRemainder
+      ? [normalizedFirstLine, ...splitAnswerText(rawRemainder)]
+      : [normalizedFirstLine];
+  }
+
+  // Preserve the historical whitespace-tolerant fallback for unusual legacy
+  // input whose first-line spacing differs from the dedicated firstLine field.
+  const comparableRemainder = normalizedAnswer
+    .slice(normalizedFirst.length)
+    .trim();
+  return comparableRemainder
+    ? [normalizedFirstLine, comparableRemainder]
+    : [normalizedFirstLine];
 }
 
 export function validateCardEditorDraft(

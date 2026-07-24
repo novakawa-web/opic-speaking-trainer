@@ -1,4 +1,5 @@
 import { segmentEnglishText } from "./sentenceSegmenter.ts";
+import { normalizeAnswerLineBreaks } from "./answerText.ts";
 
 export type PassageParagraph = {
   id: string;
@@ -9,8 +10,7 @@ export type PassageParagraph = {
 };
 
 export function splitParagraphTexts(text: string) {
-  return text
-    .replace(/\r\n?/g, "\n")
+  return normalizeAnswerLineBreaks(text)
     .split(/\n[\t ]*\n+/)
     .map((paragraph) =>
       paragraph

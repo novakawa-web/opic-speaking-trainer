@@ -9,6 +9,7 @@ import type {
   AnswerLearningAttemptsByDate,
   AnswerLearningStatuses,
 } from "../types.ts";
+import { normalizeAnswerLines } from "./answerText.ts";
 import {
   ANSWER_LEARNING_ATTEMPTS_STORAGE_KEY,
   ANSWER_LEARNING_STATUSES_STORAGE_KEY,
@@ -366,7 +367,7 @@ function cloneCard(card: OpicCard): OpicCard {
       minimum: card.hint.minimum,
       flow: [...card.hint.flow],
     },
-    back: [...card.back],
+    back: normalizeAnswerLines(card.back),
     tags: [...card.tags],
   };
 }

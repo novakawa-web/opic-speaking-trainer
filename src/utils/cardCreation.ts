@@ -1,4 +1,5 @@
 import type { OpicCard } from "../types.ts";
+import { normalizeAnswerLines } from "./answerText.ts";
 import {
   CARD_DATASET_STORAGE_KEY,
   CARD_DATASET_VERSION,
@@ -159,7 +160,7 @@ export function createCardCreationPlan({
     id,
     tags: [...card.tags],
     hint: { ...card.hint, flow: [...card.hint.flow] },
-    back: [...card.back],
+    back: normalizeAnswerLines(card.back),
   };
   if (!isOpicCard(createdCard)) {
     throw new CardCreationError("invalid-card");

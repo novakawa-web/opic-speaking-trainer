@@ -9,7 +9,8 @@ import type {
 import type { AnswerLearningRevealState } from "../utils/answerLearningSession";
 import { extractMyFirstLine } from "../utils/myAnswerStorage";
 import { createModelAnswerSource, createMyAnswerSource, type ShadowingSource } from "../utils/shadowingPlayer";
-import { segmentEnglishText } from "../utils/sentenceSegmenter";
+import { createPassageParagraphs } from "../utils/passageParagraphs";
+import { joinAnswerLines } from "../utils/answerText";
 import { readTtsRate, stripQuestionPrefix } from "../utils/ttsSettings";
 import { isFirstLineOnlyCard } from "../utils/cardContent";
 
@@ -66,12 +67,15 @@ export function AnswerLearning({
 }: Props) {
   const [ttsRate] = useState(readTtsRate);
   const { isSupported, activeTarget, message, speak, stop } = useSpeechSynthesis(ttsRate);
-  const modelText = card.back.join("\n");
+  const modelText = joinAnswerLines(card.back);
   const resolvedSource = answerSource === "my-answer" && myAnswer ? "my-answer" : "default";
   const missingFullAnswer = isFirstLineOnlyCard(card) && resolvedSource === "default";
   const answerText = resolvedSource === "my-answer" ? myAnswer! : modelText;
   const firstLine = resolvedSource === "my-answer" ? extractMyFirstLine(answerText) : card.firstLine;
-  const sentences = useMemo(() => segmentEnglishText(answerText), [answerText]);
+  const answerParagraphs = useMemo(
+    () => createPassageParagraphs(answerText),
+    [answerText],
+  );
   const shadowingSource = missingFullAnswer ? null : resolvedSource === "my-answer"
     ? createMyAnswerSource(card, answerText)
     : createModelAnswerSource(card);
@@ -172,10 +176,33 @@ export function AnswerLearning({
               </button>
             </div>
             <div className="answer-learning-sentences">
-              {sentences.map((sentence, index) => (
-                <button key={`${card.id}-${index}`} type="button" onClick={() => speak(sentence, resolvedSource === "my-answer" ? "myAnswer" : "modelAnswer")}>
-                  <span>{index + 1}</span>{sentence}
-                </button>
+              {answerParagraphs.map((paragraph, paragraphIndex) => (
+                <div
+                  className="answer-learning-paragraph"
+                  key={`${card.id}-paragraph-${paragraphIndex}`}
+                >
+                  {paragraph.sentences.map((sentence, sentenceOffset) => {
+                    const sentenceIndex =
+                      paragraph.startSentenceIndex + sentenceOffset;
+                    return (
+                      <button
+                        key={`${card.id}-${sentenceIndex}`}
+                        type="button"
+                        onClick={() =>
+                          speak(
+                            sentence,
+                            resolvedSource === "my-answer"
+                              ? "myAnswer"
+                              : "modelAnswer",
+                          )
+                        }
+                      >
+                        <span>{sentenceIndex + 1}</span>
+                        {sentence}
+                      </button>
+                    );
+                  })}
+                </div>
               ))}
             </div>
           </div>

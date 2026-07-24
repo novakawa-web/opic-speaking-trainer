@@ -1,4 +1,8 @@
 import type { DeckName, OpicCard } from "../types.ts";
+import {
+  joinAnswerLines,
+  splitAnswerText,
+} from "./answerText.ts";
 import { DECK_NAMES } from "./cardStorage.ts";
 
 export const CARD_TSV_HEADERS = [
@@ -237,7 +241,7 @@ export function parseCardTsv(
     const deck = get("deck");
     const front = get("front");
     const firstLine = get("firstLine");
-    const answerLines = splitLines(get("answer"));
+    const answerLines = splitAnswerText(get("answer"));
     const rowIssues: CardTsvIssue[] = [];
 
     if (!id) rowIssues.push(createIssue("error", record.rowNumber, "id는 필수입니다.", "id"));
@@ -391,7 +395,7 @@ function cardToCells(card: OpicCard) {
     card.hint.subjectTip ?? "",
     card.hint.minimum,
     card.hint.flow.join("\n"),
-    card.back.join("\n"),
+    joinAnswerLines(card.back),
     String(isFinal),
   ];
 }

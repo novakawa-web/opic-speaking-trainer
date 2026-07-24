@@ -1,4 +1,8 @@
 import type { OpicCard } from "../types.ts";
+import {
+  joinAnswerLines,
+  normalizeAnswerLineBreaks,
+} from "./answerText.ts";
 import type { SavedPassage } from "./savedPassageStorage.ts";
 import { segmentEnglishText } from "./sentenceSegmenter.ts";
 import { resolveOptionalTitle } from "./simpleMarkdown.ts";
@@ -40,7 +44,7 @@ export type ShadowingPlayerState = {
 };
 
 export function createModelAnswerSource(card: OpicCard): ShadowingSource {
-  const sourceText = card.back.join("\n");
+  const sourceText = joinAnswerLines(card.back);
   return {
     sourceType: "modelAnswer",
     sourceTitle: `${card.hint.title} · 기본 답변`,
@@ -57,7 +61,7 @@ export function createMyAnswerSource(
   return {
     sourceType: "myAnswer",
     sourceTitle: `${card.hint.title} · 나만의 답변`,
-    sourceText: myAnswer.trim(),
+    sourceText: normalizeAnswerLineBreaks(myAnswer),
     cardId: card.id,
   };
 }

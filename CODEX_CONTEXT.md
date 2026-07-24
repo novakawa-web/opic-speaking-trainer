@@ -2,9 +2,9 @@
 
 > 마지막 확인: 2026-07-24 (Asia/Seoul)
 >
-> 기준 브랜치: `fix/minor-ui-feedback-polish` (기준 main: `24ffdeac1da45880818babc8ef998c3f8aeab38e`)
+> 기준 브랜치: `fix/answer-line-break-normalization` (기준 main: `dcb100d1636a55c155bddc81506ba6bc712476a3`)
 >
-> 기준 커밋: `24ffdeac1da45880818babc8ef998c3f8aeab38e`
+> 기준 커밋: `dcb100d1636a55c155bddc81506ba6bc712476a3`
 
 이 문서는 새 Codex 대화에서 가장 먼저 읽는 현재 코드 구조와 작업 규칙의 source of truth다. 프로젝트 소개와 실행 방법은 [README.md](README.md), Firebase 운영 절차는 [CLOUD_BACKUP_OPERATIONS.md](CLOUD_BACKUP_OPERATIONS.md)를 우선한다.
 
@@ -16,8 +16,8 @@
 - 운영 앱: <https://novakawa-web.github.io/opic-speaking-trainer/>
 - production Vite base는 `/opic-speaking-trainer/`, 개발 base는 `/`다.
 - 기본 카드 소스는 12장이지만 활성 카드 데이터셋은 TSV 사용에 따라 달라진다. 운영 카드 수를 코드 상수처럼 문서화하지 않는다.
-- 2026-07-21 확인 시 운영 URL, `manifest.webmanifest`, `sw.js`, `404.html`은 HTTP 200이었다.
-- 최신 확인 Pages workflow는 commit `24ffdeac1da45880818babc8ef998c3f8aeab38e`에서 성공했다. storage transaction, 카드 삭제 transaction, 공통 브랜드 홈 이동과 쉐도잉 UX 개선은 main에 포함되어 있다. 카드 라이브러리의 단일 카드 직접 추가 흐름도 main과 운영 Pages에 포함되어 있다. 이 미커밋 feature 브랜치에서는 힌트 표시, 카드 관리 폭, 쉐도잉 답변 선택 정렬, 백업 다운로드 안내와 샘플 TSV 태그 예시를 다듬는다.
+- 2026-07-24 확인 시 운영 URL, `manifest.webmanifest`, `sw.js`, `404.html`은 HTTP 200이었다.
+- 최신 확인 Pages workflow는 commit `dcb100d1636a55c155bddc81506ba6bc712476a3`에서 성공했다. storage transaction, 카드 삭제 transaction, 공통 브랜드 홈 이동, 쉐도잉 UX, 단일 카드 직접 추가, UX 안정화 1차와 카드 통합 검색이 main과 운영 Pages에 포함되어 있다. 이 미커밋 feature 브랜치는 기본 답변과 나만의 답변의 줄바꿈 저장·표시·round-trip을 공통 규칙으로 정리한다.
 
 ## 2. 구현된 사용자 흐름
 
@@ -66,6 +66,9 @@
 - 새 카드 생성은 정규화된 질문과 전체 답변이 모두 기존 카드와 같으면 중복을 차단하고 기존 카드로 이동할 수 있게 한다.
 - 첫 문장 전용 카드는 `answer/back`이 `firstLine` 한 문장인 유효 카드다. 첫 문장 연습에는 포함하지만 답변 익히기와 쉐도잉에는 전체 답변 없음 상태를 표시한다.
 - 기본 답변 배열은 `join("\n")` 후 빈 줄, 즉 줄바꿈 2회 이상을 기준으로 문단을 나눈다. 배열 항목 하나를 자동으로 독립 문단으로 보지 않는다.
+- `src/utils/answerText.ts`가 답변 개행의 source of truth다. CRLF·CR은 LF로 바꾸고, 한 번의 LF는 유지하며, 공백·탭만 있는 빈 줄을 포함한 두 번 이상의 연속 LF는 정확히 `\n\n`으로 줄인다. 문장 내용·문장부호·대소문자와 일반 내부 공백은 바꾸지 않는다.
+- CardEditor 입력 중에는 draft를 강제 정규화하지 않는다. 새 카드·카드 수정, TSV 가져오기, JSON 백업 복구와 나만의 답변 저장 같은 commit 경계에서 정규화하고, 기존 저장 데이터는 앱 시작 시 다시 저장하거나 일괄 migration하지 않는다.
+- 기존 카드의 표시·쉐도잉 source와 CardEditor 초기값은 저장값을 변경하지 않는 순수 view normalization을 사용한다. 쉐도잉 fingerprint는 정규화된 문장 배열을 기준으로 하므로 빈 줄 개수만 과도한 답변은 같은 문장 지문을 유지한다.
 
 ## 4. localStorage: 장기 데이터와 설정
 
@@ -198,11 +201,12 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 
 쉐도잉 session은 마지막 유효한 미완료 재생 1건만 보존한다. 카드 또는 저장 지문 식별자, 답변 문장 지문, 현재 반복 설정과 진행 범위가 모두 일치할 때만 `이어 듣기`로 복원한다. 완료됨, 손상됨, 다른 소스, 답변 변경, 범위 이탈 또는 설정 불일치는 처음부터 상태로 정규화한다. 홈·뒤로 이동은 떠나기 직전 현재 진행을 한 번 저장하며 이후 TTS 정리가 그 값을 덮어쓰지 않는다.
 
-`package.json`의 `test:all`은 다음 21개 스크립트를 순서대로 실행한다. 이 feature 브랜치의 합계는 808개다.
+`package.json`의 `test:all`은 다음 22개 스크립트를 순서대로 실행한다. 이 feature 브랜치의 합계는 854개다.
 
 | 명령 | 개수 |
 | --- | ---: |
-| `test:minor-ui-feedback` | 33 |
+| `test:answer-line-breaks` | 42 |
+| `test:minor-ui-feedback` | 37 |
 | `test:card-search` | 22 |
 | `test:card-creation` | 41 |
 | `test:card-deletion-transaction` | 36 |
@@ -280,6 +284,5 @@ git diff --check
 - 첫 문장 훈련의 다시 도전 버튼 디자인을 다른 학습 조작과 일관되게 정리한다.
 - 답변 익히기 전체 답변 영역의 3중 테두리를 단순화하고 녹음 위치를 쉐도잉과 함께 재검토한다.
 - 답변 익히기 TTS에는 속도 선택과 다음 상태 정책을 적용한다: 정지 상태 문장 터치는 선택 문장만 재생 후 정지, 전체 답변 듣기는 처음부터 끝까지 연속 재생, 일시정지는 현재 문장을 기억, 이어 듣기는 멈춘 문장 처음부터 끝까지, 연속 재생 중 문장 터치는 누른 문장부터 끝까지, 전체 완료 후 문장 터치는 선택 문장만 재생 후 정지.
-- 기본 답변과 나만의 답변의 줄바꿈은 공통 정책으로 정규화한다. 한 번의 줄바꿈은 문장 사이 줄바꿈으로 유지하고, 두 번 이상의 연속 줄바꿈은 문단 구분 한 번인 정확히 두 개의 개행 문자로 줄여 세 번 이상의 빈 줄이 여러 문단으로 해석되지 않게 한다. 카드 수정·표시·답변 익히기·쉐도잉·JSON/TSV round-trip에서 같은 의미를 유지하며 문장 내용과 문장부호는 임의로 수정하지 않는다.
 - 나만의 답변 공통 편집은 카드 라이브러리와 답변 익히기에서 동일한 기존 `CardEditor`로 진입한다. 기본 카드 내용과 나만의 답변을 함께 편집하고, 답변 익히기에서 진입한 경우 저장 후 기존 학습 위치로 안전하게 복귀한다. 기본 카드 dataset과 나만의 답변 저장소는 하나의 storage transaction 경계로 처리하고 두 저장이 모두 성공한 뒤에만 React 상태를 반영하며, 실패하면 입력값과 기존 데이터를 유지한다.
 - 음성→텍스트, 첫 문장 훈련 UX, 카드 선택 UI 통합과 쉐도잉 하단 컨트롤 재설계는 별도 티켓으로 유지한다.
