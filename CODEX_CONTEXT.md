@@ -1,10 +1,10 @@
 # OPIc Speaking Trainer - Codex 인수인계
 
-> 마지막 확인: 2026-07-24 (Asia/Seoul)
+> 마지막 확인: 2026-07-26 (Asia/Seoul)
 >
-> 기준 브랜치: `fix/answer-line-break-normalization` (기준 main: `dcb100d1636a55c155bddc81506ba6bc712476a3`)
+> 기준 브랜치: `main` (기준 main: `451b4844f22e6dd762b96e114668b44867e233f6`)
 >
-> 기준 커밋: `dcb100d1636a55c155bddc81506ba6bc712476a3`
+> 기준 커밋·운영 반영 SHA: `451b4844f22e6dd762b96e114668b44867e233f6`
 
 이 문서는 새 Codex 대화에서 가장 먼저 읽는 현재 코드 구조와 작업 규칙의 source of truth다. 프로젝트 소개와 실행 방법은 [README.md](README.md), Firebase 운영 절차는 [CLOUD_BACKUP_OPERATIONS.md](CLOUD_BACKUP_OPERATIONS.md)를 우선한다.
 
@@ -16,8 +16,9 @@
 - 운영 앱: <https://novakawa-web.github.io/opic-speaking-trainer/>
 - production Vite base는 `/opic-speaking-trainer/`, 개발 base는 `/`다.
 - 기본 카드 소스는 12장이지만 활성 카드 데이터셋은 TSV 사용에 따라 달라진다. 운영 카드 수를 코드 상수처럼 문서화하지 않는다.
-- 2026-07-24 확인 시 운영 URL, `manifest.webmanifest`, `sw.js`, `404.html`은 HTTP 200이었다.
-- 최신 확인 Pages workflow는 commit `dcb100d1636a55c155bddc81506ba6bc712476a3`에서 성공했다. storage transaction, 카드 삭제 transaction, 공통 브랜드 홈 이동, 쉐도잉 UX, 단일 카드 직접 추가, UX 안정화 1차와 카드 통합 검색이 main과 운영 Pages에 포함되어 있다. 이 미커밋 feature 브랜치는 기본 답변과 나만의 답변의 줄바꿈 저장·표시·round-trip을 공통 규칙으로 정리한다.
+- 2026-07-26 확인 시 운영 URL, `manifest.webmanifest`, `sw.js`, `404.html`은 HTTP 200이었다.
+- 최신 확인 Pages workflow는 commit `451b4844f22e6dd762b96e114668b44867e233f6`의 Actions run `30201002646`에서 build와 deploy가 성공했다.
+- storage transaction, 카드 삭제 transaction, 공통 브랜드 홈 이동, 쉐도잉 UX, 단일 카드 직접 추가, UX 안정화 1차, 카드 통합 검색, 기본 답변과 나만의 답변의 줄바꿈 정규화, 답변 익히기 카드 선택 조작과 첫 문장 답변 연습 상태 필터가 main과 운영 Pages에 포함되어 있다.
 
 ## 2. 구현된 사용자 흐름
 
@@ -27,9 +28,11 @@
 - 덱·태그·`final_rep`·어려운 카드·첫 문장 전용/전체 답변·보관 상태 필터
 - 카드 라이브러리 20장 단위 표시와 세션 내 필터·스크롤 복원
 - 첫 문장 일반 연습과 10·15·20·전체 출제 모의고사
+- 첫 문장 준비의 `답변 연습 상태 있음` 필터는 기본 OFF이며, ON이면 현재 답변 익히기 상태가 `hard | learning | speakable`인 카드만 기존 덱·태그·첫 문장 상태·답변 구성 필터와 AND로 남긴다. 연습과 모의고사는 같은 최종 후보를 사용하고 카드 라이브러리 검색어는 이 후보 계산에서 제외한 채 보존한다.
 - 3초 카운트다운, 결과 요약, 어려운 카드 다시 도전
 - 첫 문장 상태 `success | again | hard | null`, UUID 시도 기록, 날짜별 통계와 실행 취소
 - 답변 익히기 전용 상태 `hard | learning | speakable`와 별도 시도·통계·실행 취소
+- 답변 익히기 준비 화면은 카드 목록 위에서 현재 필터 결과와 선택 ID의 교집합을 `학습할 카드 N장`으로 표시한다. `전체 선택`은 현재 결과를 기존 선택에 추가하고, `선택 해제`는 필터 밖 선택까지 모두 제거하며, 숨은 선택이 있으면 `필터 밖에서 선택한 M장은 유지되지만 이번 학습에는 포함되지 않아요.`를 표시한다. N이 0이면 시작 버튼을 비활성화한다.
 - 기본 답변과 카드 ID별 나만의 답변
 - 전체·문단·문장 쉐도잉, 1·3·5·10·무한 반복, 휴식 5단계, 속도 5단계
 - 질문 확인, 이전·다음 카드, 문장별 반복 완료 후 다음 문장 자동 진행, 재생 unit 가시성 스크롤, 백그라운드 복귀 시 paused 전환과 Wake Lock
@@ -183,9 +186,9 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 - 카드 목록·상세·생성·수정: `src/components/CardList.tsx`, `CardLibrary.tsx`, `CardDetail.tsx`, `CardEditor.tsx`, `src/utils/cardCreation.ts`
 - 카드 수정·보관·삭제 규칙: `src/utils/cardEditor.ts`, `cardArchiveStorage.ts`, `cardDeletion.ts`
 - 첫 문장: `src/components/FirstLineSetup.tsx`, `FirstLineDrill.tsx`, `src/utils/firstLineMockSession.ts`
-- 답변 익히기: `src/components/AnswerLearningSetup.tsx`, `AnswerLearning.tsx`, `src/utils/answerLearningStorage.ts`, `answerLearningSession.ts`
+- 답변 익히기와 공통 상태 selector: `src/components/AnswerLearningSetup.tsx`, `AnswerLearning.tsx`, `src/utils/answerLearningStorage.ts`, `answerLearningSession.ts`, `answerLearningSelectors.ts`
 - 쉐도잉: `src/components/ShadowingPlayer.tsx`, `src/hooks/useShadowingPlayer.ts`, `src/utils/shadowingPlayer.ts`, `shadowingSettings.ts`
-- 문장·문단: `src/utils/sentenceSegmenter.ts`, `passageParagraphs.ts`
+- 답변 개행·문장·문단: `src/utils/answerText.ts`, `sentenceSegmenter.ts`, `passageParagraphs.ts`
 - TTS: `src/hooks/useSpeechSynthesis.ts`, `src/utils/englishVoice.ts`
 - 녹음: `src/components/AudioRecorder.tsx`, `src/hooks/useAudioRecorder.ts`, `src/utils/audioRecorder.ts`
 - 메모·지문: `src/components/CardMemoSection.tsx`, `MemoSearch.tsx`, `PersonalMemoManager.tsx`, `DirectTextPractice.tsx`
@@ -201,7 +204,7 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 
 쉐도잉 session은 마지막 유효한 미완료 재생 1건만 보존한다. 카드 또는 저장 지문 식별자, 답변 문장 지문, 현재 반복 설정과 진행 범위가 모두 일치할 때만 `이어 듣기`로 복원한다. 완료됨, 손상됨, 다른 소스, 답변 변경, 범위 이탈 또는 설정 불일치는 처음부터 상태로 정규화한다. 홈·뒤로 이동은 떠나기 직전 현재 진행을 한 번 저장하며 이후 TTS 정리가 그 값을 덮어쓰지 않는다.
 
-`package.json`의 `test:all`은 다음 22개 스크립트를 순서대로 실행한다. 이 feature 브랜치의 합계는 854개다.
+`package.json`의 `test:all`은 다음 22개 스크립트를 순서대로 실행한다. 현재 main의 최신 검증 기준은 880개다.
 
 | 명령 | 개수 |
 | --- | ---: |
@@ -221,22 +224,34 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 | `test:shadowing` | 110 |
 | `test:ui-session` | 20 |
 | `test:tsv` | 30 |
-| `test:answer-learning` | 50 |
-| `test:first-line-mock` | 18 |
+| `test:answer-learning` | 59 |
+| `test:first-line-mock` | 28 |
 | `test:card-management` | 31 |
 | `test:cloud-backup` | 82 |
 | `test:home-layout` | 10 |
-| `test:ui-system` | 21 |
+| `test:ui-system` | 28 |
 
 `test:cloud-rules` 22개는 실행 중인 Firestore·Storage Emulator가 필요한 별도 Security Rules 검증이다. `test:pwa`도 build 후 별도로 실행한다.
+
+commit `451b4844f22e6dd762b96e114668b44867e233f6`에서 `test:all` 880/880, TypeScript, production build와 PWA/Pages 검증이 통과했다. 이전 854개 기준 이후 답변 익히기 선택 계약 7개, 답변 상태 selector 9개와 첫 문장 필터 계약 10개가 추가됐다.
+
+### dependency audit 기준
+
+- 2026-07-26 최신 승인 `npm audit` baseline은 **high 8건**이다. audit 통과 또는 취약점 0건으로 기록하지 않는다.
+- 직접 devDependency `vite-plugin-pwa@1.3.0`에서 `workbox-build@7.4.1`로 이어지는 build-time 전이 경로에 `brace-expansion` DoS advisory `GHSA-mh99-v99m-4gvg`가 존재한다. lockfile에는 `brace-expansion@5.0.7`과 `filelist` 아래의 `brace-expansion@2.1.2`가 있다.
+- 확인된 경로는 `vite-plugin-pwa → workbox-build → @trickfilm400/rollup-plugin-off-main-thread → ejs → jake → filelist → minimatch → brace-expansion`이다.
+- 이 build-time advisory를 운영 브라우저 runtime 문제와 동일하다고 단정하지 않지만, 현재 운영 앱이 자동으로 안전하다고도 단정하지 않는다.
+- `npm audit fix --force`, 직접 dependency downgrade와 override를 적용하지 않는다. 별도 보안 dependency 티켓 `OPIC-SEC-20260726-P01`에서 추적한다.
 
 ### 변경 후 기본 명령
 
 ```powershell
 npm.cmd run test:all
 npm.cmd run test:cloud-rules  # Emulator가 실행 중인 Rules 작업에서만
+npm.cmd exec tsc -- --noEmit
 npm.cmd run build
 npm.cmd run test:pwa
+npm.cmd audit  # high 8건 baseline을 확인하며 통과로 기록하지 않음
 git diff --check
 ```
 
@@ -275,8 +290,7 @@ git diff --check
 ### UX backlog
 
 - 녹음 UI를 답변 익히기 화면 아래로 이동하고 답변 익히기 맥락에 맞게 문구와 디자인을 조정한다.
-- 답변 익히기에서 지문 선택 동작의 위치와 문제 글자 크기, 준비 화면 시작 버튼 위치를 함께 재검토한다.
-- 답변 익히기 준비 화면의 선택 조작은 카드 목록 위에 둔다. 첫 행에는 `선택한 카드 N장`을 항상 표시하고 작은 보조 버튼인 `전체 선택`·`선택 해제`를 배치하며, 둘째 행에는 가로폭이 넓은 주요 버튼 `선택한 N장으로 답변 익히기 시작`을 둔다. 선택 카드가 0장이면 시작 버튼을 비활성화하고, 이 상단 배치를 실사용한 뒤에도 불편할 때만 시작 버튼의 하단 sticky 방식을 검토한다.
+- 답변 익히기 학습 화면의 문제 글자 크기를 재검토한다.
 - 첫 문장 연습·답변 익히기·카드 라이브러리의 카드 선택 UI를 공통 패턴으로 정리한다.
 - 카드 선택 필터에 `type`·`topic`·`week` 다중 선택을 지원하고 필터 순서를 재검토한다.
 - 카드 목록 2열 전환 breakpoint를 실제 모바일·태블릿 사용성 기준으로 다시 결정한다.
