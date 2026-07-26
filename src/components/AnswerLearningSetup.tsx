@@ -36,6 +36,29 @@ const statusLabels = {
   speakable: "말할 수 있음",
 } as const;
 
+export function getAnswerLearningSelectionState(
+  visibleCards: readonly Pick<OpicCard, "id">[],
+  selectedCardIds: readonly string[],
+) {
+  const selected = new Set(selectedCardIds);
+  const visibleCardIds = new Set(visibleCards.map((card) => card.id));
+  const startCandidateCount = visibleCards.filter((card) => selected.has(card.id)).length;
+  const hiddenSelectedCount = selectedCardIds.filter((cardId) => !visibleCardIds.has(cardId)).length;
+
+  return {
+    startCandidateCount,
+    hiddenSelectedCount,
+    allVisibleSelected: visibleCards.length > 0 && startCandidateCount === visibleCards.length,
+    countLabel: `학습할 카드 ${startCandidateCount}장`,
+    hiddenSelectionMessage: hiddenSelectedCount > 0
+      ? `필터 밖에서 선택한 ${hiddenSelectedCount}장은 유지되지만 이번 학습에는 포함되지 않아요.`
+      : null,
+    startLabel: `선택한 ${startCandidateCount}장으로 답변 익히기 시작`,
+    startDisabled: startCandidateCount === 0,
+    clearDisabled: selectedCardIds.length === 0,
+  };
+}
+
 export function AnswerLearningSetup({
   cards,
   decks,
@@ -59,8 +82,7 @@ export function AnswerLearningSetup({
     [attemptCounts, cards, myAnswers, session.filters, statuses],
   );
   const selected = new Set(session.selectedCardIds);
-  const selectedVisibleCount = visibleCards.filter((card) => selected.has(card.id)).length;
-  const allVisibleSelected = visibleCards.length > 0 && selectedVisibleCount === visibleCards.length;
+  const selectionState = getAnswerLearningSelectionState(visibleCards, session.selectedCardIds);
 
   function updateFilters(updates: Partial<AnswerLearningFilters>) {
     onSessionChange({
@@ -77,13 +99,14 @@ export function AnswerLearningSetup({
     onSessionChange({ ...session, selectedCardIds: next, screen: "setup" });
   }
 
-  function toggleAllVisible() {
+  function selectAllVisible() {
     const visibleIds = visibleCards.map((card) => card.id);
-    const visibleSet = new Set(visibleIds);
-    const next = allVisibleSelected
-      ? session.selectedCardIds.filter((id) => !visibleSet.has(id))
-      : [...new Set([...session.selectedCardIds, ...visibleIds])];
+    const next = [...new Set([...session.selectedCardIds, ...visibleIds])];
     onSessionChange({ ...session, selectedCardIds: next, screen: "setup" });
+  }
+
+  function clearSelection() {
+    onSessionChange({ ...session, selectedCardIds: [], screen: "setup" });
   }
 
   return (
@@ -171,19 +194,31 @@ export function AnswerLearningSetup({
       </section>
 
       <section className="answer-learning-selection" aria-labelledby="answer-selection-title">
-        <div className="answer-selection-toolbar">
-          <div>
-            <h2 id="answer-selection-title">카드 {visibleCards.length}장</h2>
-            <p aria-live="polite">선택 {session.selectedCardIds.length}장 · 현재 결과에서 {selectedVisibleCount}장</p>
+        <div className="answer-selection-heading">
+          <h2 id="answer-selection-title">카드 {visibleCards.length}장</h2>
+          <p>현재 필터·정렬 결과에서 학습할 카드를 골라 주세요.</p>
+        </div>
+
+        <div className="answer-selection-controls">
+          <div className="answer-selection-actions">
+            <p className="answer-selection-count" aria-live="polite">{selectionState.countLabel}</p>
+            <div className="answer-selection-buttons">
+              <button type="button" className="secondary-button" disabled={visibleCards.length === 0 || selectionState.allVisibleSelected} onClick={selectAllVisible}>
+                전체 선택
+              </button>
+              <button type="button" className="secondary-button" disabled={selectionState.clearDisabled} onClick={clearSelection}>
+                선택 해제
+              </button>
+            </div>
           </div>
-          <div>
-            <button type="button" className="secondary-button" disabled={visibleCards.length === 0} onClick={toggleAllVisible}>
-              {allVisibleSelected ? "현재 결과 선택 해제" : "현재 결과 전체 선택"}
-            </button>
-            <button type="button" className="text-button" disabled={session.selectedCardIds.length === 0} onClick={() => onSessionChange({ ...session, selectedCardIds: [], screen: "setup" })}>
-              전체 선택 해제
-            </button>
-          </div>
+          {selectionState.hiddenSelectionMessage && (
+            <p className="answer-selection-hidden-note">
+              {selectionState.hiddenSelectionMessage}
+            </p>
+          )}
+          <button type="button" className="primary-button answer-learning-start" disabled={selectionState.startDisabled} onClick={onStart}>
+            {selectionState.startLabel}
+          </button>
         </div>
 
         {visibleCards.length === 0 ? (
@@ -210,11 +245,6 @@ export function AnswerLearningSetup({
             })}
           </div>
         )}
-
-        <button type="button" className="primary-button answer-learning-start" disabled={session.selectedCardIds.length === 0} onClick={onStart}>
-          선택한 {session.selectedCardIds.length}장으로 답변 익히기 시작
-        </button>
-        {session.selectedCardIds.length === 0 && <p className="disabled-reason">학습할 카드를 한 장 이상 선택해 주세요.</p>}
       </section>
     </main>
   );

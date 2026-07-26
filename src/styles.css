@@ -8020,12 +8020,61 @@ input:focus-visible + .toggle-switch {
   gap: 10px;
 }
 
-.answer-selection-toolbar,
-.answer-selection-toolbar > div:last-child {
-  display: flex;
+.answer-selection-heading p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.answer-selection-controls {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.answer-selection-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
+}
+
+.answer-selection-count {
+  min-width: 0;
+  margin: 0;
+  color: var(--heading);
+  font-size: clamp(0.94rem, 2.8vw, 1.05rem);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.answer-selection-hidden-note {
+  margin: 0;
+  color: var(--muted);
+  color: color-mix(in srgb, var(--muted) 90%, var(--ink));
+  font-size: 0.86rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.answer-selection-buttons {
+  display: grid;
+  width: clamp(156px, 42vw, 220px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.answer-selection-buttons button {
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.answer-selection-buttons button:disabled,
+.answer-learning-start:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .answer-learning-card-checklist {
@@ -8051,7 +8100,10 @@ input:focus-visible + .toggle-switch {
 .answer-learning-card-copy { display: grid; gap: 4px; min-width: 0; }
 .answer-learning-card-copy span { color: var(--body-copy); overflow-wrap: anywhere; }
 .answer-learning-card-copy small { color: var(--muted); }
-.answer-learning-start { width: 100%; min-height: 52px; }
+.answer-learning-start {
+  width: 100%;
+  min-height: 52px;
+}
 
 .answer-learning-page { padding-bottom: max(32px, env(safe-area-inset-bottom)); touch-action: pan-y; overflow-x: clip; }
 .answer-learning-progress { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); }
@@ -8303,8 +8355,6 @@ input:focus-visible + .toggle-switch {
   .home-management > summary { min-height: 68px; padding: 13px 16px; }
   .home-management-summary { max-width: 46%; font-size: .78rem; text-align: right; }
   .answer-learning-filter-grid { grid-template-columns: 1fr; gap: 10px; }
-  .answer-selection-toolbar { align-items: stretch; flex-direction: column; }
-  .answer-selection-toolbar > div:last-child { display: grid; grid-template-columns: 1fr; }
   .answer-learning-card-checklist { max-height: none; }
   .answer-learning-question h1 { margin: 18px auto 14px; font-size: clamp(1.45rem, 6.2vw, 1.8rem); }
   .answer-learning-first-line { align-items: stretch; flex-direction: column; }
@@ -8468,14 +8518,22 @@ input:focus-visible + .toggle-switch {
   gap: var(--space-xs);
 }
 
-.answer-selection-toolbar,
-.answer-selection-toolbar > div:last-child {
+.answer-selection-controls {
   gap: var(--space-md);
+  margin-top: var(--space-lg);
+}
+
+.answer-selection-actions {
+  gap: var(--space-sm);
+}
+
+.answer-selection-buttons {
+  gap: var(--space-sm);
 }
 
 .answer-learning-card-checklist {
   gap: var(--space-sm);
-  margin: var(--space-xl) 0 var(--space-2xl);
+  margin: var(--space-lg) 0 0;
 }
 
 .answer-learning-card-option {

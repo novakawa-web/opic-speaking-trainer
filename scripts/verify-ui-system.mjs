@@ -12,9 +12,40 @@ const quickStart = await readFile(new URL("../src/components/HomeQuickStart.tsx"
 const dashboard = await readFile(new URL("../src/components/HomeCardDashboard.tsx", import.meta.url), "utf8");
 const personalMemos = await readFile(new URL("../src/components/PersonalMemoManager.tsx", import.meta.url), "utf8");
 const answerLearning = await readFile(new URL("../src/components/AnswerLearning.tsx", import.meta.url), "utf8");
+const answerLearningSetup = await readFile(new URL("../src/components/AnswerLearningSetup.tsx", import.meta.url), "utf8");
 const backupManager = await readFile(new URL("../src/components/BackupManager.tsx", import.meta.url), "utf8");
 const cardDataManager = await readFile(new URL("../src/components/CardDataManager.tsx", import.meta.url), "utf8");
 const homeManagement = await readFile(new URL("../src/components/HomeManagement.tsx", import.meta.url), "utf8");
+
+function extractExportedFunction(source, name) {
+  const start = source.indexOf(`export function ${name}`);
+  assert.notEqual(start, -1, `${name} helper must exist`);
+  const bodyStart = source.indexOf("{", start);
+  assert.notEqual(bodyStart, -1, `${name} helper body must exist`);
+  let depth = 0;
+  for (let index = bodyStart; index < source.length; index += 1) {
+    if (source[index] === "{") depth += 1;
+    if (source[index] === "}") depth -= 1;
+    if (depth === 0) return source.slice(start, index + 1);
+  }
+  assert.fail(`${name} helper body must close`);
+}
+
+const selectionStateFunctionSource = extractExportedFunction(
+  answerLearningSetup,
+  "getAnswerLearningSelectionState",
+);
+const selectionStateModuleSource = selectionStateFunctionSource.replace(
+  /\(\s*visibleCards:\s*readonly Pick<OpicCard,\s*"id">\[\],\s*selectedCardIds:\s*readonly string\[\],\s*\)/,
+  "(visibleCards, selectedCardIds)",
+);
+assert.notEqual(
+  selectionStateModuleSource,
+  selectionStateFunctionSource,
+  "selection state helper parameter types must be stripped for runtime verification",
+);
+const selectionStateModuleUrl = `data:text/javascript;base64,${Buffer.from(selectionStateModuleSource).toString("base64")}`;
+const { getAnswerLearningSelectionState } = await import(selectionStateModuleUrl);
 
 let passed = 0;
 function test(name, run) {
@@ -65,6 +96,79 @@ test("설명 텍스트는 제한된 clamp와 keep-all을 사용한다", () => {
 });
 test("답변 익히기 준비 화면은 공통 rail과 spacing token을 사용한다", () => {
   assert.match(css, /\.answer-learning-setup\s*{[\s\S]*?var\(--home-content-max\)[\s\S]*?gap:\s*var\(--space-2xl\)/);
+});
+test("답변 익히기 선택 조작은 체크 목록보다 앞에 한 번만 배치된다", () => {
+  const controlsIndex = answerLearningSetup.indexOf('className="answer-selection-controls"');
+  const checklistIndex = answerLearningSetup.indexOf('className="answer-learning-card-checklist"');
+  assert.ok(controlsIndex >= 0 && controlsIndex < checklistIndex);
+  assert.equal((answerLearningSetup.match(/answer-learning-start/g) ?? []).length, 1);
+});
+test("답변 익히기 선택 조작은 정확한 문구와 독립 handler를 사용한다", () => {
+  assert.match(answerLearningSetup, /countLabel: `학습할 카드 \$\{startCandidateCount\}장`/);
+  assert.doesNotMatch(answerLearningSetup, /선택한 카드/);
+  assert.match(answerLearningSetup, />\s*전체 선택\s*</);
+  assert.match(answerLearningSetup, />\s*선택 해제\s*</);
+  assert.match(answerLearningSetup, /startLabel: `선택한 \$\{startCandidateCount\}장으로 답변 익히기 시작`/);
+  assert.match(answerLearningSetup, /onClick=\{selectAllVisible\}/);
+  assert.match(answerLearningSetup, /onClick=\{clearSelection\}/);
+});
+test("답변 익히기 시작 후보 수는 현재 결과와 선택의 교집합이다", () => {
+  assert.match(answerLearningSetup, /const startCandidateCount = visibleCards\.filter\(\(card\) => selected\.has\(card\.id\)\)\.length/);
+  assert.match(answerLearningSetup, /getAnswerLearningSelectionState\(visibleCards, session\.selectedCardIds\)/);
+  assert.match(answerLearningSetup, /disabled=\{selectionState\.startDisabled\} onClick=\{onStart\}/);
+  assert.match(answerLearningSetup, /disabled=\{visibleCards\.length === 0 \|\| selectionState\.allVisibleSelected\} onClick=\{selectAllVisible\}/);
+  assert.match(answerLearningSetup, /disabled=\{selectionState\.clearDisabled\} onClick=\{clearSelection\}/);
+});
+test("답변 익히기 숨겨진 선택 수와 안내 조건은 현재 결과 밖의 선택만 사용한다", () => {
+  assert.match(answerLearningSetup, /const visibleCardIds = new Set\(visibleCards\.map\(\(card\) => card\.id\)\)/);
+  assert.match(answerLearningSetup, /const hiddenSelectedCount = selectedCardIds\.filter\(\(cardId\) => !visibleCardIds\.has\(cardId\)\)\.length/);
+  assert.match(answerLearningSetup, /hiddenSelectionMessage: hiddenSelectedCount > 0/);
+  assert.match(answerLearningSetup, /필터 밖에서 선택한 \$\{hiddenSelectedCount\}장은 유지되지만 이번 학습에는 포함되지 않아요\./);
+  assert.match(answerLearningSetup, /\{selectionState\.hiddenSelectionMessage && \(/);
+});
+test("답변 익히기 선택 상태 계약은 필터 전이를 실제 계산한다", () => {
+  const visible = [{ id: "card-a" }, { id: "card-b" }];
+
+  const empty = getAnswerLearningSelectionState(visible, []);
+  assert.equal(empty.countLabel, "학습할 카드 0장");
+  assert.equal(empty.hiddenSelectedCount, 0);
+  assert.equal(empty.hiddenSelectionMessage, null);
+  assert.equal(empty.startDisabled, true);
+  assert.equal(empty.clearDisabled, true);
+
+  const selectedVisible = getAnswerLearningSelectionState(visible, ["card-a"]);
+  assert.equal(selectedVisible.countLabel, "학습할 카드 1장");
+  assert.equal(selectedVisible.hiddenSelectionMessage, null);
+  assert.equal(selectedVisible.startLabel, "선택한 1장으로 답변 익히기 시작");
+  assert.equal(selectedVisible.startDisabled, false);
+
+  const hiddenOne = getAnswerLearningSelectionState([{ id: "card-b" }], ["card-a"]);
+  assert.equal(hiddenOne.countLabel, "학습할 카드 0장");
+  assert.equal(hiddenOne.hiddenSelectedCount, 1);
+  assert.equal(hiddenOne.hiddenSelectionMessage, "필터 밖에서 선택한 1장은 유지되지만 이번 학습에는 포함되지 않아요.");
+  assert.equal(hiddenOne.startDisabled, true);
+  assert.equal(hiddenOne.clearDisabled, false);
+
+  const restored = getAnswerLearningSelectionState(visible, ["card-a"]);
+  assert.equal(restored.startCandidateCount, 1);
+  assert.equal(restored.hiddenSelectionMessage, null);
+
+  const hiddenTwo = getAnswerLearningSelectionState([{ id: "card-b" }], ["card-a", "card-c"]);
+  assert.equal(hiddenTwo.hiddenSelectedCount, 2);
+  assert.equal(hiddenTwo.hiddenSelectionMessage, "필터 밖에서 선택한 2장은 유지되지만 이번 학습에는 포함되지 않아요.");
+});
+test("답변 익히기 숨겨진 선택 안내는 강조 박스가 아닌 보조 설명이다", () => {
+  const hiddenNoteRule = css.match(/\.answer-selection-hidden-note\s*\{([^}]+)\}/)?.[1] ?? "";
+  assert.match(hiddenNoteRule, /color:\s*var\(--muted\)/);
+  assert.match(hiddenNoteRule, /color:\s*color-mix\(in srgb,\s*var\(--muted\) 90%,\s*var\(--ink\)\)/);
+  assert.match(hiddenNoteRule, /font-size:\s*0\.[0-9]+rem/);
+  assert.match(hiddenNoteRule, /line-height:/);
+  assert.doesNotMatch(hiddenNoteRule, /background|border|box-shadow/);
+});
+test("답변 익히기 모바일 선택 버튼과 시작 버튼은 터치 크기 계약을 지킨다", () => {
+  assert.match(css, /\.answer-selection-buttons\s*{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /\.answer-selection-buttons button\s*{[\s\S]*?min-height:\s*44px/);
+  assert.match(css, /\.answer-learning-start\s*{[\s\S]*?width:\s*100%[\s\S]*?min-height:\s*52px/);
 });
 test("복구 navigation intent를 저장한다", () => {
   const storage = new MemoryStorage();
