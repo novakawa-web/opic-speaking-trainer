@@ -6,6 +6,7 @@ import {
   AnswerLearningSetup,
 } from "./components/AnswerLearningSetup";
 import {
+  filterCardsByAnswerLearningStatusPresence,
   filterAnswerLearningCards,
   orderAnswerLearningCards,
 } from "./utils/answerLearningSelectors";
@@ -372,6 +373,7 @@ function App() {
   const [finalOnly, setFinalOnly] = useState(initialNavigation.finalOnly);
   const [hardOnly, setHardOnly] = useState(initialNavigation.hardOnly);
   const [answerContentFilter, setAnswerContentFilter] = useState<AnswerContentFilter>("all");
+  const [firstLineAnswerStatusOnly, setFirstLineAnswerStatusOnly] = useState(false);
   const [firstLineMode, setFirstLineMode] = useState<FirstLineMode>("practice");
   const [mockQuestionCount, setMockQuestionCount] = useState<MockQuestionCount>(10);
   const [mockSession, setMockSession] = useState<FirstLineMockSession | null>(() =>
@@ -560,6 +562,59 @@ function App() {
       )
       .map(({ card }) => card);
   }, [attemptCounts, filteredCards, studyOrder]);
+  const firstLineFilteredCards = useMemo(() => {
+    const visibleFilterCandidates = cardCatalog.filter((card) => {
+      const matchesArchive = matchesArchiveFilter(card, archivedCardIds, archiveFilter);
+      const matchesDeck = selectedDeck === "all" || card.deck === selectedDeck;
+      const matchesTag = selectedTag === "all" || card.tags.includes(selectedTag);
+      const matchesFinal = !finalOnly || card.tags.includes("final_rep");
+      const matchesHard = !hardOnly || statuses[card.id] === "hard";
+      const matchesScope = cardScope === "all" || statuses[card.id] == null;
+      const matchesContent = matchesAnswerContentFilter(card, answerContentFilter);
+
+      return (
+        matchesArchive &&
+        matchesDeck &&
+        matchesTag &&
+        matchesFinal &&
+        matchesHard &&
+        matchesScope &&
+        matchesContent
+      );
+    });
+
+    return filterCardsByAnswerLearningStatusPresence(
+      visibleFilterCandidates,
+      answerLearningStatuses,
+      firstLineAnswerStatusOnly,
+    );
+  }, [
+    answerContentFilter,
+    answerLearningStatuses,
+    archiveFilter,
+    archivedCardIds,
+    cardCatalog,
+    cardScope,
+    finalOnly,
+    firstLineAnswerStatusOnly,
+    hardOnly,
+    selectedDeck,
+    selectedTag,
+    statuses,
+  ]);
+  const orderedFirstLineCards = useMemo(() => {
+    if (studyOrder !== "least-practiced") return firstLineFilteredCards;
+
+    return firstLineFilteredCards
+      .map((card, originalIndex) => ({ card, originalIndex }))
+      .sort(
+        (left, right) =>
+          (attemptCounts[left.card.id] ?? 0) -
+            (attemptCounts[right.card.id] ?? 0) ||
+          left.originalIndex - right.originalIndex,
+      )
+      .map(({ card }) => card);
+  }, [attemptCounts, firstLineFilteredCards, studyOrder]);
   const filterSignature = JSON.stringify([
     selectedDeck,
     selectedTag,
@@ -928,7 +983,7 @@ function App() {
   }
 
   function startFilteredDrill() {
-    const nextDrillCardIds = createDrillCardIds(orderedFilteredCards);
+    const nextDrillCardIds = createDrillCardIds(orderedFirstLineCards);
     const firstCardId = nextDrillCardIds[0];
     if (!firstCardId) return;
 
@@ -959,7 +1014,7 @@ function App() {
       return;
     }
     const session = createFirstLineMockSession(
-      orderedFilteredCards.map((card) => card.id),
+      orderedFirstLineCards.map((card) => card.id),
       mockQuestionCount,
     );
     const firstCardId = session.cardOrder[0];
@@ -1475,17 +1530,22 @@ function App() {
     setTheme((current) => (current === "light" ? "dark" : "light"));
   }
 
-  function resetFilters() {
+  function resetVisibleStudyFilters() {
     setSelectedDeck("all");
     setSelectedTag("all");
-    setCardSearchQuery("");
     setFinalOnly(false);
     setHardOnly(false);
+    setFirstLineAnswerStatusOnly(false);
     setCardScope("all");
     setStudyOrder("default");
-    setAnswerLearningStatusFilter("all");
     setAnswerContentFilter("all");
     setArchiveFilter("active");
+  }
+
+  function resetFilters() {
+    resetVisibleStudyFilters();
+    setCardSearchQuery("");
+    setAnswerLearningStatusFilter("all");
   }
 
   function handleCardsChange(nextCards: OpicCard[]) {
@@ -1799,7 +1859,7 @@ function App() {
       <div className="app-shell">
         <AppHeader theme={theme} studyTitle="첫 문장 연습 준비" onBack={() => setView("list")} onHome={navigateHome} onToggleTheme={toggleTheme} />
         <FirstLineSetup
-          cardCount={orderedFilteredCards.length}
+          cardCount={orderedFirstLineCards.length}
           decks={decks}
           tags={tags}
           selectedDeck={selectedDeck}
@@ -1809,6 +1869,7 @@ function App() {
           cardScope={cardScope}
           studyOrder={studyOrder}
           answerContentFilter={answerContentFilter}
+          answerStatusOnly={firstLineAnswerStatusOnly}
           mode={firstLineMode}
           questionCount={mockQuestionCount}
           onDeckChange={setSelectedDeck}
@@ -1818,9 +1879,10 @@ function App() {
           onCardScopeChange={setCardScope}
           onStudyOrderChange={setStudyOrder}
           onAnswerContentFilterChange={setAnswerContentFilter}
+          onAnswerStatusOnlyChange={setFirstLineAnswerStatusOnly}
           onModeChange={setFirstLineMode}
           onQuestionCountChange={setMockQuestionCount}
-          onReset={resetFilters}
+          onReset={resetVisibleStudyFilters}
           onStart={startFirstLineFromSetup}
           onBack={() => setView("list")}
           archiveFilter={archiveFilter}

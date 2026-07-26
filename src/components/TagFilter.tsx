@@ -31,6 +31,8 @@ type TagFilterProps = {
   ) => void;
   answerContentFilter?: AnswerContentFilter;
   onAnswerContentFilterChange?: (value: AnswerContentFilter) => void;
+  answerStatusOnly?: boolean;
+  onAnswerStatusOnlyChange?: (value: boolean) => void;
   archiveFilter?: ArchiveFilter;
   onArchiveFilterChange?: (value: ArchiveFilter) => void;
 };
@@ -57,6 +59,8 @@ export function TagFilter({
   onAnswerLearningStatusFilterChange,
   answerContentFilter,
   onAnswerContentFilterChange,
+  answerStatusOnly,
+  onAnswerStatusOnlyChange,
   archiveFilter,
   onArchiveFilterChange,
 }: TagFilterProps) {
@@ -215,6 +219,20 @@ export function TagFilter({
             <span className="toggle-switch" aria-hidden="true" />
             <span>첫 문장 어려움만 보기</span>
           </label>
+
+          {answerStatusOnly !== undefined && onAnswerStatusOnlyChange && (
+            <label className="toggle-row first-line-answer-status-toggle">
+              <input
+                type="checkbox"
+                checked={answerStatusOnly}
+                onChange={(event) =>
+                  onAnswerStatusOnlyChange(event.target.checked)
+                }
+              />
+              <span className="toggle-switch" aria-hidden="true" />
+              <span>답변 연습 상태 있음</span>
+            </label>
+          )}
         </div>
       </div>
     </section>

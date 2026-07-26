@@ -16,6 +16,7 @@ type Props = {
   cardScope: StudyCardScope;
   studyOrder: StudyOrder;
   answerContentFilter: AnswerContentFilter;
+  answerStatusOnly: boolean;
   mode: FirstLineMode;
   questionCount: MockQuestionCount;
   onDeckChange: (value: DeckName | "all") => void;
@@ -25,6 +26,7 @@ type Props = {
   onCardScopeChange: (value: StudyCardScope) => void;
   onStudyOrderChange: (value: StudyOrder) => void;
   onAnswerContentFilterChange: (value: AnswerContentFilter) => void;
+  onAnswerStatusOnlyChange: (value: boolean) => void;
   onModeChange: (value: FirstLineMode) => void;
   onQuestionCountChange: (value: MockQuestionCount) => void;
   onReset: () => void;
@@ -54,6 +56,7 @@ export function FirstLineSetup(props: Props) {
         cardScope={props.cardScope}
         studyOrder={props.studyOrder}
         answerContentFilter={props.answerContentFilter}
+        answerStatusOnly={props.answerStatusOnly}
         onDeckChange={props.onDeckChange}
         onTagChange={props.onTagChange}
         onFinalOnlyChange={props.onFinalOnlyChange}
@@ -61,6 +64,7 @@ export function FirstLineSetup(props: Props) {
         onCardScopeChange={props.onCardScopeChange}
         onStudyOrderChange={props.onStudyOrderChange}
         onAnswerContentFilterChange={props.onAnswerContentFilterChange}
+        onAnswerStatusOnlyChange={props.onAnswerStatusOnlyChange}
         onReset={props.onReset}
         archiveFilter={props.archiveFilter}
         onArchiveFilterChange={props.onArchiveFilterChange}

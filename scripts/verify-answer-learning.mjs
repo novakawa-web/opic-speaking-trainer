@@ -18,6 +18,7 @@ import {
   shuffleAnswerLearningIds,
 } from "../src/utils/answerLearningSession.ts";
 import {
+  hasAnswerLearningStatus,
   filterAnswerLearningCards,
   orderAnswerLearningCards,
 } from "../src/utils/answerLearningSelectors.ts";
@@ -56,6 +57,34 @@ test("상태 저장 round trip", () => {
 test("잘못된 상태 저장소 fallback", () => {
   const storage = new MemoryStorage(); storage.setItem("opic-answer-learning-statuses", "{");
   assert.deepEqual(readAnswerLearningStatuses(storage), {});
+});
+test("상태 있음 selector hard", () => assert.equal(hasAnswerLearningStatus({ [cardA.id]: "hard" }, cardA.id), true));
+test("상태 있음 selector learning", () => assert.equal(hasAnswerLearningStatus({ [cardA.id]: "learning" }, cardA.id), true));
+test("상태 있음 selector speakable", () => assert.equal(hasAnswerLearningStatus({ [cardA.id]: "speakable" }, cardA.id), true));
+test("상태 있음 selector 속성 없음", () => assert.equal(hasAnswerLearningStatus({}, cardA.id), false));
+test("상태 있음 selector 빈 값과 손상 값 제외", () => {
+  for (const value of [undefined, null, "", { status: "hard" }]) {
+    assert.equal(hasAnswerLearningStatus({ [cardA.id]: value }, cardA.id), false);
+  }
+});
+test("상태 있음 selector 잘못된 문자열 제외", () => assert.equal(hasAnswerLearningStatus({ [cardA.id]: "success" }, cardA.id), false));
+test("상태 있음 selector 상속 속성 제외", () => {
+  const inherited = Object.create({ [cardA.id]: "hard" });
+  assert.equal(hasAnswerLearningStatus(inherited, cardA.id), false);
+});
+test("상태 있음 selector 위험한 키 제외", () => {
+  const statuses = Object.create(null);
+  for (const cardId of ["__proto__", "constructor", "prototype"]) {
+    statuses[cardId] = "hard";
+    assert.equal(hasAnswerLearningStatus(statuses, cardId), false);
+  }
+});
+test("orphan 상태 ID는 카드 순회 후보에 없음", () => {
+  const candidates = cards
+    .filter((card) =>
+      hasAnswerLearningStatus({ "removed-card": "hard" }, card.id),
+    );
+  assert.deepEqual(candidates, []);
 });
 
 test("시도 생성과 UUID", () => {

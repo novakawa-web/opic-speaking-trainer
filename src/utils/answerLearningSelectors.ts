@@ -1,6 +1,31 @@
 import type { AnswerLearningStatuses, OpicCard } from "../types.ts";
+import { isAnswerLearningStatus } from "./answerLearningStorage.ts";
 import type { MyAnswers } from "./myAnswerStorage.ts";
 import type { AnswerLearningFilters } from "./answerLearningSession.ts";
+
+const dangerousCardIds = new Set(["__proto__", "constructor", "prototype"]);
+
+export function hasAnswerLearningStatus(
+  statuses: AnswerLearningStatuses,
+  cardId: string,
+) {
+  return (
+    cardId.trim().length > 0 &&
+    !dangerousCardIds.has(cardId) &&
+    Object.hasOwn(statuses, cardId) &&
+    isAnswerLearningStatus(statuses[cardId])
+  );
+}
+
+export function filterCardsByAnswerLearningStatusPresence(
+  cards: OpicCard[],
+  statuses: AnswerLearningStatuses,
+  required: boolean,
+) {
+  return required
+    ? cards.filter((card) => hasAnswerLearningStatus(statuses, card.id))
+    : cards;
+}
 
 export function filterAnswerLearningCards(
   cards: OpicCard[],

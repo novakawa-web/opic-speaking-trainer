@@ -10,6 +10,9 @@ import {
   summarizeFirstLineMock,
 } from "../src/utils/firstLineMockSession.ts";
 import { matchesAnswerContentFilter } from "../src/utils/cardContent.ts";
+import {
+  filterCardsByAnswerLearningStatusPresence,
+} from "../src/utils/answerLearningSelectors.ts";
 
 class MemoryStorage {
   values = new Map();
@@ -20,8 +23,202 @@ class MemoryStorage {
 globalThis.sessionStorage = new MemoryStorage();
 
 const ids = Array.from({ length: 25 }, (_, index) => `card-${index + 1}`);
+const candidateCards = ids.slice(0, 5).map((id, index) => ({
+  id,
+  deck: index < 3 ? "deck-a" : "deck-b",
+}));
+const candidateStatuses = {
+  [candidateCards[0].id]: "hard",
+  [candidateCards[1].id]: "learning",
+  [candidateCards[2].id]: "speakable",
+  "removed-card": "hard",
+};
 const tests = [];
 function test(name, run) { tests.push({ name, run }); }
+
+function cssRuleBodies(source, selector) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return [...source.matchAll(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, "g"))]
+    .map((match) => match[1]);
+}
+
+function readPixelDeclaration(ruleBody, property) {
+  const escaped = property.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = ruleBody.match(new RegExp(`${escaped}\\s*:\\s*(\\d+)px\\s*;`));
+  return match ? Number(match[1]) : null;
+}
+
+test("답변 상태 필터 OFF는 전체 후보 유지", () => {
+  assert.equal(
+    filterCardsByAnswerLearningStatusPresence(
+      candidateCards,
+      candidateStatuses,
+      false,
+    ).length,
+    candidateCards.length,
+  );
+});
+test("답변 상태 필터 ON은 유효 상태 카드만 후보", () => {
+  assert.deepEqual(
+    filterCardsByAnswerLearningStatusPresence(
+      candidateCards,
+      candidateStatuses,
+      true,
+    ).map((card) => card.id),
+    candidateCards.slice(0, 3).map((card) => card.id),
+  );
+});
+test("답변 상태 필터는 다른 필터와 AND", () => {
+  const deckCandidates = candidateCards.filter((card) => card.deck === "deck-b");
+  assert.deepEqual(
+    filterCardsByAnswerLearningStatusPresence(
+      deckCandidates,
+      candidateStatuses,
+      true,
+    ),
+    [],
+  );
+});
+test("답변 상태 필터를 다시 끄면 전체 후보 복원", () => {
+  const filtered = filterCardsByAnswerLearningStatusPresence(
+    candidateCards,
+    candidateStatuses,
+    true,
+  );
+  const restored = filterCardsByAnswerLearningStatusPresence(
+    candidateCards,
+    candidateStatuses,
+    false,
+  );
+  assert.ok(filtered.length < restored.length);
+  assert.deepEqual(restored, candidateCards);
+});
+test("상태 있음 후보 0장", () => {
+  assert.equal(
+    filterCardsByAnswerLearningStatusPresence(candidateCards, {}, true).length,
+    0,
+  );
+});
+test("표시 후보와 연습 카드 ID가 일치", () => {
+  const visible = filterCardsByAnswerLearningStatusPresence(
+    candidateCards,
+    candidateStatuses,
+    true,
+  );
+  const drillCardIds = visible.map((card) => card.id);
+  assert.equal(drillCardIds.length, visible.length);
+  assert.deepEqual(drillCardIds, candidateCards.slice(0, 3).map((card) => card.id));
+});
+test("표시 후보와 모의고사 출제 후보가 일치", () => {
+  const visible = filterCardsByAnswerLearningStatusPresence(
+    candidateCards,
+    candidateStatuses,
+    true,
+  );
+  const session = createFirstLineMockSession(
+    visible.map((card) => card.id),
+    "all",
+    () => 0.3,
+  );
+  assert.equal(session.sourceCardIds.length, visible.length);
+  assert.deepEqual(
+    new Set(session.sourceCardIds),
+    new Set(visible.map((card) => card.id)),
+  );
+});
+test("random은 최종 후보 집합을 유지하고 순서만 변경", () => {
+  const visibleIds = filterCardsByAnswerLearningStatusPresence(
+    candidateCards,
+    candidateStatuses,
+    true,
+  ).map((card) => card.id);
+  const order = createFirstLineMockSession(visibleIds, "all", () => 0).cardOrder;
+  assert.deepEqual(new Set(order), new Set(visibleIds));
+  assert.notDeepEqual(order, visibleIds);
+});
+test("첫 문장 후보는 숨은 라이브러리 검색어와 분리", () => {
+  const librarySearchQuery = "card-1";
+  const libraryCandidates = candidateCards.filter((card) =>
+    card.id.includes(librarySearchQuery),
+  );
+  const firstLineCandidates = filterCardsByAnswerLearningStatusPresence(
+    candidateCards,
+    candidateStatuses,
+    false,
+  );
+  assert.equal(libraryCandidates.length, 1);
+  assert.equal(firstLineCandidates.length, candidateCards.length);
+  assert.equal(librarySearchQuery, "card-1");
+});
+test("첫 문장 필터 UI와 초기화·후보 wiring 계약", () => {
+  const appSource = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
+  const setupSource = readFileSync(new URL("../src/components/FirstLineSetup.tsx", import.meta.url), "utf8");
+  const filterSource = readFileSync(new URL("../src/components/TagFilter.tsx", import.meta.url), "utf8");
+  const styles = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+  const firstLineCandidateBlock = appSource.slice(
+    appSource.indexOf("const firstLineFilteredCards"),
+    appSource.indexOf("const orderedFirstLineCards"),
+  );
+  const firstLineResetBlock = appSource.slice(
+    appSource.indexOf("function resetVisibleStudyFilters"),
+    appSource.indexOf("function resetFilters"),
+  );
+
+  assert.ok(filterSource.includes("답변 연습 상태 있음"));
+  assert.ok(filterSource.includes('className="toggle-row first-line-answer-status-toggle"'));
+  assert.ok(firstLineResetBlock.includes("setFirstLineAnswerStatusOnly(false)"));
+  assert.equal(firstLineResetBlock.includes("setCardSearchQuery"), false);
+  assert.ok(appSource.includes("onReset={resetVisibleStudyFilters}"));
+  assert.ok(appSource.includes("cardCount={orderedFirstLineCards.length}"));
+  assert.ok(appSource.includes("createDrillCardIds(orderedFirstLineCards)"));
+  assert.ok(appSource.includes("orderedFirstLineCards.map((card) => card.id)"));
+  assert.equal(firstLineCandidateBlock.includes("cardSearchQuery"), false);
+  assert.ok(setupSource.includes("disabled={props.cardCount === 0}"));
+
+  const labelStart = filterSource.lastIndexOf(
+    "<label",
+    filterSource.indexOf("답변 연습 상태 있음"),
+  );
+  const labelEnd = filterSource.indexOf("</label>", labelStart);
+  const statusToggleLabel = filterSource.slice(labelStart, labelEnd);
+  assert.equal(
+    (filterSource.match(/first-line-answer-status-toggle/g) ?? []).length,
+    1,
+  );
+  assert.match(
+    statusToggleLabel,
+    /className="toggle-row first-line-answer-status-toggle"/,
+  );
+
+  const dedicatedRules = cssRuleBodies(
+    styles,
+    ".toggle-row.first-line-answer-status-toggle",
+  );
+  assert.equal(dedicatedRules.length, 1);
+  assert.equal(readPixelDeclaration(dedicatedRules[0], "min-height"), 44);
+  assert.match(dedicatedRules[0], /align-items\s*:\s*center\s*;/);
+  assert.match(dedicatedRules[0], /white-space\s*:\s*normal\s*;/);
+  assert.equal(
+    (styles.match(/first-line-answer-status-toggle/g) ?? []).length,
+    1,
+  );
+
+  const sharedToggleRules = cssRuleBodies(styles, ".toggle-row");
+  assert.equal(sharedToggleRules.length, 1);
+  assert.equal(readPixelDeclaration(sharedToggleRules[0], "min-height"), null);
+  assert.match(sharedToggleRules[0], /white-space\s*:\s*nowrap\s*;/);
+
+  const compactToggleRules = cssRuleBodies(styles, ".compact-toggle-control");
+  assert.deepEqual(
+    compactToggleRules.map((rule) => readPixelDeclaration(rule, "min-height")),
+    [44, 34],
+  );
+  assert.equal(statusToggleLabel.includes("compact-toggle-control"), false);
+
+  const startButtonRules = cssRuleBodies(styles, ".first-line-setup-start");
+  assert.equal(startButtonRules.length, 1);
+  assert.equal(readPixelDeclaration(startButtonRules[0], "min-height"), 52);
+});
 
 test("10문제 출제", () => assert.equal(createFirstLineMockSession(ids, 10, () => 0.4).cardOrder.length, 10));
 test("15문제 출제", () => assert.equal(createFirstLineMockSession(ids, 15, () => 0.4).cardOrder.length, 15));

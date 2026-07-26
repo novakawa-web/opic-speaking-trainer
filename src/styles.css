@@ -989,6 +989,12 @@ input:focus-visible + .toggle-switch {
   white-space: nowrap;
 }
 
+.toggle-row.first-line-answer-status-toggle {
+  min-height: 44px;
+  align-items: center;
+  white-space: normal;
+}
+
 .toggle-row input {
   position: absolute;
   opacity: 0;
