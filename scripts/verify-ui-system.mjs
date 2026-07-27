@@ -16,6 +16,7 @@ const dashboard = await readFile(new URL("../src/components/HomeCardDashboard.ts
 const personalMemos = await readFile(new URL("../src/components/PersonalMemoManager.tsx", import.meta.url), "utf8");
 const answerLearning = await readFile(new URL("../src/components/AnswerLearning.tsx", import.meta.url), "utf8");
 const answerLearningSetup = await readFile(new URL("../src/components/AnswerLearningSetup.tsx", import.meta.url), "utf8");
+const appHeader = await readFile(new URL("../src/components/AppHeader.tsx", import.meta.url), "utf8");
 const backupManager = await readFile(new URL("../src/components/BackupManager.tsx", import.meta.url), "utf8");
 const cardDataManager = await readFile(new URL("../src/components/CardDataManager.tsx", import.meta.url), "utf8");
 const homeManagement = await readFile(new URL("../src/components/HomeManagement.tsx", import.meta.url), "utf8");
@@ -98,7 +99,17 @@ test("설명 텍스트는 제한된 clamp와 keep-all을 사용한다", () => {
   assert.match(css, /\.home-card-description[\s\S]*?font-size:\s*clamp\(0\.95rem,[\s\S]*?1rem\)[\s\S]*?word-break:\s*keep-all/);
 });
 test("답변 익히기 준비 화면은 공통 rail과 spacing token을 사용한다", () => {
-  assert.match(css, /\.answer-learning-setup\s*{[\s\S]*?var\(--home-content-max\)[\s\S]*?gap:\s*var\(--space-2xl\)/);
+  assert.match(css, /\.answer-learning-setup\s*{[\s\S]*?var\(--app-content-max\)[\s\S]*?var\(--app-inline-padding\)[\s\S]*?gap:\s*var\(--space-2xl\)/);
+});
+test("답변 익히기 준비와 실제 학습 화면은 같은 outer rail을 사용한다", () => {
+  const learningRail = /\.answer-learning-setup-intro,[\s\S]*?\.answer-learning-rating\s*{[\s\S]*?var\(--app-content-max\)[\s\S]*?var\(--app-inline-padding\)/;
+  assert.match(css, learningRail);
+  assert.match(css, /\.answer-learning-question h1\s*{[^}]*max-width:\s*var\(--learning-text-max\)/);
+  assert.match(css, /\.answer-learning-answer\s*{[^}]*max-width:\s*var\(--learning-text-max\)/);
+});
+test("공통 AppHeader는 내부 rail에서 기존 표시 요소를 유지한다", () => {
+  assert.match(appHeader, /<header[\s\S]*?<div className="app-header-rail">[\s\S]*?study-header-back[\s\S]*?brand-home[\s\S]*?compact-header-title[\s\S]*?compact-header-position[\s\S]*?theme-toggle[\s\S]*?mobile-header-progress/);
+  assert.match(css, /\.app-header-rail\s*{[\s\S]*?max-width:\s*var\(--app-content-max\)/);
 });
 test("답변 익히기 선택 조작은 체크 목록보다 앞에 한 번만 배치된다", () => {
   const controlsIndex = answerLearningSetup.indexOf('className="answer-selection-controls"');

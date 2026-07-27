@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const app = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
+const appHeader = await readFile(
+  new URL("../src/components/AppHeader.tsx", import.meta.url),
+  "utf8",
+);
 const css = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
 
 let passed = 0;
@@ -17,8 +21,9 @@ test("홈 주요 섹션이 공통 콘텐츠 레일 안에 있다", () => {
   assert.match(app, /<HomeQuickStart[\s\S]*?<TodayStats[\s\S]*?className="home-learning-materials"[\s\S]*?<HomeManagement\b/);
 });
 
-test("홈 레일 최대 폭이 1200px이다", () => {
-  assert.match(css, /--home-content-max:\s*1200px/);
+test("공통 앱 레일은 1200px이고 홈 변수는 호환 alias를 사용한다", () => {
+  assert.match(css, /--app-content-max:\s*1200px/);
+  assert.match(css, /--home-content-max:\s*var\(--app-content-max\)/);
   assert.match(css, /max-width:\s*var\(--home-content-max\)/);
 });
 
@@ -28,13 +33,21 @@ test("홈 섹션은 공통 레일 너비를 모두 사용한다", () => {
 });
 
 test("좌우 여백은 데스크톱 32px, 태블릿 24px, 모바일 16px이다", () => {
-  assert.match(css, /--home-inline-padding:\s*32px/);
-  assert.match(css, /@media \(max-width:\s*960px\)[\s\S]*?--home-inline-padding:\s*24px/);
-  assert.match(css, /@media \(max-width:\s*700px\)[\s\S]*?--home-inline-padding:\s*16px/);
+  assert.match(css, /--app-inline-padding:\s*32px/);
+  assert.match(css, /--home-inline-padding:\s*var\(--app-inline-padding\)/);
+  assert.match(css, /@media \(max-width:\s*960px\)[\s\S]*?--app-inline-padding:\s*24px/);
+  assert.match(css, /@media \(max-width:\s*700px\)[\s\S]*?--app-inline-padding:\s*16px/);
 });
 
 test("홈 레일은 safe area를 포함한 공통 좌우 padding을 사용한다", () => {
   assert.match(css, /\.home-layout-shell[\s\S]*?env\(safe-area-inset-left\)[\s\S]*?env\(safe-area-inset-right\)/);
+});
+
+test("AppHeader는 full-width shell 안의 공통 rail로 본문 기준선에 정렬한다", () => {
+  assert.match(appHeader, /<header[\s\S]*?<div className="app-header-rail">/);
+  assert.match(css, /\.app-header\s*{[\s\S]*?padding-inline:[\s\S]*?var\(--app-inline-padding\)[\s\S]*?env\(safe-area-inset-left\)[\s\S]*?env\(safe-area-inset-right\)/);
+  assert.match(css, /\.app-header-rail\s*{[\s\S]*?max-width:\s*var\(--app-content-max\)[\s\S]*?margin:\s*0 auto/);
+  assert.doesNotMatch(css, /\.app-header\s*{[^}]*100vw/);
 });
 
 test("홈 섹션 간격은 공통 변수로 관리한다", () => {

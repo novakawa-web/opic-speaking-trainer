@@ -399,21 +399,23 @@ export function ShadowingPlayer({
   return (
     <div className="shadowing-screen">
       <header className="shadowing-header">
-        <button type="button" className="shadowing-home" onClick={goHome} aria-label="홈으로 이동">O</button>
-        <button type="button" className="shadowing-back" onClick={leavePlayer} aria-label="쉐도잉 연습에서 뒤로가기">←</button>
-        <strong>쉐도잉 연습</strong>
-        <span role="status" aria-label={`현재 문장 ${currentIndex + 1}, 전체 ${sentences.length}`}>
-          {sentences.length > 0 ? currentIndex + 1 : 0} / {sentences.length}
-        </span>
-        <button
-          type="button"
-          className="shadowing-theme"
-          aria-label={theme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
-          aria-pressed={theme === "dark"}
-          onClick={onToggleTheme}
-        >
-          {theme === "dark" ? "☀" : "☾"}
-        </button>
+        <div className="shadowing-header-rail">
+          <button type="button" className="shadowing-home" onClick={goHome} aria-label="홈으로 이동">O</button>
+          <button type="button" className="shadowing-back" onClick={leavePlayer} aria-label="쉐도잉 연습에서 뒤로가기">←</button>
+          <strong>쉐도잉 연습</strong>
+          <span role="status" aria-label={`현재 문장 ${currentIndex + 1}, 전체 ${sentences.length}`}>
+            {sentences.length > 0 ? currentIndex + 1 : 0} / {sentences.length}
+          </span>
+          <button
+            type="button"
+            className="shadowing-theme"
+            aria-label={theme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
+            aria-pressed={theme === "dark"}
+            onClick={onToggleTheme}
+          >
+            {theme === "dark" ? "☀" : "☾"}
+          </button>
+        </div>
       </header>
 
       <main className="shadowing-main">
@@ -662,79 +664,83 @@ export function ShadowingPlayer({
             );
           })}
         </section>
+        <p className="shadowing-shortcuts">
+          Space 재생/일시정지 · ←/→ 문장 이동 · Home 첫 문장 · Esc 나가기
+        </p>
       </main>
 
       <div className="shadowing-controls" aria-label="쉐도잉 재생 컨트롤">
-        {status === "paused" && (
-          <p className="shadowing-resume-note" role="status">
-            {currentIndex + 1}번째 문장부터 이어집니다.
-          </p>
-        )}
-        <div className="shadowing-control-grid">
-          <button
-            type="button"
-            onClick={() => {
-              recorderRef.current?.stopPlayback();
-              restart();
-              setScrollRequestVersion((value) => value + 1);
-            }}
-            disabled={!isSupported || sentences.length === 0 || recorderBusy}
-          >
-            처음부터
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              recorderRef.current?.stopPlayback();
-              previousSentence();
-            }}
-            disabled={!canGoPrevious || recorderBusy}
-          >
-            이전 문장
-          </button>
-          <button
-            type="button"
-            className="shadowing-play-button"
-            onClick={togglePlayback}
-            disabled={!isSupported || sentences.length === 0 || recorderBusy}
-            aria-label={playbackLabel}
-          >
-            {isPlaying ? "Ⅱ" : "▶"} {playbackLabel}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              recorderRef.current?.stopPlayback();
-              nextSentence();
-            }}
-            disabled={!canGoNext || recorderBusy}
-          >
-            다음 문장
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              recorderRef.current?.stopPlayback();
-              stop();
-            }}
-            disabled={status === "idle" || recorderBusy}
-          >
-            정지
-          </button>
+        <div className="shadowing-controls-rail">
+          {status === "paused" && (
+            <p className="shadowing-resume-note" role="status">
+              {currentIndex + 1}번째 문장부터 이어집니다.
+            </p>
+          )}
+          <div className="shadowing-control-grid">
+            <button
+              type="button"
+              onClick={() => {
+                recorderRef.current?.stopPlayback();
+                restart();
+                setScrollRequestVersion((value) => value + 1);
+              }}
+              disabled={!isSupported || sentences.length === 0 || recorderBusy}
+            >
+              처음부터
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                recorderRef.current?.stopPlayback();
+                previousSentence();
+              }}
+              disabled={!canGoPrevious || recorderBusy}
+            >
+              이전 문장
+            </button>
+            <button
+              type="button"
+              className="shadowing-play-button"
+              onClick={togglePlayback}
+              disabled={!isSupported || sentences.length === 0 || recorderBusy}
+              aria-label={playbackLabel}
+            >
+              {isPlaying ? "Ⅱ" : "▶"} {playbackLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                recorderRef.current?.stopPlayback();
+                nextSentence();
+              }}
+              disabled={!canGoNext || recorderBusy}
+            >
+              다음 문장
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                recorderRef.current?.stopPlayback();
+                stop();
+              }}
+              disabled={status === "idle" || recorderBusy}
+            >
+              정지
+            </button>
+          </div>
+          <label className="shadowing-rate-control">
+            <span>속도</span>
+            <select
+              value={rate}
+              aria-label="TTS 읽기 속도"
+              onChange={(event) => updateRate(Number(event.target.value) as TtsRate)}
+            >
+              {TTS_RATE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </label>
         </div>
-        <label className="shadowing-rate-control">
-          <span>속도</span>
-          <select
-            value={rate}
-            aria-label="TTS 읽기 속도"
-            onChange={(event) => updateRate(Number(event.target.value) as TtsRate)}
-          >
-            {TTS_RATE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </label>
-        <p className="shadowing-shortcuts">Space 재생/일시정지 · ←/→ 문장 이동 · Home 첫 문장 · Esc 나가기</p>
       </div>
     </div>
   );

@@ -571,6 +571,43 @@ const appHeaderSource = await readFile(
 );
 const appSource = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
 const stylesSource = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
+
+test("shadowing header, main, and fixed controls share the app outer rail", () => {
+  assert.match(shadowingComponentSource, /<header className="shadowing-header">\s*<div className="shadowing-header-rail">/);
+  assert.match(shadowingComponentSource, /<div className="shadowing-controls"[\s\S]*?<div className="shadowing-controls-rail">/);
+  assert.match(stylesSource, /\.shadowing-header-rail\s*{[\s\S]*?max-width:\s*var\(--app-content-max\)/);
+  assert.match(stylesSource, /\.shadowing-main\s*{[\s\S]*?var\(--app-content-max\)[\s\S]*?var\(--app-inline-padding\)/);
+  assert.match(stylesSource, /\.shadowing-controls-rail\s*{[\s\S]*?max-width:\s*var\(--app-content-max\)/);
+  assert.doesNotMatch(stylesSource, /calc\(\(100vw - 920px\) \/ 2\)/);
+});
+
+test("shadowing long text uses the 900px learning rail", () => {
+  assert.match(stylesSource, /--learning-text-max:\s*900px/);
+  assert.match(stylesSource, /\.shadowing-intro\s*{[\s\S]*?var\(--learning-text-max\)/);
+  assert.match(stylesSource, /\.shadowing-sentence-list\s*{[\s\S]*?var\(--learning-text-max\)/);
+  assert.match(stylesSource, /\.shadowing-question-card h2\s*{[\s\S]*?var\(--learning-text-max\)/);
+});
+
+test("shortcut help follows the sentence list in scrollable main and stays outside fixed controls", () => {
+  const sentenceListIndex = shadowingComponentSource.indexOf('className="shadowing-sentence-list"');
+  const shortcutsIndex = shadowingComponentSource.indexOf('className="shadowing-shortcuts"');
+  const mainEndIndex = shadowingComponentSource.indexOf("</main>", sentenceListIndex);
+  const controlsIndex = shadowingComponentSource.indexOf('className="shadowing-controls"', mainEndIndex);
+  assert.ok(sentenceListIndex >= 0);
+  assert.ok(shortcutsIndex > sentenceListIndex && shortcutsIndex < mainEndIndex);
+  assert.ok(controlsIndex > mainEndIndex);
+  const fixedControls = shadowingComponentSource.slice(controlsIndex, shadowingComponentSource.indexOf("</div>", controlsIndex));
+  assert.doesNotMatch(fixedControls, /shadowing-shortcuts/);
+});
+
+test("bottom reserve is derived from maximum controller height, safe area, and at least 24px clearance", () => {
+  assert.match(stylesSource, /--shadowing-controller-max-height:\s*calc\(48px \+ 8px \+ 40px \+ 23px \+ 22px \+ 1px\)/);
+  assert.match(stylesSource, /--shadowing-content-clearance:\s*calc\([\s\S]*?var\(--shadowing-controller-max-height\)[\s\S]*?env\(safe-area-inset-bottom\)[\s\S]*?\+ 25px/);
+  assert.match(stylesSource, /\.shadowing-main\s*{[\s\S]*?padding:\s*30px 0 var\(--shadowing-content-clearance\)/);
+  assert.match(stylesSource, /@media \(max-width:\s*700px\)[\s\S]*?--shadowing-controller-max-height:\s*calc\(48px \+ 6px \+ 38px \+ 23px \+ 16px \+ 1px\)/);
+  assert.match(stylesSource, /\.shadowing-controls\s*{[\s\S]*?env\(safe-area-inset-bottom\)[\s\S]*?env\(safe-area-inset-left\)[\s\S]*?env\(safe-area-inset-right\)/);
+  assert.match(stylesSource, /@media \(max-width:\s*700px\)[\s\S]*?\.shadowing-controls\s*{[\s\S]*?padding-inline:[\s\S]*?max\(8px,\s*env\(safe-area-inset-left\)\)/);
+});
 test("shadowing resolves voices again for every playback request", () => {
   assert.match(shadowingHookSource, /requestEnglishVoice\(window\.speechSynthesis/);
   assert.match(shadowingHookSource, /new SpeechSynthesisUtterance/);
