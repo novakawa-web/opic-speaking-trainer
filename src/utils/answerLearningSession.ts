@@ -6,6 +6,7 @@ export const ANSWER_LEARNING_SESSION_KEY = "opic-answer-learning-session";
 export type AnswerLearningStatusFilter =
   | "all"
   | "unlearned"
+  | "with-status"
   | "hard"
   | "learning"
   | "speakable";
@@ -40,6 +41,7 @@ const validOrders = new Set<StudyOrder>(["default", "random", "least-practiced"]
 const validStatuses = new Set<AnswerLearningStatusFilter>([
   "all",
   "unlearned",
+  "with-status",
   "hard",
   "learning",
   "speakable",

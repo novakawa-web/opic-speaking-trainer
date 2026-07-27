@@ -1,7 +1,10 @@
 import type { AnswerLearningStatuses, OpicCard } from "../types.ts";
 import { isAnswerLearningStatus } from "./answerLearningStorage.ts";
 import type { MyAnswers } from "./myAnswerStorage.ts";
-import type { AnswerLearningFilters } from "./answerLearningSession.ts";
+import type {
+  AnswerLearningFilters,
+  AnswerLearningStatusFilter,
+} from "./answerLearningSession.ts";
 
 const dangerousCardIds = new Set(["__proto__", "constructor", "prototype"]);
 
@@ -27,6 +30,20 @@ export function filterCardsByAnswerLearningStatusPresence(
     : cards;
 }
 
+export function matchesAnswerLearningStatusFilter(
+  statuses: AnswerLearningStatuses,
+  cardId: string,
+  filter: AnswerLearningStatusFilter,
+) {
+  if (filter === "all") return true;
+
+  const hasStatus = hasAnswerLearningStatus(statuses, cardId);
+  if (filter === "unlearned") return !hasStatus;
+  if (filter === "with-status") return hasStatus;
+
+  return hasStatus && statuses[cardId] === filter;
+}
+
 export function filterAnswerLearningCards(
   cards: OpicCard[],
   filters: AnswerLearningFilters,
@@ -34,7 +51,6 @@ export function filterAnswerLearningCards(
   myAnswers: MyAnswers,
 ) {
   return cards.filter((card) => {
-    const status = statuses[card.id];
     const hasMyAnswer = Boolean(myAnswers[card.id]);
     return (
       (filters.deck === "all" || card.deck === filters.deck) &&
@@ -42,8 +58,7 @@ export function filterAnswerLearningCards(
       (!filters.finalOnly || card.tags.includes("final_rep")) &&
       (filters.answerPresence === "all" ||
         (filters.answerPresence === "with" ? hasMyAnswer : !hasMyAnswer)) &&
-      (filters.status === "all" ||
-        (filters.status === "unlearned" ? !status : status === filters.status))
+      matchesAnswerLearningStatusFilter(statuses, card.id, filters.status)
     );
   });
 }

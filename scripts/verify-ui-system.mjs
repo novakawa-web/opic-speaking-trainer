@@ -5,6 +5,9 @@ import {
   consumePostRestoreNavigation,
   savePostRestoreNavigation,
 } from "../src/utils/postRestoreNavigation.ts";
+import {
+  filterAnswerLearningCards,
+} from "../src/utils/answerLearningSelectors.ts";
 
 const css = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
 const app = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
@@ -112,6 +115,15 @@ test("답변 익히기 선택 조작은 정확한 문구와 독립 handler를 �
   assert.match(answerLearningSetup, /onClick=\{selectAllVisible\}/);
   assert.match(answerLearningSetup, /onClick=\{clearSelection\}/);
 });
+test("답변 익히기 상태 select는 없음 있음과 기존 상세 상태를 제공한다", () => {
+  assert.match(answerLearningSetup, /<option value="all">전체<\/option>/);
+  assert.match(answerLearningSetup, /<option value="unlearned">답변 연습 상태 없음<\/option>/);
+  assert.match(answerLearningSetup, /<option value="with-status">답변 연습 상태 있음<\/option>/);
+  assert.match(answerLearningSetup, /<option value="hard">어려움<\/option>/);
+  assert.match(answerLearningSetup, /<option value="learning">익히는 중<\/option>/);
+  assert.match(answerLearningSetup, /<option value="speakable">말할 수 있음<\/option>/);
+  assert.match(answerLearningSetup, /status:\s*"all"/);
+});
 test("답변 익히기 시작 후보 수는 현재 결과와 선택의 교집합이다", () => {
   assert.match(answerLearningSetup, /const startCandidateCount = visibleCards\.filter\(\(card\) => selected\.has\(card\.id\)\)\.length/);
   assert.match(answerLearningSetup, /getAnswerLearningSelectionState\(visibleCards, session\.selectedCardIds\)/);
@@ -156,6 +168,93 @@ test("답변 익히기 선택 상태 계약은 필터 전이를 실제 계산한
   const hiddenTwo = getAnswerLearningSelectionState([{ id: "card-b" }], ["card-a", "card-c"]);
   assert.equal(hiddenTwo.hiddenSelectedCount, 2);
   assert.equal(hiddenTwo.hiddenSelectionMessage, "필터 밖에서 선택한 2장은 유지되지만 이번 학습에는 포함되지 않아요.");
+});
+test("답변 상태 필터 전환은 선택을 보존하고 N M과 실제 시작 후보를 일치시킨다", () => {
+  const candidateCards = [
+    { id: "card-a", deck: "deck-a", tags: ["final_rep"] },
+    { id: "card-b", deck: "deck-a", tags: [] },
+    { id: "card-c", deck: "deck-b", tags: [] },
+  ];
+  const filters = {
+    deck: "all",
+    tag: "all",
+    finalOnly: false,
+    answerPresence: "all",
+    status: "all",
+    order: "default",
+  };
+  const statuses = { "card-a": "hard", "card-c": "learning" };
+  const statusesBefore = structuredClone(statuses);
+  const selectedCardIds = ["card-a", "card-b"];
+  const selectedBefore = [...selectedCardIds];
+
+  const allVisible = filterAnswerLearningCards(candidateCards, filters, statuses, {});
+  const allState = getAnswerLearningSelectionState(allVisible, selectedCardIds);
+  assert.equal(allState.startCandidateCount, 2);
+  assert.equal(allState.hiddenSelectedCount, 0);
+
+  const withStatusVisible = filterAnswerLearningCards(
+    candidateCards,
+    { ...filters, status: "with-status" },
+    statuses,
+    {},
+  );
+  const withStatusState = getAnswerLearningSelectionState(withStatusVisible, selectedCardIds);
+  const actualStartIds = withStatusVisible
+    .map((card) => card.id)
+    .filter((cardId) => new Set(selectedCardIds).has(cardId));
+  assert.deepEqual(withStatusVisible.map((card) => card.id), ["card-a", "card-c"]);
+  assert.equal(withStatusState.startCandidateCount, 1);
+  assert.equal(withStatusState.hiddenSelectedCount, 1);
+  assert.equal(withStatusState.startDisabled, false);
+  assert.equal(actualStartIds.length, withStatusState.startCandidateCount);
+
+  const withoutStatusVisible = filterAnswerLearningCards(
+    candidateCards,
+    { ...filters, status: "unlearned" },
+    statuses,
+    {},
+  );
+  const withoutStatusState = getAnswerLearningSelectionState(withoutStatusVisible, selectedCardIds);
+  assert.deepEqual(withoutStatusVisible.map((card) => card.id), ["card-b"]);
+  assert.equal(withoutStatusState.startCandidateCount, 1);
+  assert.equal(withoutStatusState.hiddenSelectedCount, 1);
+
+  const emptyVisible = filterAnswerLearningCards(
+    candidateCards,
+    { ...filters, status: "speakable" },
+    statuses,
+    {},
+  );
+  const emptyState = getAnswerLearningSelectionState(emptyVisible, selectedCardIds);
+  assert.equal(emptyState.startCandidateCount, 0);
+  assert.equal(emptyState.hiddenSelectedCount, 2);
+  assert.equal(emptyState.startDisabled, true);
+  assert.equal(emptyState.clearDisabled, false);
+
+  const restoredState = getAnswerLearningSelectionState(allVisible, selectedCardIds);
+  assert.equal(restoredState.startCandidateCount, 2);
+  assert.equal(restoredState.hiddenSelectedCount, 0);
+  assert.deepEqual(selectedCardIds, selectedBefore);
+  assert.deepEqual(statuses, statusesBefore);
+
+  const afterSelectAll = [...new Set([
+    ...selectedCardIds,
+    ...withStatusVisible.map((card) => card.id),
+  ])];
+  const selectAllState = getAnswerLearningSelectionState(withStatusVisible, afterSelectAll);
+  assert.equal(selectAllState.allVisibleSelected, true);
+  assert.ok(afterSelectAll.includes("card-b"));
+
+  const cleared = [];
+  const clearedState = getAnswerLearningSelectionState(withStatusVisible, cleared);
+  assert.equal(clearedState.startCandidateCount, 0);
+  assert.equal(clearedState.hiddenSelectedCount, 0);
+  assert.equal(clearedState.clearDisabled, true);
+});
+test("답변 익히기 상태 select는 46px와 모바일 1열 계약을 유지한다", () => {
+  assert.match(css, /\.answer-learning-filter-grid select\s*\{[\s\S]*?min-height:\s*46px/);
+  assert.match(css, /@media \(max-width:\s*700px\)[\s\S]*?\.answer-learning-filter-grid\s*\{[\s\S]*?grid-template-columns:\s*1fr/);
 });
 test("답변 익히기 숨겨진 선택 안내는 강조 박스가 아닌 보조 설명이다", () => {
   const hiddenNoteRule = css.match(/\.answer-selection-hidden-note\s*\{([^}]+)\}/)?.[1] ?? "";

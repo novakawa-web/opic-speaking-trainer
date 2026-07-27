@@ -172,7 +172,8 @@ export function AnswerLearningSetup({
             <span>답변 익히기 상태</span>
             <select value={session.filters.status} onChange={(event) => updateFilters({ status: event.target.value as AnswerLearningFilters["status"] })}>
               <option value="all">전체</option>
-              <option value="unlearned">미학습</option>
+              <option value="unlearned">답변 연습 상태 없음</option>
+              <option value="with-status">답변 연습 상태 있음</option>
               <option value="hard">어려움</option>
               <option value="learning">익히는 중</option>
               <option value="speakable">말할 수 있음</option>

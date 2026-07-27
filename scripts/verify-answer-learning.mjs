@@ -20,6 +20,7 @@ import {
 import {
   hasAnswerLearningStatus,
   filterAnswerLearningCards,
+  matchesAnswerLearningStatusFilter,
   orderAnswerLearningCards,
 } from "../src/utils/answerLearningSelectors.ts";
 import {
@@ -85,6 +86,36 @@ test("orphan 상태 ID는 카드 순회 후보에 없음", () => {
       hasAnswerLearningStatus({ "removed-card": "hard" }, card.id),
     );
   assert.deepEqual(candidates, []);
+});
+test("전체 상태 matcher는 상태 부재와 무관하게 일치", () => {
+  assert.equal(matchesAnswerLearningStatusFilter({}, cardA.id, "all"), true);
+});
+test("상태 없음 matcher는 유효 상태만 제외", () => {
+  assert.equal(matchesAnswerLearningStatusFilter({}, cardA.id, "unlearned"), true);
+  assert.equal(matchesAnswerLearningStatusFilter({ [cardA.id]: "hard" }, cardA.id, "unlearned"), false);
+  assert.equal(matchesAnswerLearningStatusFilter({ [cardA.id]: "success" }, cardA.id, "unlearned"), true);
+  const inherited = Object.create({ [cardA.id]: "hard" });
+  assert.equal(matchesAnswerLearningStatusFilter(inherited, cardA.id, "unlearned"), true);
+});
+test("상태 있음 matcher는 세 유효 상태를 모두 포함", () => {
+  for (const status of ["hard", "learning", "speakable"]) {
+    assert.equal(
+      matchesAnswerLearningStatusFilter({ [cardA.id]: status }, cardA.id, "with-status"),
+      true,
+    );
+  }
+});
+test("상태 있음 matcher는 부재 손상 빈 ID와 위험 키를 제외", () => {
+  assert.equal(matchesAnswerLearningStatusFilter({}, cardA.id, "with-status"), false);
+  assert.equal(matchesAnswerLearningStatusFilter({ [cardA.id]: "success" }, cardA.id, "with-status"), false);
+  assert.equal(matchesAnswerLearningStatusFilter({ "": "hard" }, "", "with-status"), false);
+  for (const cardId of ["__proto__", "constructor", "prototype"]) {
+    const statuses = Object.create(null);
+    statuses[cardId] = "hard";
+    assert.equal(matchesAnswerLearningStatusFilter(statuses, cardId, "with-status"), false);
+  }
+  const inherited = Object.create({ [cardA.id]: "hard" });
+  assert.equal(matchesAnswerLearningStatusFilter(inherited, cardA.id, "with-status"), false);
 });
 
 test("시도 생성과 UUID", () => {
@@ -172,6 +203,20 @@ test("답변 소스 복원", () => {
   const session = normalizeAnswerLearningSession({ ...createEmptyAnswerLearningSession(), answerSources: { [cardA.id]: "my-answer" } }, cards.map((card) => card.id));
   assert.equal(session.answerSources[cardA.id], "my-answer");
 });
+test("이전 unlearned 상태 필터 세션 호환", () => {
+  const session = normalizeAnswerLearningSession({
+    ...createEmptyAnswerLearningSession(),
+    filters: { ...createEmptyAnswerLearningSession().filters, status: "unlearned" },
+  }, cards.map((card) => card.id));
+  assert.equal(session.filters.status, "unlearned");
+});
+test("새 with-status 상태 필터 세션 복원", () => {
+  const session = normalizeAnswerLearningSession({
+    ...createEmptyAnswerLearningSession(),
+    filters: { ...createEmptyAnswerLearningSession().filters, status: "with-status" },
+  }, cards.map((card) => card.id));
+  assert.equal(session.filters.status, "with-status");
+});
 test("랜덤은 원본 불변", () => {
   const ids = ["a", "b", "c"];
   shuffleAnswerLearningIds(ids, () => 0);
@@ -180,6 +225,15 @@ test("랜덤은 원본 불변", () => {
 
 const filters = { deck: "all", tag: "all", finalOnly: false, answerPresence: "all", status: "all", order: "default" };
 test("미학습 필터", () => assert.ok(filterAnswerLearningCards(cards, { ...filters, status: "unlearned" }, { [cardA.id]: "hard" }, {}).every((card) => card.id !== cardA.id)));
+test("상태 있음 필터", () => assert.deepEqual(
+  filterAnswerLearningCards(
+    [cardA, cardB],
+    { ...filters, status: "with-status" },
+    { [cardA.id]: "hard" },
+    {},
+  ).map((card) => card.id),
+  [cardA.id],
+));
 test("어려움 필터", () => assert.deepEqual(filterAnswerLearningCards(cards, { ...filters, status: "hard" }, { [cardA.id]: "hard" }, {}).map((card) => card.id), [cardA.id]));
 test("익히는 중 필터", () => assert.deepEqual(filterAnswerLearningCards(cards, { ...filters, status: "learning" }, { [cardA.id]: "learning" }, {}).map((card) => card.id), [cardA.id]));
 test("말할 수 있음 필터", () => assert.deepEqual(filterAnswerLearningCards(cards, { ...filters, status: "speakable" }, { [cardA.id]: "speakable" }, {}).map((card) => card.id), [cardA.id]));
@@ -192,8 +246,29 @@ test("연습 적은 순 안정 정렬", () => {
 test("기본 순서 유지", () => assert.deepEqual(orderAnswerLearningCards([cardA, cardB], "default", {}).map((card) => card.id), [cardA.id, cardB.id]));
 test("덱 필터", () => assert.ok(filterAnswerLearningCards(cards, { ...filters, deck: cardA.deck }, {}, {}).every((card) => card.deck === cardA.deck)));
 test("태그 필터", () => assert.ok(filterAnswerLearningCards(cards, { ...filters, tag: cardA.tags[0] }, {}, {}).every((card) => card.tags.includes(cardA.tags[0]))));
+test("상태 있음 필터는 다른 필터와 AND", () => {
+  const deckACard = { ...cardA, id: "deck-a-card", deck: "deck-a" };
+  const deckBCard = { ...cardB, id: "deck-b-card", deck: "deck-b" };
+  const result = filterAnswerLearningCards(
+    [deckACard, deckBCard],
+    { ...filters, deck: "deck-b", status: "with-status" },
+    { [deckACard.id]: "hard" },
+    {},
+  );
+  assert.deepEqual(result, []);
+});
 test("내 답변 없음 필터", () => assert.ok(filterAnswerLearningCards(cards, { ...filters, answerPresence: "without" }, {}, { [cardA.id]: "answer" }).every((card) => card.id !== cardA.id)));
 test("전체 필터는 카드 수 유지", () => assert.equal(filterAnswerLearningCards(cards, filters, {}, {}).length, cards.length));
+test("필터 계산은 상태 map과 storage를 변경하거나 상태를 생성하지 않음", () => {
+  const statuses = { [cardA.id]: "learning" };
+  const statusesBefore = structuredClone(statuses);
+  const storageBefore = new Map(localStorage.values);
+  filterAnswerLearningCards([cardA, cardB], { ...filters, status: "with-status" }, statuses, {});
+  filterAnswerLearningCards([cardA, cardB], { ...filters, status: "unlearned" }, statuses, {});
+  assert.deepEqual(statuses, statusesBefore);
+  assert.equal(Object.hasOwn(statuses, cardB.id), false);
+  assert.deepEqual(localStorage.values, storageBefore);
+});
 test("잘못된 세션 order fallback", () => {
   const session = normalizeAnswerLearningSession({ ...createEmptyAnswerLearningSession(), filters: { ...filters, order: "broken" } }, cards.map((card) => card.id));
   assert.equal(session.filters.order, "default");
