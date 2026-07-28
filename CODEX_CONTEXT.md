@@ -1,10 +1,10 @@
 # OPIc Speaking Trainer - Codex 인수인계
 
-> 마지막 확인: 2026-07-26 (Asia/Seoul)
+> 마지막 확인: 2026-07-28 (Asia/Seoul)
 >
-> 기준 브랜치: `main` (기준 main: `451b4844f22e6dd762b96e114668b44867e233f6`)
+> 기준 브랜치: `main` (기준 main: `03c5082fc0a3fabbe81ba6c6e0b6759650c94ff9`)
 >
-> 기준 커밋·운영 반영 SHA: `451b4844f22e6dd762b96e114668b44867e233f6`
+> 기준 커밋·운영 반영 SHA: `03c5082fc0a3fabbe81ba6c6e0b6759650c94ff9`
 
 이 문서는 새 Codex 대화에서 가장 먼저 읽는 현재 코드 구조와 작업 규칙의 source of truth다. 프로젝트 소개와 실행 방법은 [README.md](README.md), Firebase 운영 절차는 [CLOUD_BACKUP_OPERATIONS.md](CLOUD_BACKUP_OPERATIONS.md)를 우선한다.
 
@@ -16,9 +16,9 @@
 - 운영 앱: <https://novakawa-web.github.io/opic-speaking-trainer/>
 - production Vite base는 `/opic-speaking-trainer/`, 개발 base는 `/`다.
 - 기본 카드 소스는 12장이지만 활성 카드 데이터셋은 TSV 사용에 따라 달라진다. 운영 카드 수를 코드 상수처럼 문서화하지 않는다.
-- 2026-07-26 확인 시 운영 URL, `manifest.webmanifest`, `sw.js`, `404.html`은 HTTP 200이었다.
-- 최신 확인 Pages workflow는 commit `451b4844f22e6dd762b96e114668b44867e233f6`의 Actions run `30201002646`에서 build와 deploy가 성공했다.
-- storage transaction, 카드 삭제 transaction, 공통 브랜드 홈 이동, 쉐도잉 UX, 단일 카드 직접 추가, UX 안정화 1차, 카드 통합 검색, 기본 답변과 나만의 답변의 줄바꿈 정규화, 답변 익히기 카드 선택 조작과 첫 문장 답변 연습 상태 필터가 main과 운영 Pages에 포함되어 있다.
+- 2026-07-27 운영 배포 검증에서 운영 URL, `manifest.webmanifest`, `sw.js`, `404.html`과 배포 HTML·JS에서 동적으로 확인한 현재 asset은 HTTP 200이었다. hash가 바뀌는 asset 이름은 고정해 기록하지 않는다.
+- 최신 확인 Pages workflow는 commit `03c5082fc0a3fabbe81ba6c6e0b6759650c94ff9`의 Actions run `30315653335`에서 build job `90140496783`, deploy job `90140579728`과 Pages deployment `5631778446`이 모두 success였다.
+- storage transaction, 카드 삭제 transaction, 공통 브랜드 홈 이동, 쉐도잉 UX, 단일 카드 직접 추가, UX 안정화 1차, 카드 통합 검색, 기본 답변과 나만의 답변의 줄바꿈 정규화, 답변 익히기 카드 선택 조작, 첫 문장 답변 연습 상태 필터, 답변 익히기 상태 통합 필터와 공통 학습 화면 rail이 main과 운영 Pages에 포함되어 있다.
 
 ## 2. 구현된 사용자 흐름
 
@@ -32,10 +32,17 @@
 - 3초 카운트다운, 결과 요약, 어려운 카드 다시 도전
 - 첫 문장 상태 `success | again | hard | null`, UUID 시도 기록, 날짜별 통계와 실행 취소
 - 답변 익히기 전용 상태 `hard | learning | speakable`와 별도 시도·통계·실행 취소
+- 답변 익히기 준비의 상태 필터에는 `답변 연습 상태 없음`, `답변 연습 상태 있음`과 기존 `어려움`, `익히는 중`, `말할 수 있음`이 있다. `hard | learning | speakable`만 유효한 상태로 판정하고 다른 필터와 AND로 결합한다. 필터 전환은 선택 ID와 상태 map을 바꾸지 않으며, 기존 N/M·전체 선택·선택 해제·실제 시작 카드 수 계약을 그대로 따른다. `opic-answer-learning-session` key와 session version 1도 유지한다.
 - 답변 익히기 준비 화면은 카드 목록 위에서 현재 필터 결과와 선택 ID의 교집합을 `학습할 카드 N장`으로 표시한다. `전체 선택`은 현재 결과를 기존 선택에 추가하고, `선택 해제`는 필터 밖 선택까지 모두 제거하며, 숨은 선택이 있으면 `필터 밖에서 선택한 M장은 유지되지만 이번 학습에는 포함되지 않아요.`를 표시한다. N이 0이면 시작 버튼을 비활성화한다.
 - 기본 답변과 카드 ID별 나만의 답변
 - 전체·문단·문장 쉐도잉, 1·3·5·10·무한 반복, 휴식 5단계, 속도 5단계
 - 질문 확인, 이전·다음 카드, 문장별 반복 완료 후 다음 문장 자동 진행, 재생 unit 가시성 스크롤, 백그라운드 복귀 시 paused 전환과 Wake Lock
+
+### 공통 학습 화면 레이아웃
+
+- 홈·답변 익히기 준비·답변 익히기·쉐도잉의 공통 outer rail은 최대 1200px이며 좌우 여백은 모바일 16px, 태블릿 24px, 데스크톱 32px이다. 긴 학습 본문은 가독성을 위해 최대 900px의 별도 inner rail을 사용한다.
+- AppHeader와 쉐도잉 header는 full-width shell 안의 공통 rail에 콘텐츠를 정렬한다. 쉐도잉 header·main·controller의 좌우 기준선을 맞추되 화면 높이가 같다는 의미는 아니며, 700px 이하 controller는 8px inset을 유지한다.
+- 쉐도잉 단축키 안내는 문장 목록 아래의 스크롤 영역에 있고, 본문 bottom reserve는 controller 높이·safe-area와 최소 24px 간격을 고려한다. TTS·반복·휴식·녹음과 5버튼 controller 구조는 변경하지 않았다.
 
 ### 사용자 데이터와 관리
 
@@ -187,6 +194,7 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 - 카드 수정·보관·삭제 규칙: `src/utils/cardEditor.ts`, `cardArchiveStorage.ts`, `cardDeletion.ts`
 - 첫 문장: `src/components/FirstLineSetup.tsx`, `FirstLineDrill.tsx`, `src/utils/firstLineMockSession.ts`
 - 답변 익히기와 공통 상태 selector: `src/components/AnswerLearningSetup.tsx`, `AnswerLearning.tsx`, `src/utils/answerLearningStorage.ts`, `answerLearningSession.ts`, `answerLearningSelectors.ts`
+- 공통 학습 화면 레이아웃: `src/components/AppHeader.tsx`, `src/components/ShadowingPlayer.tsx`, `src/styles.css`
 - 쉐도잉: `src/components/ShadowingPlayer.tsx`, `src/hooks/useShadowingPlayer.ts`, `src/utils/shadowingPlayer.ts`, `shadowingSettings.ts`
 - 답변 개행·문장·문단: `src/utils/answerText.ts`, `sentenceSegmenter.ts`, `passageParagraphs.ts`
 - TTS: `src/hooks/useSpeechSynthesis.ts`, `src/utils/englishVoice.ts`
@@ -204,7 +212,7 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 
 쉐도잉 session은 마지막 유효한 미완료 재생 1건만 보존한다. 카드 또는 저장 지문 식별자, 답변 문장 지문, 현재 반복 설정과 진행 범위가 모두 일치할 때만 `이어 듣기`로 복원한다. 완료됨, 손상됨, 다른 소스, 답변 변경, 범위 이탈 또는 설정 불일치는 처음부터 상태로 정규화한다. 홈·뒤로 이동은 떠나기 직전 현재 진행을 한 번 저장하며 이후 TTS 정리가 그 값을 덮어쓰지 않는다.
 
-`package.json`의 `test:all`은 다음 22개 스크립트를 순서대로 실행한다. 현재 main의 최신 검증 기준은 880개다.
+`package.json`의 `test:all`은 다음 22개 스크립트를 순서대로 실행한다. 현재 main의 최신 검증 기준은 899/899다.
 
 | 명령 | 개수 |
 | --- | ---: |
@@ -221,23 +229,23 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 | `test:personal-memos` | 47 |
 | `test:passages` | 41 |
 | `test:recorder` | 66 |
-| `test:shadowing` | 110 |
+| `test:shadowing` | 114 |
 | `test:ui-session` | 20 |
 | `test:tsv` | 30 |
-| `test:answer-learning` | 59 |
+| `test:answer-learning` | 68 |
 | `test:first-line-mock` | 28 |
 | `test:card-management` | 31 |
 | `test:cloud-backup` | 82 |
-| `test:home-layout` | 10 |
-| `test:ui-system` | 28 |
+| `test:home-layout` | 11 |
+| `test:ui-system` | 33 |
 
 `test:cloud-rules` 22개는 실행 중인 Firestore·Storage Emulator가 필요한 별도 Security Rules 검증이다. `test:pwa`도 build 후 별도로 실행한다.
 
-commit `451b4844f22e6dd762b96e114668b44867e233f6`에서 `test:all` 880/880, TypeScript, production build와 PWA/Pages 검증이 통과했다. 이전 854개 기준 이후 답변 익히기 선택 계약 7개, 답변 상태 selector 9개와 첫 문장 필터 계약 10개가 추가됐다.
+commit `451b4844f22e6dd762b96e114668b44867e233f6`의 기준은 880/880이었다. 답변 익히기 상태 통합 필터 commit `022084a7c22b5e2aad7ea3f7adedc0b9dbe0fbc9`에서 892/892로, 공통 학습 화면 rail commit `03c5082fc0a3fabbe81ba6c6e0b6759650c94ff9`에서 899/899로 증가했다. 현재 main 기준 TypeScript, production build와 PWA/Pages 검증도 통과했다.
 
 ### dependency audit 기준
 
-- 2026-07-26 최신 승인 `npm audit` baseline은 **high 8건**이다. audit 통과 또는 취약점 0건으로 기록하지 않는다.
+- 2026-07-28 현재 승인 `npm audit` baseline은 exit 1, **high 8건**이다. audit 통과 또는 취약점 0건으로 기록하지 않는다.
 - 직접 devDependency `vite-plugin-pwa@1.3.0`에서 `workbox-build@7.4.1`로 이어지는 build-time 전이 경로에 `brace-expansion` DoS advisory `GHSA-mh99-v99m-4gvg`가 존재한다. lockfile에는 `brace-expansion@5.0.7`과 `filelist` 아래의 `brace-expansion@2.1.2`가 있다.
 - 확인된 경로는 `vite-plugin-pwa → workbox-build → @trickfilm400/rollup-plugin-off-main-thread → ejs → jake → filelist → minimatch → brace-expansion`이다.
 - 이 build-time advisory를 운영 브라우저 runtime 문제와 동일하다고 단정하지 않지만, 현재 운영 앱이 자동으로 안전하다고도 단정하지 않는다.
@@ -299,4 +307,4 @@ git diff --check
 - 답변 익히기 전체 답변 영역의 3중 테두리를 단순화하고 녹음 위치를 쉐도잉과 함께 재검토한다.
 - 답변 익히기 TTS에는 속도 선택과 다음 상태 정책을 적용한다: 정지 상태 문장 터치는 선택 문장만 재생 후 정지, 전체 답변 듣기는 처음부터 끝까지 연속 재생, 일시정지는 현재 문장을 기억, 이어 듣기는 멈춘 문장 처음부터 끝까지, 연속 재생 중 문장 터치는 누른 문장부터 끝까지, 전체 완료 후 문장 터치는 선택 문장만 재생 후 정지.
 - 나만의 답변 공통 편집은 카드 라이브러리와 답변 익히기에서 동일한 기존 `CardEditor`로 진입한다. 기본 카드 내용과 나만의 답변을 함께 편집하고, 답변 익히기에서 진입한 경우 저장 후 기존 학습 위치로 안전하게 복귀한다. 기본 카드 dataset과 나만의 답변 저장소는 하나의 storage transaction 경계로 처리하고 두 저장이 모두 성공한 뒤에만 React 상태를 반영하며, 실패하면 입력값과 기존 데이터를 유지한다.
-- 음성→텍스트, 첫 문장 훈련 UX, 카드 선택 UI 통합과 쉐도잉 하단 컨트롤 재설계는 별도 티켓으로 유지한다.
+- 쉐도잉 하단 5버튼 controller 재설계는 완료된 공통 rail 정렬과 별도 티켓으로 유지한다.
