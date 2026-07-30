@@ -581,6 +581,57 @@ test("shadowing header, main, and fixed controls share the app outer rail", () =
   assert.doesNotMatch(stylesSource, /calc\(\(100vw - 920px\) \/ 2\)/);
 });
 
+test("shadowing header actions share the 44px token with an 8px column gap", () => {
+  assert.match(stylesSource, /--header-action-size:\s*44px/);
+  assert.match(stylesSource, /\.shadowing-header-rail\s*{[\s\S]*?grid-template-columns:\s*var\(--header-action-size\)\s*var\(--header-action-size\)\s*minmax\(0,\s*1fr\)\s*auto\s*var\(--header-action-size\)[\s\S]*?column-gap:\s*8px/);
+  assert.match(stylesSource, /\.shadowing-home,[\s\S]*?\.shadowing-back,[\s\S]*?\.shadowing-theme\s*{[\s\S]*?width:\s*var\(--header-action-size\)[\s\S]*?height:\s*var\(--header-action-size\)/);
+  assert.match(stylesSource, /\.shadowing-back:focus-visible,[\s\S]*?\.shadowing-theme:focus-visible\s*{[\s\S]*?outline:\s*3px solid var\(--header-focus-ring\)[\s\S]*?outline-offset:\s*2px/);
+  const progressRule = stylesSource.match(/\.shadowing-header-rail > span\s*{[^}]*}/);
+  assert.ok(progressRule);
+  assert.doesNotMatch(progressRule[0], /margin-right/);
+});
+
+test("shadowing header actions keep native button semantics and accessible names", () => {
+  assert.match(shadowingComponentSource, /<button type="button" className="shadowing-back" onClick=\{leavePlayer\} aria-label="쉐도잉 연습에서 뒤로가기"/);
+  assert.match(shadowingComponentSource, /<button type="button" className="shadowing-home" onClick=\{goHome\} aria-label="홈으로 이동">\s*<span className="shadowing-home-mark" aria-hidden="true">O<\/span>\s*<\/button>/);
+  assert.match(shadowingComponentSource, /className="shadowing-theme"[\s\S]*?aria-label=\{theme === "dark" \? "라이트 모드로 전환" : "다크 모드로 전환"\}[\s\S]*?aria-pressed=\{theme === "dark"\}/);
+});
+
+test("shadowing header visual actions match the compact AppHeader contract", () => {
+  assert.match(stylesSource, /\.shadowing-home\s*{[\s\S]*?display:\s*grid[\s\S]*?place-items:\s*center[\s\S]*?border:\s*0[\s\S]*?background:\s*transparent/);
+  assert.match(stylesSource, /\.shadowing-home-mark\s*{[\s\S]*?width:\s*38px[\s\S]*?height:\s*38px[\s\S]*?border-radius:\s*11px[\s\S]*?background:\s*var\(--primary-action\)/);
+  assert.match(stylesSource, /\.shadowing-back\s*{[\s\S]*?border:\s*1px solid var\(--line\)[\s\S]*?border-radius:\s*10px[\s\S]*?background:\s*var\(--surface-soft\)[\s\S]*?font-size:\s*20px/);
+  assert.match(stylesSource, /\.shadowing-theme\s*{[\s\S]*?border:\s*1px solid var\(--line\)[\s\S]*?border-radius:\s*10px[\s\S]*?background:\s*var\(--surface\)[\s\S]*?font-size:\s*18px/);
+  assert.match(stylesSource, /\.shadowing-theme:hover\s*{[\s\S]*?color:\s*var\(--blue\)[\s\S]*?border-color:\s*#799ee5/);
+  assert.doesNotMatch(stylesSource, /\.(?:shadowing-back|shadowing-home|shadowing-theme)::(?:before|after)/);
+});
+
+test("shadowing mobile title and progress match compact AppHeader typography", () => {
+  assert.match(stylesSource, /@media \(max-width: 700px\) \{[\s\S]*?\.shadowing-header-rail > strong\s*{[\s\S]*?font-size:\s*14px[\s\S]*?line-height:\s*1\.2[\s\S]*?\.shadowing-header-rail > span\s*{[\s\S]*?min-width:\s*42px[\s\S]*?font:\s*800 13px\/1[\s\S]*?text-align:\s*center/);
+  assert.match(stylesSource, /\.shadowing-header-rail > strong\s*{[\s\S]*?overflow:\s*hidden[\s\S]*?text-overflow:\s*ellipsis[\s\S]*?white-space:\s*nowrap/);
+});
+
+test("shadowing header DOM order is back, home, title, progress, then theme without CSS order", () => {
+  const headerStart = shadowingComponentSource.indexOf('<div className="shadowing-header-rail">');
+  const headerEnd = shadowingComponentSource.indexOf("</div>", headerStart);
+  assert.ok(headerStart >= 0 && headerEnd > headerStart);
+  const header = shadowingComponentSource.slice(headerStart, headerEnd);
+  const orderedTokens = [
+    'className="shadowing-back"',
+    'className="shadowing-home"',
+    "<strong>쉐도잉 연습</strong>",
+    'role="status"',
+    'className="shadowing-theme"',
+  ];
+  let previousIndex = -1;
+  for (const token of orderedTokens) {
+    const nextIndex = header.indexOf(token);
+    assert.ok(nextIndex > previousIndex, `${token} should follow the previous header item`);
+    previousIndex = nextIndex;
+  }
+  assert.doesNotMatch(stylesSource, /\.shadowing-(?:back|home)\s*{[^}]*\border\s*:/);
+});
+
 test("shadowing long text uses the 900px learning rail", () => {
   assert.match(stylesSource, /--learning-text-max:\s*900px/);
   assert.match(stylesSource, /\.shadowing-intro\s*{[\s\S]*?var\(--learning-text-max\)/);

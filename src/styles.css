@@ -50,9 +50,11 @@
   --status-hard-selected-bg: #fce4e2;
   --saved-message: #19875a;
   --select-focus-ring: #2f6fed;
+  --header-focus-ring: var(--select-focus-ring);
   --shadow: 0 18px 50px rgba(28, 45, 74, 0.09);
   --app-content-max: 1200px;
   --app-inline-padding: 32px;
+  --header-action-size: 44px;
   --learning-text-max: 900px;
   --home-content-max: var(--app-content-max);
   --home-inline-padding: var(--app-inline-padding);
@@ -169,6 +171,16 @@ input:focus-visible + .toggle-switch {
   outline-offset: 3px;
 }
 
+.study-header-back:focus-visible,
+.brand-home:focus-visible,
+.theme-toggle:focus-visible,
+.shadowing-back:focus-visible,
+.shadowing-home:focus-visible,
+.shadowing-theme:focus-visible {
+  outline: 3px solid var(--header-focus-ring);
+  outline-offset: 2px;
+}
+
 .app-shell {
   min-height: 100vh;
 }
@@ -270,7 +282,7 @@ input:focus-visible + .toggle-switch {
   align-items: center;
   gap: 14px;
   min-width: 0;
-  min-height: 44px;
+  min-height: var(--header-action-size);
   padding: 0;
   color: inherit;
   border: 0;
@@ -334,7 +346,7 @@ input:focus-visible + .toggle-switch {
   align-items: center;
   gap: 9px;
   margin-left: auto;
-  min-height: 42px;
+  min-height: var(--header-action-size);
   padding: 0 14px;
   color: var(--body-copy);
   border: 1px solid var(--line);
@@ -3965,9 +3977,9 @@ input:focus-visible + .toggle-switch {
   }
 
   .theme-toggle {
-    width: 44px;
-    min-width: 44px;
-    min-height: 44px;
+    width: var(--header-action-size);
+    min-width: var(--header-action-size);
+    min-height: var(--header-action-size);
     padding: 0;
     justify-content: center;
   }
@@ -3989,9 +4001,11 @@ input:focus-visible + .toggle-switch {
   }
 
   .app-header.is-study-header .brand-home {
-    flex: 0 0 38px;
-    width: 38px;
-    min-height: 38px;
+    flex: 0 0 var(--header-action-size);
+    width: var(--header-action-size);
+    min-height: var(--header-action-size);
+    justify-content: center;
+    padding: 3px;
   }
 
   .app-header.is-study-header .brand-mark {
@@ -4043,9 +4057,9 @@ input:focus-visible + .toggle-switch {
   }
 
   .app-header.is-study-header .study-header-back {
-    width: 38px;
-    min-width: 38px;
-    min-height: 38px;
+    width: var(--header-action-size);
+    min-width: var(--header-action-size);
+    min-height: var(--header-action-size);
     display: inline-grid;
     place-items: center;
     padding: 0;
@@ -4059,8 +4073,9 @@ input:focus-visible + .toggle-switch {
   }
 
   .app-header.is-study-header .theme-toggle {
-    width: 38px;
-    min-height: 38px;
+    width: var(--header-action-size);
+    min-width: var(--header-action-size);
+    min-height: var(--header-action-size);
     border-radius: 10px;
   }
 
@@ -6281,7 +6296,13 @@ input:focus-visible + .toggle-switch {
   display: grid;
   width: 100%;
   max-width: var(--app-content-max);
-  grid-template-columns: 44px 44px minmax(0, 1fr) auto 44px;
+  grid-template-columns:
+    var(--header-action-size)
+    var(--header-action-size)
+    minmax(0, 1fr)
+    auto
+    var(--header-action-size);
+  column-gap: 8px;
   align-items: center;
   min-height: 54px;
   margin: 0 auto;
@@ -6296,7 +6317,6 @@ input:focus-visible + .toggle-switch {
 }
 
 .shadowing-header-rail > span {
-  margin-right: 8px;
   color: var(--blue);
   font-weight: 800;
   white-space: nowrap;
@@ -6305,31 +6325,66 @@ input:focus-visible + .toggle-switch {
 .shadowing-home,
 .shadowing-back,
 .shadowing-theme {
-  width: 44px;
-  height: 44px;
+  width: var(--header-action-size);
+  height: var(--header-action-size);
   padding: 0;
-  border: 0;
-  border-radius: 12px;
   color: var(--heading);
-  background: transparent;
   font: inherit;
-  font-size: 1.2rem;
   cursor: pointer;
 }
 
 .shadowing-home {
-  color: white;
-  background: var(--primary-action);
-  font: 800 1.1rem/1 "DM Sans", sans-serif;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
 }
 
-.shadowing-home:hover,
-.shadowing-back:hover,
-.shadowing-theme:hover,
-.shadowing-home:focus-visible,
-.shadowing-back:focus-visible,
-.shadowing-theme:focus-visible {
+.shadowing-home-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  color: white;
+  background: var(--primary-action);
+  box-shadow: 0 8px 18px rgba(23, 44, 81, 0.22);
+  font: 700 19px/1 "DM Sans", sans-serif;
+}
+
+.shadowing-back {
+  border: 1px solid var(--line);
+  border-radius: 10px;
   background: var(--surface-soft);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.shadowing-theme {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.shadowing-theme:hover {
+  color: var(--blue);
+  border-color: #799ee5;
+}
+
+@media (max-width: 700px) {
+  .shadowing-header-rail > strong {
+    font-size: 14px;
+    line-height: 1.2;
+  }
+
+  .shadowing-header-rail > span {
+    min-width: 42px;
+    font: 800 13px/1 "DM Sans", "Noto Sans KR", sans-serif;
+    letter-spacing: -0.02em;
+    text-align: center;
+  }
 }
 
 .shadowing-main {

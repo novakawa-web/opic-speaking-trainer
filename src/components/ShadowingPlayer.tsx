@@ -400,8 +400,10 @@ export function ShadowingPlayer({
     <div className="shadowing-screen">
       <header className="shadowing-header">
         <div className="shadowing-header-rail">
-          <button type="button" className="shadowing-home" onClick={goHome} aria-label="홈으로 이동">O</button>
           <button type="button" className="shadowing-back" onClick={leavePlayer} aria-label="쉐도잉 연습에서 뒤로가기">←</button>
+          <button type="button" className="shadowing-home" onClick={goHome} aria-label="홈으로 이동">
+            <span className="shadowing-home-mark" aria-hidden="true">O</span>
+          </button>
           <strong>쉐도잉 연습</strong>
           <span role="status" aria-label={`현재 문장 ${currentIndex + 1}, 전체 ${sentences.length}`}>
             {sentences.length > 0 ? currentIndex + 1 : 0} / {sentences.length}
