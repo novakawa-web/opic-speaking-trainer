@@ -7152,9 +7152,9 @@ input:focus-visible + .toggle-switch {
   }
 }
 
-@media (orientation: landscape) and (min-width: 800px) and (max-height: 700px) {
+@media (orientation: landscape) and (max-height: 700px) {
   .shadowing-screen {
-    --shadowing-controller-max-height: calc(44px + 14px + 1px);
+    --shadowing-controller-max-height: calc(40px + 8px + 1px);
   }
 
   .shadowing-header {
@@ -7174,12 +7174,12 @@ input:focus-visible + .toggle-switch {
   }
 
   .shadowing-controls {
-    padding-block: 7px calc(7px + env(safe-area-inset-bottom));
+    padding-block: 4px calc(4px + env(safe-area-inset-bottom));
   }
 
   .shadowing-controls-rail {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(142px, 0.24fr);
+    grid-template-columns: minmax(0, 1fr) minmax(104px, 0.2fr);
     align-items: center;
     gap: 6px;
   }
@@ -7197,23 +7197,28 @@ input:focus-visible + .toggle-switch {
   }
 
   .shadowing-control-grid {
-    gap: 5px;
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr))
+      minmax(0, 1.3fr)
+      repeat(2, minmax(0, 1fr));
+    gap: 4px;
   }
 
   .shadowing-control-grid button {
-    min-height: 44px;
-    padding: 5px 7px;
-    font-size: clamp(0.72rem, 1.45vw, 0.84rem);
+    min-height: 40px;
+    height: 40px;
+    padding: 3px 4px;
+    font-size: clamp(0.64rem, 1.45vw, 0.8rem);
     line-height: 1.2;
     white-space: nowrap;
   }
 
   .shadowing-rate-control {
-    grid-template-columns: auto minmax(92px, 1fr);
-    gap: 5px;
+    grid-template-columns: auto minmax(76px, 1fr);
+    gap: 4px;
     width: auto;
     margin: 0;
-    font-size: 0.76rem;
+    font-size: 0.72rem;
   }
 
   .shadowing-rate-control > span {
@@ -7223,9 +7228,9 @@ input:focus-visible + .toggle-switch {
   .shadowing-rate-control select {
     grid-column: 2;
     width: 100%;
-    min-width: 92px;
-    height: 44px;
-    padding: 0 8px;
+    min-width: 76px;
+    height: 40px;
+    padding: 0 5px;
   }
 }
 
