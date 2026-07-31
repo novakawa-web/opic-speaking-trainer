@@ -153,6 +153,12 @@ test("카드 관리 UI는 수정 보관 완전 삭제를 제공", () => {
   assert.ok(source.includes("이 카드와 관련 기록을 완전히 삭제할까요?"));
 });
 
+test("카드 수정 이탈 확인은 홈과 뒤로가기 모두에 맞는 중립 문구를 사용", () => {
+  const source = readFileSync(new URL("../src/components/CardDetail.tsx", import.meta.url), "utf8");
+  assert.ok(source.includes("저장하지 않은 카드 수정 내용이 있습니다. 현재 화면을 나갈까요?"));
+  assert.ok(!source.includes("저장하지 않은 카드 수정 내용이 있습니다. 홈으로 이동할까요?"));
+});
+
 test("카드 관리 알림은 3.5초 뒤 사라지는 단일 toast", () => {
   const appSource = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
   const toastSource = readFileSync(new URL("../src/components/TransientToast.tsx", import.meta.url), "utf8");

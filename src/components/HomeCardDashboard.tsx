@@ -21,7 +21,7 @@ export function HomeCardDashboard({
         <div>
           <p className="eyebrow">STUDY CARDS</p>
           <h2 id="home-card-dashboard-title" className="home-section-title">학습 카드</h2>
-          <p className="home-card-description">전체 목록은 카드 라이브러리에서 보고, 현재 조건으로 바로 연습하세요.</p>
+          <p className="home-card-description">전체 목록은 카드 라이브러리에서 보고, 현재 조건으로 첫 문장 연습하세요.</p>
         </div>
       </div>
 

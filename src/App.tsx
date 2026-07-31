@@ -26,6 +26,7 @@ import { FirstLineMockResult } from "./components/FirstLineMockResult";
 import { HomeCardDashboard } from "./components/HomeCardDashboard";
 import { HomeManagement } from "./components/HomeManagement";
 import { HomeQuickStart } from "./components/HomeQuickStart";
+import { formatHomeFilterSummary } from "./utils/homeFilterSummary";
 import { ShadowingPlayer } from "./components/ShadowingPlayer";
 import { StudyDaySettings } from "./components/StudyDaySettings";
 import { TodayStats } from "./components/TodayStats";
@@ -74,6 +75,7 @@ import {
   saveNavigationSession,
   type NavigationSession,
 } from "./utils/navigationSession";
+import { runGuardedNavigation } from "./utils/navigationGuard";
 import { consumePostRestoreNavigation } from "./utils/postRestoreNavigation";
 import {
   saveStudyCardScope,
@@ -90,7 +92,6 @@ import {
 } from "./utils/cardContent";
 import {
   matchesCardSearch,
-  normalizeCardSearchQuery,
 } from "./utils/cardSearch";
 import {
   clearFirstLineMockSession,
@@ -628,21 +629,19 @@ function App() {
     archiveFilter,
   ]);
   const filterSummary = useMemo(() => {
-    const parts: string[] = [];
-    if (selectedDeck !== "all") parts.push(selectedDeck);
-    if (selectedTag !== "all") parts.push(`#${selectedTag}`);
-    if (finalOnly) parts.push("final_rep");
-    if (hardOnly) parts.push("첫 문장 어려움");
-    if (cardScope === "new") parts.push("새 카드");
-    if (answerContentFilter === "first-line-only") parts.push("첫 문장 전용");
-    if (answerContentFilter === "full-answer") parts.push("전체 답변 있음");
-    if (archiveFilter === "archived") parts.push("보관됨");
-    if (archiveFilter === "all") parts.push("사용 중+보관됨");
-    if (normalizeCardSearchQuery(cardSearchQuery)) parts.push("카드 내용 검색");
-    if (studyOrder === "random") parts.push("랜덤 순서");
-    if (studyOrder === "least-practiced") parts.push("연습 횟수 적은 순");
-    return parts.length > 0 ? parts.join(" · ") : "필터 없음 · 기본 순서";
-  }, [answerContentFilter, archiveFilter, cardScope, cardSearchQuery, finalOnly, hardOnly, selectedDeck, selectedTag, studyOrder]);
+    return formatHomeFilterSummary({
+      selectedDeck,
+      selectedTag,
+      finalOnly,
+      hardOnly,
+      cardScope,
+      studyOrder,
+      answerLearningStatusFilter,
+      answerContentFilter,
+      archiveFilter,
+      cardSearchQuery,
+    });
+  }, [answerContentFilter, answerLearningStatusFilter, archiveFilter, cardScope, cardSearchQuery, finalOnly, hardOnly, selectedDeck, selectedTag, studyOrder]);
   const drillCards = useMemo(() => {
     const byId = new Map(cardCatalog.map((card) => [card.id, card]));
     return drillCardIds.flatMap((cardId) => {
@@ -921,6 +920,10 @@ function App() {
     setSelectedCardId(null);
     setMemoFocus(null);
     setView(detailReturnView === "library" ? "library" : "list");
+  }
+
+  function requestCloseCardDetail() {
+    runGuardedNavigation(homeNavigationGuardRef.current, closeCardDetail);
   }
 
   function startCardShadowing(source: ShadowingSource) {
@@ -2188,6 +2191,7 @@ function App() {
         <AppHeader
           theme={theme}
           studyTitle="카드 상세"
+          onBack={requestCloseCardDetail}
           onHome={navigateHome}
           onToggleTheme={toggleTheme}
         />
@@ -2267,16 +2271,15 @@ function App() {
           <div className="home-content-rail">
             <section className="hero-panel">
               <div>
-                <span className="hero-label">WEEK 6 · START SMALL</span>
-                <h2>질문을 보고, 먼저 입으로 꺼내보세요.</h2>
+                <span className="hero-label">OPIc SPEAKING ROUTINE</span>
+                <h2>오늘 필요한 방식으로 말하기를 연습해 보세요.</h2>
                 <p>
-                  완벽한 답변보다 첫 문장을 빠르게 시작하는 힘을 기릅니다.
-                  막히면 힌트를 보고 다시 말해도 괜찮아요.
+                  첫 문장 연습, 답변 익히기, 쉐도잉 중 지금 필요한 연습을 선택할 수 있어요.
                 </p>
               </div>
               <div className="hero-rule compact-learning-tile">
-                <span>오늘의 규칙</span>
-                <strong>3초 안에 첫 문장</strong>
+                <span>연습 원칙</span>
+                <strong>짧게 시작하고, 끝까지 말하기</strong>
               </div>
             </section>
 
@@ -2352,7 +2355,7 @@ function App() {
 
         <footer className="app-footer">
           <p>짧게 시작하고, 끝까지 말하기.</p>
-          <span>OPIc Speaking Trainer · Local MVP</span>
+          <span>OPIc Speaking Trainer · Local-first PWA</span>
         </footer>
       </div>
     </div>

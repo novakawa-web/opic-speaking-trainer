@@ -109,7 +109,7 @@ export function AnswerLearning({
     <main className="answer-learning-page" {...swipeHandlers}>
       <section className="answer-learning-question">
         <div className="answer-learning-progress" aria-live="polite">
-          <button type="button" className="answer-learning-inline-back" onClick={() => { stop(); onBack(); }}>← 준비 화면</button>
+          <button type="button" className="answer-learning-inline-back" onClick={() => { stop(); onBack(); }}>← 준비 화면으로</button>
           <strong>{currentPosition} / {totalCards} 카드</strong>
           <span>{card.deck}</span>
         </div>

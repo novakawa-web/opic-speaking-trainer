@@ -8,6 +8,7 @@ import {
 import {
   filterAnswerLearningCards,
 } from "../src/utils/answerLearningSelectors.ts";
+import { formatHomeFilterSummary } from "../src/utils/homeFilterSummary.ts";
 
 const css = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
 const app = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
@@ -22,6 +23,7 @@ const appHeader = await readFile(new URL("../src/components/AppHeader.tsx", impo
 const backupManager = await readFile(new URL("../src/components/BackupManager.tsx", import.meta.url), "utf8");
 const cardDataManager = await readFile(new URL("../src/components/CardDataManager.tsx", import.meta.url), "utf8");
 const homeManagement = await readFile(new URL("../src/components/HomeManagement.tsx", import.meta.url), "utf8");
+const directTextPractice = await readFile(new URL("../src/components/DirectTextPractice.tsx", import.meta.url), "utf8");
 
 function extractExportedFunction(source, name) {
   const start = source.indexOf(`export function ${name}`);
@@ -114,6 +116,76 @@ test("360px compact tile full width", () => {
 });
 test("빠른 시작 카드 동일 폭과 리듬", () => {
   assert.match(css, /\.home-learning-action\.compact-learning-tile[\s\S]*?width:\s*100%[\s\S]*?gap:\s*var\(--space-sm\)/);
+});
+test("홈 안내 문구는 현재 제공하는 세 학습 흐름과 실제 이동 동작을 설명한다", () => {
+  assert.match(app, /OPIc SPEAKING ROUTINE/);
+  assert.match(app, /오늘 필요한 방식으로 말하기를 연습해 보세요\./);
+  assert.match(app, /첫 문장 연습, 답변 익히기, 쉐도잉 중 지금 필요한 연습을 선택할 수 있어요\./);
+  assert.doesNotMatch(app, /WEEK 6|3초 안에 첫 문장|Local MVP/);
+  assert.match(quickStart, />질문에 첫 문장을 바로 말해요\.<\/span>/);
+  assert.match(quickStart, />쉐도잉 지문 열기<\/strong>/);
+  assert.match(quickStart, />지문을 고르거나 작성한 뒤 문장별로 따라 말해요\.<\/span>/);
+  assert.match(dashboard, /현재 조건으로 첫 문장 연습하세요\./);
+  assert.match(homeManagement, /학습일 · 카드 TSV · 전체 JSON 백업/);
+  assert.match(app, /onOpenShadowing=\{\(\) =>[\s\S]*?getElementById\("direct-practice-title"\)\?\.scrollIntoView/);
+  assert.match(directTextPractice, /<h2 id="direct-practice-title"[^>]*>쉐도잉 지문<\/h2>/);
+});
+test("홈 현재 조건 요약은 답변 익히기 상태를 실제 필터와 같은 문구로 표시한다", () => {
+  const base = {
+    selectedDeck: "all",
+    selectedTag: "all",
+    finalOnly: false,
+    hardOnly: false,
+    cardScope: "all",
+    studyOrder: "default",
+    answerContentFilter: "all",
+    archiveFilter: "active",
+    cardSearchQuery: "",
+  };
+  assert.equal(
+    formatHomeFilterSummary({ ...base, answerLearningStatusFilter: "all" }),
+    "필터 없음 · 기본 순서",
+  );
+  assert.equal(
+    formatHomeFilterSummary({ ...base, answerLearningStatusFilter: "unlearned" }),
+    "답변 연습 상태 없음",
+  );
+  assert.equal(
+    formatHomeFilterSummary({ ...base, answerLearningStatusFilter: "with-status" }),
+    "답변 연습 상태 있음",
+  );
+  assert.equal(
+    formatHomeFilterSummary({ ...base, answerLearningStatusFilter: "hard" }),
+    "답변 어려움",
+  );
+  assert.equal(
+    formatHomeFilterSummary({ ...base, answerLearningStatusFilter: "learning" }),
+    "답변 익히는 중",
+  );
+  assert.equal(
+    formatHomeFilterSummary({ ...base, answerLearningStatusFilter: "speakable" }),
+    "답변 말할 수 있음",
+  );
+  assert.equal(
+    formatHomeFilterSummary({
+      ...base,
+      selectedDeck: "WEEK 7",
+      hardOnly: true,
+      answerLearningStatusFilter: "with-status",
+      cardScope: "new",
+      cardSearchQuery: "  baseball  ",
+      studyOrder: "random",
+    }),
+    "WEEK 7 · 첫 문장 어려움 · 답변 연습 상태 있음 · 새 카드 · 카드 내용 검색 · 랜덤 순서",
+  );
+
+  const summaryStart = app.indexOf("const filterSummary = useMemo");
+  const summaryEnd = app.indexOf("const drillCards = useMemo", summaryStart);
+  assert.notEqual(summaryStart, -1);
+  assert.notEqual(summaryEnd, -1);
+  const summarySource = app.slice(summaryStart, summaryEnd);
+  assert.match(summarySource, /formatHomeFilterSummary\(\{[\s\S]*?answerLearningStatusFilter,[\s\S]*?\}\);/);
+  assert.match(summarySource, /\}, \[[^\]]*answerLearningStatusFilter[^\]]*\]\);/);
 });
 test("chip row 공통 gap", () => {
   assert.match(css, /\.summary-chip-row[\s\S]*?gap:\s*var\(--space-sm\)[\s\S]*?margin-top:\s*var\(--space-lg\)/);

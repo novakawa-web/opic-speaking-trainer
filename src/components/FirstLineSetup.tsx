@@ -40,7 +40,7 @@ export function FirstLineSetup(props: Props) {
   return (
     <main className="first-line-setup">
       <section className="first-line-setup-intro">
-        <button type="button" className="answer-learning-inline-back" onClick={props.onBack}>← 홈</button>
+        <button type="button" className="answer-learning-inline-back" onClick={props.onBack}>← 홈으로</button>
         <p className="eyebrow">SPEAK FIRST</p>
         <h1>첫 문장 연습 준비</h1>
         <p>현재 조건에서 연습하거나, 무작위 모의고사로 실전처럼 확인하세요.</p>

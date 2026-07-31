@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { runGuardedNavigation } from "../src/utils/navigationGuard.ts";
 
 const app = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
 const appHeader = await readFile(
@@ -14,6 +15,35 @@ function test(name, assertion) {
   assertion();
   passed += 1;
   console.log(`✓ ${name}`);
+}
+
+function extractCssBlock(source, marker) {
+  const start = source.indexOf(marker);
+  assert.notEqual(start, -1, `${marker} block must exist`);
+  const bodyStart = source.indexOf("{", start + marker.length);
+  assert.notEqual(bodyStart, -1, `${marker} block must open`);
+
+  let depth = 0;
+  for (let index = bodyStart; index < source.length; index += 1) {
+    if (source[index] === "{") depth += 1;
+    if (source[index] === "}") depth -= 1;
+    if (depth === 0) return source.slice(bodyStart + 1, index);
+  }
+
+  assert.fail(`${marker} block must close`);
+}
+
+function extractCssBlocks(source, marker) {
+  const blocks = [];
+  let searchFrom = 0;
+
+  while (true) {
+    const markerStart = source.indexOf(marker, searchFrom);
+    if (markerStart === -1) return blocks;
+    const body = extractCssBlock(source.slice(markerStart), marker);
+    blocks.push(body);
+    searchFrom = markerStart + marker.length + body.length + 2;
+  }
 }
 
 test("홈 주요 섹션이 공통 콘텐츠 레일 안에 있다", () => {
@@ -82,6 +112,49 @@ test("모바일 공통 학습 header는 8px 간격과 기준 action 시각 언�
   assert.match(mobileHeaderCss, /\.app-header\.is-study-header \.study-header-back\s*{[\s\S]*?border:\s*1px solid var\(--line\)[\s\S]*?border-radius:\s*10px[\s\S]*?background:\s*var\(--surface-soft\)[\s\S]*?font-size:\s*20px/);
   assert.match(css, /\.theme-toggle\s*{[\s\S]*?border:\s*1px solid var\(--line\)[\s\S]*?background:\s*var\(--surface\)/);
   assert.match(mobileHeaderCss, /\.app-header\.is-study-header \.theme-toggle\s*{[\s\S]*?border-radius:\s*10px/);
+});
+
+test("짧은 가로 공통 학습 header는 너비와 무관하게 compact하고 문서와 함께 스크롤한다", () => {
+  const shortLandscape = extractCssBlock(
+    css,
+    "@media (orientation: landscape) and (max-height: 700px)",
+  );
+  assert.match(shortLandscape, /\.app-header\.is-study-header\s*{[\s\S]*?height:\s*calc\(54px \+ env\(safe-area-inset-top\)\)[\s\S]*?padding-top:\s*env\(safe-area-inset-top\)/);
+  assert.match(shortLandscape, /\.app-header\.is-study-header\.is-mobile-sticky\s*{[\s\S]*?position:\s*static/);
+  assert.match(shortLandscape, /\.app-header\.is-study-header \.app-header-rail\s*{[\s\S]*?gap:\s*8px/);
+  assert.match(shortLandscape, /\.app-header\.is-study-header \.brand-copy\s*{\s*display:\s*none/);
+  assert.match(shortLandscape, /\.app-header\.is-study-header \.compact-header-title\s*{[\s\S]*?display:\s*block/);
+  assert.match(shortLandscape, /\.app-header\.is-study-header \.mobile-header-progress > span\s*{[\s\S]*?height:\s*100%[\s\S]*?display:\s*block[\s\S]*?background:\s*linear-gradient/);
+  assert.match(shortLandscape, /\.app-header\.is-study-header \.study-header-back\s*{[\s\S]*?display:\s*inline-grid/);
+  assert.match(shortLandscape, /\.app-header\.is-study-header \.theme-toggle > span:last-child\s*{\s*display:\s*none/);
+});
+
+test("compact 카드 상세는 header 뒤로가기만 표시하고 본문 중복 조작을 숨긴다", () => {
+  assert.match(app, /studyTitle="카드 상세"[\s\S]*?onBack=\{requestCloseCardDetail\}/);
+  assert.match(app, /function requestCloseCardDetail\(\)[\s\S]*?runGuardedNavigation\(homeNavigationGuardRef\.current, closeCardDetail\)/);
+  const mobileDetailBlocks = extractCssBlocks(
+    css,
+    "@media (max-width: 700px)",
+  ).filter((block) => block.includes(".detail-page > .study-navigation:not(.is-bottom) .back-button"));
+  assert.equal(mobileDetailBlocks.length, 1);
+  assert.match(mobileDetailBlocks[0], /\.detail-page > \.study-navigation:not\(\.is-bottom\) \.back-button\s*{\s*display:\s*none/);
+  const shortLandscape = extractCssBlock(
+    css,
+    "@media (orientation: landscape) and (max-height: 700px)",
+  );
+  assert.match(shortLandscape, /\.detail-page > \.study-navigation:not\(\.is-bottom\) \.back-button\s*{\s*display:\s*none/);
+});
+
+test("카드 상세 header 뒤로가기는 이탈 확인을 통과한 경우에만 화면을 닫는다", () => {
+  let closeCalls = 0;
+  const close = () => {
+    closeCalls += 1;
+  };
+
+  assert.equal(runGuardedNavigation(() => false, close), false);
+  assert.equal(closeCalls, 0);
+  assert.equal(runGuardedNavigation(() => true, close), true);
+  assert.equal(closeCalls, 1);
 });
 
 test("AppHeader action은 native button과 기존 접근성 이름을 유지한다", () => {

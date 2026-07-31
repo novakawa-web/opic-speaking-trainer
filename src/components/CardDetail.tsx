@@ -184,11 +184,11 @@ export function CardDetail({
     [confirmDiscard, stop],
   );
 
-  const confirmHomeNavigation = useCallback(() => {
+  const confirmDetailNavigation = useCallback(() => {
     if (
       isEditingCard &&
       isCardEditorDirty &&
-      !window.confirm("저장하지 않은 카드 수정 내용이 있습니다. 홈으로 이동할까요?")
+      !window.confirm("저장하지 않은 카드 수정 내용이 있습니다. 현재 화면을 나갈까요?")
     ) {
       return false;
     }
@@ -199,10 +199,10 @@ export function CardDetail({
     return true;
   }, [confirmDiscard, isCardEditorDirty, isEditingCard, stop]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!registerHomeNavigationGuard) return;
-    return registerHomeNavigationGuard(confirmHomeNavigation);
-  }, [confirmHomeNavigation, registerHomeNavigationGuard]);
+    return registerHomeNavigationGuard(confirmDetailNavigation);
+  }, [confirmDetailNavigation, registerHomeNavigationGuard]);
 
   // A discarded mobile tab restores the same detail controls and unsaved answer draft.
   useLayoutEffect(() => {
