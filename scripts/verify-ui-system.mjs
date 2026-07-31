@@ -35,6 +35,33 @@ function extractExportedFunction(source, name) {
   assert.fail(`${name} helper body must close`);
 }
 
+function extractCssAtRuleBlocks(source, marker) {
+  const blocks = [];
+  let searchFrom = 0;
+
+  while (true) {
+    const start = source.indexOf(marker, searchFrom);
+    if (start === -1) return blocks;
+
+    const bodyStart = source.indexOf("{", start + marker.length);
+    assert.notEqual(bodyStart, -1, `${marker} block must open`);
+
+    let depth = 0;
+    let closed = false;
+    for (let index = bodyStart; index < source.length; index += 1) {
+      if (source[index] === "{") depth += 1;
+      if (source[index] === "}") depth -= 1;
+      if (depth === 0) {
+        blocks.push(source.slice(bodyStart + 1, index));
+        searchFrom = index + 1;
+        closed = true;
+        break;
+      }
+    }
+    assert.ok(closed, `${marker} block must close`);
+  }
+}
+
 const selectionStateFunctionSource = extractExportedFunction(
   answerLearningSetup,
   "getAnswerLearningSelectionState",
@@ -106,6 +133,50 @@ test("답변 익히기 준비와 실제 학습 화면은 같은 outer rail을 �
   assert.match(css, learningRail);
   assert.match(css, /\.answer-learning-question h1\s*{[^}]*max-width:\s*var\(--learning-text-max\)/);
   assert.match(css, /\.answer-learning-answer\s*{[^}]*max-width:\s*var\(--learning-text-max\)/);
+});
+test("답변 익히기 세로 밀도는 설명 범위와 safe-area·터치 계약을 보존한다", () => {
+  assert.equal((answerLearning.match(/className="answer-learning-rating-description"/g) ?? []).length, 1);
+  assert.ok(
+    answerLearning.indexOf('className="answer-learning-rating"')
+      < answerLearning.indexOf('className="answer-learning-navigation"'),
+  );
+  assert.equal((answerLearning.match(/className="answer-learning-navigation"/g) ?? []).length, 1);
+  assert.match(answerLearning, /const goPrevious = useCallback\(\(\) => \{[\s\S]*?stop\(\);[\s\S]*?onPrevious\(\)/);
+  assert.match(answerLearning, /const goNext = useCallback\(\(\) => \{[\s\S]*?stop\(\);[\s\S]*?onNext\(\)/);
+  assert.match(answerLearning, /onSwipeLeft:\s*canGoNext \? goNext : undefined/);
+  assert.match(answerLearning, /onSwipeRight:\s*canGoPrevious \? goPrevious : undefined/);
+  assert.match(answerLearning, /disabled=\{!canGoPrevious\} aria-label="이전 카드" onClick=\{goPrevious\}/);
+  assert.match(answerLearning, /disabled=\{!canGoNext\} aria-label="다음 카드" onClick=\{goNext\}/);
+
+  const mobileAnswerLearningBlocks = extractCssAtRuleBlocks(
+    css,
+    "@media (max-width: 700px)",
+  ).filter((block) => block.includes(".answer-learning-page"));
+  assert.equal(mobileAnswerLearningBlocks.length, 1);
+  assert.match(
+    mobileAnswerLearningBlocks[0],
+    /\.answer-learning-page\s*\{[\s\S]*?padding-bottom:\s*calc\(var\(--space-md\) \+ env\(safe-area-inset-bottom\)\)[\s\S]*?\.answer-learning-question h1\s*\{[\s\S]*?margin:\s*var\(--space-lg\) auto var\(--space-md\)[\s\S]*?font-size:\s*clamp\(1\.3rem,\s*5\.4vw,\s*1\.6rem\)[\s\S]*?line-height:\s*1\.34[\s\S]*?\.answer-learning-rating > h2\s*\{[\s\S]*?margin:\s*0[\s\S]*?font-size:\s*1\.25rem[\s\S]*?line-height:\s*1\.35[\s\S]*?\.answer-learning-rating-description\s*\{[\s\S]*?margin:\s*var\(--space-xs\) auto 0[\s\S]*?font-size:\s*0\.9rem[\s\S]*?line-height:\s*1\.5[\s\S]*?\.answer-learning-navigation\s*\{[\s\S]*?margin:\s*var\(--space-md\) auto 0/,
+  );
+
+  const shortLandscapeAnswerLearningBlocks = extractCssAtRuleBlocks(
+    css,
+    "@media (orientation: landscape) and (min-width: 800px) and (max-height: 700px)",
+  ).filter((block) => block.includes(".answer-learning-page"));
+  assert.equal(shortLandscapeAnswerLearningBlocks.length, 1);
+  assert.match(
+    shortLandscapeAnswerLearningBlocks[0],
+    /\.answer-learning-page\s*\{[\s\S]*?padding-bottom:\s*calc\(var\(--space-md\) \+ env\(safe-area-inset-bottom\)\)[\s\S]*?\.answer-learning-question h1\s*\{[\s\S]*?font-size:\s*1\.5rem[\s\S]*?\.answer-learning-rating-description\s*\{[\s\S]*?font-size:\s*0\.9rem[\s\S]*?\.answer-learning-navigation\s*\{[\s\S]*?margin:\s*var\(--space-md\) auto 0/,
+  );
+  assert.doesNotMatch(css, /\.answer-learning-page\s*\{[^}]*padding-bottom:\s*0/);
+  assert.doesNotMatch(css, /\.answer-learning-navigation\s*\{[^}]*margin-bottom:\s*-/);
+  assert.doesNotMatch(css, /\.answer-learning-page\s*\{[^}]*height:\s*100vh/);
+
+  assert.match(css, /\.answer-learning-question-actions button,[\s\S]*?\.answer-learning-first-line button\s*\{[\s\S]*?min-height:\s*44px/);
+  assert.match(css, /\.answer-learning-tabs button\s*\{[^}]*min-height:\s*44px/);
+  assert.match(css, /\.answer-learning-status-buttons button\s*\{[^}]*min-height:\s*56px/);
+  assert.match(css, /\.answer-learning-shadowing\s*\{[^}]*min-height:\s*48px/);
+  assert.match(css, /\.answer-learning-navigation button\s*\{[^}]*min-height:\s*48px/);
+  assert.match(css, /\.utility-action\s*\{[\s\S]*?min-height:\s*42px/);
 });
 test("공통 AppHeader는 내부 rail에서 기존 표시 요소를 유지한다", () => {
   assert.match(appHeader, /<header[\s\S]*?<div className="app-header-rail">[\s\S]*?study-header-back[\s\S]*?brand-home[\s\S]*?compact-header-title[\s\S]*?compact-header-position[\s\S]*?theme-toggle[\s\S]*?mobile-header-progress/);

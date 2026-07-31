@@ -211,7 +211,7 @@ export function AnswerLearning({
 
       <section className="answer-learning-rating" aria-labelledby="answer-learning-rating-title">
         <h2 id="answer-learning-rating-title">전체 답변을 얼마나 말할 수 있나요?</h2>
-        <p>완벽히 외웠는지보다, 핵심 내용을 연결해 끝까지 말할 수 있는지를 기준으로 선택하세요.</p>
+        <p className="answer-learning-rating-description">완벽히 외웠는지보다, 핵심 내용을 연결해 끝까지 말할 수 있는지를 기준으로 선택하세요.</p>
         <div className="answer-learning-status-buttons">
           {statusOptions.map((option) => (
             <button key={option.value} type="button" aria-pressed={status === option.value} className={`answer-status-${option.value}`} onClick={() => onStatusChange(option.value)}>
