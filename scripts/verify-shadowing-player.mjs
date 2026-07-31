@@ -656,8 +656,39 @@ test("bottom reserve is derived from maximum controller height, safe area, and a
   assert.match(stylesSource, /--shadowing-content-clearance:\s*calc\([\s\S]*?var\(--shadowing-controller-max-height\)[\s\S]*?env\(safe-area-inset-bottom\)[\s\S]*?\+ 25px/);
   assert.match(stylesSource, /\.shadowing-main\s*{[\s\S]*?padding:\s*30px 0 var\(--shadowing-content-clearance\)/);
   assert.match(stylesSource, /@media \(max-width:\s*700px\)[\s\S]*?--shadowing-controller-max-height:\s*calc\(48px \+ 6px \+ 38px \+ 23px \+ 16px \+ 1px\)/);
+  assert.match(stylesSource, /@media \(orientation:\s*landscape\) and \(min-width:\s*800px\) and \(max-height:\s*700px\)[\s\S]*?--shadowing-controller-max-height:\s*calc\(44px \+ 14px \+ 1px\)/);
   assert.match(stylesSource, /\.shadowing-controls\s*{[\s\S]*?env\(safe-area-inset-bottom\)[\s\S]*?env\(safe-area-inset-left\)[\s\S]*?env\(safe-area-inset-right\)/);
   assert.match(stylesSource, /@media \(max-width:\s*700px\)[\s\S]*?\.shadowing-controls\s*{[\s\S]*?padding-inline:[\s\S]*?max\(8px,\s*env\(safe-area-inset-left\)\)/);
+});
+test("short landscape scrolls the header and shows compact progress by the active paragraph", () => {
+  assert.match(shadowingComponentSource, /isCurrentParagraph && \([\s\S]*?className="shadowing-landscape-progress" aria-hidden="true"[\s\S]*?status === "paused" && "일시정지 · "[\s\S]*?전체 \{currentIndex \+ 1\} \/ \{sentences\.length\}/);
+  assert.match(stylesSource, /\.shadowing-landscape-progress\s*{\s*display:\s*none/);
+  const shortLandscape = stylesSource.slice(
+    stylesSource.indexOf("@media (orientation: landscape) and (min-width: 800px) and (max-height: 700px)"),
+    stylesSource.indexOf("@media (prefers-reduced-motion: reduce)"),
+  );
+  assert.match(shortLandscape, /\.shadowing-header\s*{\s*position:\s*static/);
+  assert.match(shortLandscape, /\.shadowing-landscape-progress\s*{[\s\S]*?display:\s*inline-flex/);
+});
+test("short landscape keeps five controls and speed on one 44px row", () => {
+  const shortLandscape = stylesSource.slice(
+    stylesSource.indexOf("@media (orientation: landscape) and (min-width: 800px) and (max-height: 700px)"),
+    stylesSource.indexOf("@media (prefers-reduced-motion: reduce)"),
+  );
+  assert.match(shortLandscape, /\.shadowing-controls-rail\s*{[\s\S]*?display:\s*grid[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\) minmax\(142px,\s*0\.24fr\)/);
+  assert.match(shortLandscape, /\.shadowing-control-grid button\s*{[\s\S]*?min-height:\s*44px/);
+  assert.match(shortLandscape, /\.shadowing-rate-control\s*{[\s\S]*?grid-template-columns:\s*auto minmax\(92px,\s*1fr\)[\s\S]*?margin:\s*0/);
+  assert.match(shortLandscape, /\.shadowing-rate-control select\s*{[\s\S]*?height:\s*44px/);
+});
+test("short landscape visually hides only the duplicated resume note", () => {
+  const shortLandscape = stylesSource.slice(
+    stylesSource.indexOf("@media (orientation: landscape) and (min-width: 800px) and (max-height: 700px)"),
+    stylesSource.indexOf("@media (prefers-reduced-motion: reduce)"),
+  );
+  assert.match(shadowingComponentSource, /className="shadowing-resume-note" role="status"/);
+  assert.match(shortLandscape, /\.shadowing-resume-note\s*{[\s\S]*?position:\s*absolute[\s\S]*?clip:\s*rect\(0 0 0 0\)/);
+  assert.doesNotMatch(shortLandscape, /\.shadowing-resume-note\s*{[\s\S]*?display:\s*none/);
+  assert.doesNotMatch(shortLandscape, /\.shadowing-resume-note\s*{[\s\S]*?visibility:\s*hidden/);
 });
 test("shadowing resolves voices again for every playback request", () => {
   assert.match(shadowingHookSource, /requestEnglishVoice\(window\.speechSynthesis/);

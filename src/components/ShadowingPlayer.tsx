@@ -627,6 +627,12 @@ export function ShadowingPlayer({
                 >
                   <span>문단 {paragraphIndex + 1}</span>
                   <small>{paragraph.sentences.length}문장</small>
+                  {isCurrentParagraph && (
+                    <span className="shadowing-landscape-progress" aria-hidden="true">
+                      {status === "paused" && "일시정지 · "}
+                      전체 {currentIndex + 1} / {sentences.length}
+                    </span>
+                  )}
                   {isRepeatTarget && <strong>반복 대상</strong>}
                 </button>
                 <div className="shadowing-paragraph-sentences">
