@@ -8,6 +8,7 @@ import {
 import {
   filterCardsByAnswerLearningStatusPresence,
   filterAnswerLearningCards,
+  matchesAnswerLearningStatusFilter,
   orderAnswerLearningCards,
 } from "./utils/answerLearningSelectors";
 import { CardLibrary } from "./components/CardLibrary";
@@ -53,6 +54,7 @@ import {
   readAnswerLearningSession,
   saveAnswerLearningSession,
   shuffleAnswerLearningIds,
+  type AnswerLearningStatusFilter,
   type AnswerLearningSession,
 } from "./utils/answerLearningSession";
 import {
@@ -380,7 +382,7 @@ function App() {
     readFirstLineMockSession(initialCardState.cards.map((card) => card.id)),
   );
   const [answerLearningStatusFilter, setAnswerLearningStatusFilter] = useState<
-    "all" | "unlearned" | AnswerLearningStatus
+    AnswerLearningStatusFilter
   >("all");
   const [cardScope, setCardScope] = useState<StudyCardScope>(
     initialNavigation.cardScope,
@@ -512,12 +514,11 @@ function App() {
           cardMemos,
           myAnswers,
         });
-        const answerStatus = answerLearningStatuses[card.id];
-        const matchesAnswerLearning =
-          answerLearningStatusFilter === "all" ||
-          (answerLearningStatusFilter === "unlearned"
-            ? !answerStatus
-            : answerStatus === answerLearningStatusFilter);
+        const matchesAnswerLearning = matchesAnswerLearningStatusFilter(
+          answerLearningStatuses,
+          card.id,
+          answerLearningStatusFilter,
+        );
 
         return (
           matchesArchive &&

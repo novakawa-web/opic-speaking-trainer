@@ -1,11 +1,11 @@
 import type { DeckName } from "../types";
-import type { AnswerLearningStatus } from "../types";
 import type {
   StudyCardScope,
   StudyOrder,
 } from "../utils/studyPreferences";
 import type { AnswerContentFilter } from "../utils/cardContent";
 import type { ArchiveFilter } from "../utils/cardArchiveStorage";
+import type { AnswerLearningStatusFilter } from "../utils/answerLearningSession";
 
 type TagFilterProps = {
   decks: DeckName[];
@@ -25,9 +25,9 @@ type TagFilterProps = {
   onCardScopeChange: (scope: StudyCardScope) => void;
   onStudyOrderChange: (order: StudyOrder) => void;
   onReset: () => void;
-  answerLearningStatusFilter?: "all" | "unlearned" | AnswerLearningStatus;
+  answerLearningStatusFilter?: AnswerLearningStatusFilter;
   onAnswerLearningStatusFilterChange?: (
-    value: "all" | "unlearned" | AnswerLearningStatus,
+    value: AnswerLearningStatusFilter,
   ) => void;
   answerContentFilter?: AnswerContentFilter;
   onAnswerContentFilterChange?: (value: AnswerContentFilter) => void;
@@ -140,12 +140,13 @@ export function TagFilter({
               value={answerLearningStatusFilter}
               onChange={(event) =>
                 onAnswerLearningStatusFilterChange(
-                  event.target.value as "all" | "unlearned" | AnswerLearningStatus,
+                  event.target.value as AnswerLearningStatusFilter,
                 )
               }
             >
               <option value="all">전체</option>
-              <option value="unlearned">미학습</option>
+              <option value="unlearned">답변 연습 상태 없음</option>
+              <option value="with-status">답변 연습 상태 있음</option>
               <option value="hard">어려움</option>
               <option value="learning">익히는 중</option>
               <option value="speakable">말할 수 있음</option>

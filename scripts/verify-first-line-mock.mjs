@@ -164,7 +164,6 @@ test("첫 문장 필터 UI와 초기화·후보 wiring 계약", () => {
     appSource.indexOf("function resetFilters"),
   );
 
-  assert.ok(filterSource.includes("답변 연습 상태 있음"));
   assert.ok(filterSource.includes('className="toggle-row first-line-answer-status-toggle"'));
   assert.ok(firstLineResetBlock.includes("setFirstLineAnswerStatusOnly(false)"));
   assert.equal(firstLineResetBlock.includes("setCardSearchQuery"), false);
@@ -177,7 +176,7 @@ test("첫 문장 필터 UI와 초기화·후보 wiring 계약", () => {
 
   const labelStart = filterSource.lastIndexOf(
     "<label",
-    filterSource.indexOf("답변 연습 상태 있음"),
+    filterSource.indexOf('className="toggle-row first-line-answer-status-toggle"'),
   );
   const labelEnd = filterSource.indexOf("</label>", labelStart);
   const statusToggleLabel = filterSource.slice(labelStart, labelEnd);
@@ -189,6 +188,7 @@ test("첫 문장 필터 UI와 초기화·후보 wiring 계약", () => {
     statusToggleLabel,
     /className="toggle-row first-line-answer-status-toggle"/,
   );
+  assert.match(statusToggleLabel, />답변 연습 상태 있음</);
 
   const dedicatedRules = cssRuleBodies(
     styles,

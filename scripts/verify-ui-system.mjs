@@ -16,6 +16,8 @@ const dashboard = await readFile(new URL("../src/components/HomeCardDashboard.ts
 const personalMemos = await readFile(new URL("../src/components/PersonalMemoManager.tsx", import.meta.url), "utf8");
 const answerLearning = await readFile(new URL("../src/components/AnswerLearning.tsx", import.meta.url), "utf8");
 const answerLearningSetup = await readFile(new URL("../src/components/AnswerLearningSetup.tsx", import.meta.url), "utf8");
+const cardLibrary = await readFile(new URL("../src/components/CardLibrary.tsx", import.meta.url), "utf8");
+const tagFilter = await readFile(new URL("../src/components/TagFilter.tsx", import.meta.url), "utf8");
 const appHeader = await readFile(new URL("../src/components/AppHeader.tsx", import.meta.url), "utf8");
 const backupManager = await readFile(new URL("../src/components/BackupManager.tsx", import.meta.url), "utf8");
 const cardDataManager = await readFile(new URL("../src/components/CardDataManager.tsx", import.meta.url), "utf8");
@@ -205,6 +207,28 @@ test("답변 익히기 상태 select는 없음 있음과 기존 상세 상태를
   assert.match(answerLearningSetup, /<option value="learning">익히는 중<\/option>/);
   assert.match(answerLearningSetup, /<option value="speakable">말할 수 있음<\/option>/);
   assert.match(answerLearningSetup, /status:\s*"all"/);
+});
+test("카드 라이브러리 답변 상태 select는 presence와 상세 상태 계약을 재사용한다", () => {
+  assert.match(tagFilter, /<option value="all">전체<\/option>/);
+  assert.match(tagFilter, /<option value="unlearned">답변 연습 상태 없음<\/option>/);
+  assert.match(tagFilter, /<option value="with-status">답변 연습 상태 있음<\/option>/);
+  assert.match(tagFilter, /<option value="hard">어려움<\/option>/);
+  assert.match(tagFilter, /<option value="learning">익히는 중<\/option>/);
+  assert.match(tagFilter, /<option value="speakable">말할 수 있음<\/option>/);
+  assert.doesNotMatch(tagFilter, /<option value="unlearned">미학습<\/option>/);
+  assert.match(cardLibrary, /answerLearningStatusFilter:\s*AnswerLearningStatusFilter/);
+  assert.match(
+    app,
+    /matchesAnswerLearningStatusFilter\(\s*answerLearningStatuses,\s*card\.id,\s*answerLearningStatusFilter,\s*\)/,
+  );
+  assert.match(
+    app,
+    /const filterSignature = JSON\.stringify\(\[[\s\S]*?answerLearningStatusFilter,[\s\S]*?\]\)/,
+  );
+  assert.match(
+    app,
+    /function resetFilters\(\) \{[\s\S]*?setAnswerLearningStatusFilter\("all"\);[\s\S]*?\}/,
+  );
 });
 test("답변 익히기 시작 후보 수는 현재 결과와 선택의 교집합이다", () => {
   assert.match(answerLearningSetup, /const startCandidateCount = visibleCards\.filter\(\(card\) => selected\.has\(card\.id\)\)\.length/);

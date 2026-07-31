@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { AnswerLearningStatus, AnswerLearningStatuses, DeckName, FirstLineStatusMap, OpicCard } from "../types";
+import type { AnswerLearningStatuses, DeckName, FirstLineStatusMap, OpicCard } from "../types";
 import type { CardMemos } from "../utils/cardMemoStorage";
 import {
   CARD_LIBRARY_PAGE_SIZE,
@@ -14,6 +14,7 @@ import type { AnswerContentFilter } from "../utils/cardContent";
 import { CardList } from "./CardList";
 import { TagFilter } from "./TagFilter";
 import type { ArchiveFilter } from "../utils/cardArchiveStorage";
+import type { AnswerLearningStatusFilter } from "../utils/answerLearningSession";
 import { normalizeCardSearchQuery } from "../utils/cardSearch";
 
 type CardLibraryProps = {
@@ -43,8 +44,8 @@ type CardLibraryProps = {
   onReset: () => void;
   onSelect: (card: OpicCard) => void;
   onCreate: () => void;
-  answerLearningStatusFilter: "all" | "unlearned" | AnswerLearningStatus;
-  onAnswerLearningStatusFilterChange: (value: "all" | "unlearned" | AnswerLearningStatus) => void;
+  answerLearningStatusFilter: AnswerLearningStatusFilter;
+  onAnswerLearningStatusFilterChange: (value: AnswerLearningStatusFilter) => void;
   answerContentFilter: AnswerContentFilter;
   onAnswerContentFilterChange: (value: AnswerContentFilter) => void;
   archiveFilter: ArchiveFilter;
