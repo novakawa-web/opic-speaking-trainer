@@ -166,6 +166,31 @@ export function returnToAnswerLearningSetup(
   };
 }
 
+export function createStartedAnswerLearningSession(
+  session: AnswerLearningSession,
+  cardOrder: string[],
+  answerSources: Record<string, AnswerLearningAnswerSource>,
+): AnswerLearningSession {
+  const reveals = { ...session.reveals };
+  cardOrder.forEach((cardId) => {
+    reveals[cardId] = {
+      hint: false,
+      firstLine: false,
+      answer: false,
+      frontKo: false,
+    };
+  });
+
+  return {
+    ...session,
+    screen: "learning",
+    cardOrder: [...cardOrder],
+    currentIndex: 0,
+    answerSources: { ...answerSources },
+    reveals,
+  };
+}
+
 export function clearAnswerLearningSession() {
   try {
     sessionStorage.removeItem(ANSWER_LEARNING_SESSION_KEY);

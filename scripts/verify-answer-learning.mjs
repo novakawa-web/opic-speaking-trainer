@@ -13,6 +13,7 @@ import {
   saveAnswerLearningStatuses,
 } from "../src/utils/answerLearningStorage.ts";
 import {
+  createStartedAnswerLearningSession,
   createEmptyAnswerLearningSession,
   normalizeAnswerLearningSession,
   returnToAnswerLearningSetup,
@@ -260,6 +261,50 @@ test("현재 인덱스 경계", () => {
 test("공개 상태 복원", () => {
   const session = normalizeAnswerLearningSession({ ...createEmptyAnswerLearningSession(), reveals: { [cardA.id]: { hint: true, firstLine: true, answer: false, frontKo: true } } }, cards.map((card) => card.id));
   assert.equal(session.reveals[cardA.id].firstLine, true);
+});
+test("새 답변 익히기 시작은 대상 카드 공개 상태를 모두 닫음", () => {
+  const session = {
+    ...createEmptyAnswerLearningSession(),
+    reveals: {
+      [cardA.id]: { hint: true, firstLine: true, answer: true, frontKo: true },
+      [cardB.id]: { hint: true, firstLine: true, answer: false, frontKo: true },
+    },
+  };
+  const started = createStartedAnswerLearningSession(
+    session,
+    [cardA.id, cardB.id],
+    { [cardA.id]: "default", [cardB.id]: "my-answer" },
+  );
+  assert.deepEqual(started.reveals[cardA.id], { hint: false, firstLine: false, answer: false, frontKo: false });
+  assert.deepEqual(started.reveals[cardB.id], { hint: false, firstLine: false, answer: false, frontKo: false });
+  assert.equal(started.screen, "learning");
+  assert.equal(started.currentIndex, 0);
+});
+test("새 답변 익히기 시작은 현재 학습 밖 카드 공개 상태를 보존", () => {
+  const outsideCardId = "outside-card";
+  const outsideReveal = { hint: true, firstLine: false, answer: true, frontKo: false };
+  const session = {
+    ...createEmptyAnswerLearningSession(),
+    reveals: {
+      [cardA.id]: { hint: false, firstLine: true, answer: false, frontKo: false },
+      [outsideCardId]: outsideReveal,
+    },
+  };
+  const started = createStartedAnswerLearningSession(session, [cardA.id], { [cardA.id]: "default" });
+  assert.deepEqual(started.reveals[outsideCardId], outsideReveal);
+});
+test("새 답변 익히기 시작 계산은 기존 session과 입력 배열을 변경하지 않음", () => {
+  const session = {
+    ...createEmptyAnswerLearningSession(),
+    reveals: { [cardA.id]: { hint: true, firstLine: true, answer: true, frontKo: true } },
+  };
+  const cardOrder = [cardA.id];
+  const answerSources = { [cardA.id]: "default" };
+  const before = structuredClone(session);
+  createStartedAnswerLearningSession(session, cardOrder, answerSources);
+  assert.deepEqual(session, before);
+  assert.deepEqual(cardOrder, [cardA.id]);
+  assert.deepEqual(answerSources, { [cardA.id]: "default" });
 });
 test("답변 소스 복원", () => {
   const session = normalizeAnswerLearningSession({ ...createEmptyAnswerLearningSession(), answerSources: { [cardA.id]: "my-answer" } }, cards.map((card) => card.id));

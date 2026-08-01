@@ -341,6 +341,16 @@ test("답변 익히기 시작 후보 수는 현재 결과와 선택의 교집합
   assert.match(answerLearningSetup, /disabled=\{visibleCards\.length === 0 \|\| selectionState\.allVisibleSelected\} onClick=\{selectAllVisible\}/);
   assert.match(answerLearningSetup, /disabled=\{selectionState\.clearDisabled\} onClick=\{clearSelection\}/);
 });
+test("새 답변 익히기 시작은 이전 카드 공개 상태를 재사용하지 않는다", () => {
+  assert.match(
+    app,
+    /function startAnswerLearning\(\) \{[\s\S]*?createStartedAnswerLearningSession\(\s*answerSession,\s*cardOrder,\s*answerSources,\s*\)/,
+  );
+  assert.match(
+    app,
+    /function startSingleCardAnswerLearning\(card: OpicCard\) \{[\s\S]*?createStartedAnswerLearningSession\(\s*answerSession,\s*\[card\.id\]/,
+  );
+});
 test("답변 익히기 숨겨진 선택 수와 안내 조건은 현재 결과 밖의 선택만 사용한다", () => {
   assert.match(answerLearningSetup, /const visibleCardIds = new Set\(visibleCards\.map\(\(card\) => card\.id\)\)/);
   assert.match(answerLearningSetup, /const hiddenSelectedCount = selectedCardIds\.filter\(\(cardId\) => !visibleCardIds\.has\(cardId\)\)\.length/);

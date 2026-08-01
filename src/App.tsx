@@ -51,6 +51,7 @@ import {
   saveAnswerLearningStatuses,
 } from "./utils/answerLearningStorage";
 import {
+  createStartedAnswerLearningSession,
   readAnswerLearningSession,
   returnToAnswerLearningSetup,
   saveAnswerLearningSession,
@@ -1165,13 +1166,11 @@ function App() {
         answerSources[cardId] = myAnswers[cardId] ? "my-answer" : "default";
       }
     });
-    const nextSession: AnswerLearningSession = {
-      ...answerSession,
-      screen: "learning",
+    const nextSession = createStartedAnswerLearningSession(
+      answerSession,
       cardOrder,
-      currentIndex: 0,
       answerSources,
-    };
+    );
     updateAnswerSession(nextSession);
     setAnswerLearningUndo(null);
     setAnswerLearningFeedback(null);
@@ -1182,20 +1181,14 @@ function App() {
   }
 
   function startSingleCardAnswerLearning(card: OpicCard) {
-    const nextSession: AnswerLearningSession = {
-      ...answerSession,
-      screen: "learning",
-      cardOrder: [card.id],
-      currentIndex: 0,
-      answerSources: {
+    const nextSession = createStartedAnswerLearningSession(
+      answerSession,
+      [card.id],
+      {
         ...answerSession.answerSources,
         [card.id]: myAnswers[card.id] ? "my-answer" : "default",
       },
-      reveals: {
-        ...answerSession.reveals,
-        [card.id]: { hint: false, firstLine: false, answer: false, frontKo: false },
-      },
-    };
+    );
     updateAnswerSession(nextSession);
     setAnswerLearningUndo(null);
     setAnswerLearningFeedback(null);
