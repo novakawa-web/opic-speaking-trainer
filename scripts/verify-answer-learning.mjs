@@ -29,6 +29,10 @@ import {
   parseAndValidateBackup,
   serializeAppBackup,
 } from "../src/utils/appBackup.ts";
+import {
+  ANSWER_LEARNING_STATUS_OPTIONS,
+  FIRST_LINE_STATUS_OPTIONS,
+} from "../src/utils/studyStatusOptions.ts";
 
 class MemoryStorage {
   values = new Map();
@@ -44,6 +48,37 @@ function test(name, run) { tests.push({ name, run }); }
 const cardA = cards[0];
 const cardB = cards[1];
 const now = new Date(2026, 6, 17, 4, 30); // 실행 환경의 로컬 시각 2026-07-17 04:30
+
+test("첫 문장 상태는 긍정에서 어려움 순서와 기존 단축키를 유지", () => {
+  assert.deepEqual(
+    FIRST_LINE_STATUS_OPTIONS.map(({ value, label, shortcut }) => ({ value, label, shortcut })),
+    [
+      { value: "success", label: "성공", shortcut: "A" },
+      { value: "again", label: "연습 필요", shortcut: "S" },
+      { value: "hard", label: "어려움", shortcut: "D" },
+    ],
+  );
+});
+test("답변 익히기 상태는 긍정에서 어려움 순서", () => {
+  assert.deepEqual(
+    ANSWER_LEARNING_STATUS_OPTIONS.map(({ value, label }) => ({ value, label })),
+    [
+      { value: "speakable", label: "말할 수 있음" },
+      { value: "learning", label: "익히는 중" },
+      { value: "hard", label: "어려움" },
+    ],
+  );
+});
+test("두 상태 선택지는 의미가 다른 저장 값을 공유하지 않음", () => {
+  assert.deepEqual(
+    FIRST_LINE_STATUS_OPTIONS.map(({ value }) => value),
+    ["success", "again", "hard"],
+  );
+  assert.deepEqual(
+    ANSWER_LEARNING_STATUS_OPTIONS.map(({ value }) => value),
+    ["speakable", "learning", "hard"],
+  );
+});
 
 test("빈 상태 저장소", () => assert.deepEqual(readAnswerLearningStatuses(new MemoryStorage()), {}));
 test("hard 상태 정규화", () => assert.equal(normalizeAnswerLearningStatuses({ [cardA.id]: "hard" })[cardA.id], "hard"));

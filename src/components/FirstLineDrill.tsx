@@ -17,6 +17,7 @@ import {
   stripQuestionPrefix,
   TTS_RATE_OPTIONS,
 } from "../utils/ttsSettings";
+import { FIRST_LINE_STATUS_OPTIONS } from "../utils/studyStatusOptions";
 import { ShortcutHelp } from "./ShortcutHelp";
 import { StudyNavigation } from "./StudyNavigation";
 import type { FirstLineMode } from "../utils/firstLineMockSession";
@@ -43,12 +44,6 @@ type FirstLineDrillProps = {
   onNext: (source?: "manual" | "auto") => void;
   mode?: FirstLineMode;
 };
-
-const statusOptions = [
-  { value: "success", label: "성공", symbol: "✓", shortcut: "A" },
-  { value: "again", label: "연습 필요", symbol: "↻", shortcut: "S" },
-  { value: "hard", label: "어려움", symbol: "!", shortcut: "D" },
-] as const;
 
 const drillShortcuts = [
   { keyLabel: "Q", description: "이전 카드" },
@@ -384,7 +379,7 @@ export function FirstLineDrill({
 
           <div className="self-check rating-first">
             <div className="status-buttons">
-              {statusOptions.map((option) => (
+              {FIRST_LINE_STATUS_OPTIONS.map((option) => (
                 <button
                   key={option.value}
                   type="button"

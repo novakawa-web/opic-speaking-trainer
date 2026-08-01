@@ -8495,7 +8495,7 @@ input:focus-visible + .toggle-switch {
 .answer-learning-reveal-buttons button,
 .answer-learning-answer-actions button,
 .answer-learning-secondary-actions button,
-.answer-learning-first-line button {
+.answer-learning-first-line-content button {
   min-height: 44px;
   padding: 10px 15px;
   border: 1px solid var(--line);
@@ -8516,8 +8516,12 @@ input:focus-visible + .toggle-switch {
 .answer-learning-answer { max-width: var(--learning-text-max); margin: 14px auto 0; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-soft); }
 .answer-learning-hint-box { color: var(--body-copy); line-height: 1.65; }
 .answer-learning-hint-box .hint-flow-lines { display: grid; gap: 5px; margin-top: 12px; }
-.answer-learning-first-line { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.answer-learning-first-line { display: grid; gap: 14px; }
+.answer-learning-first-line-content { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
 .answer-learning-first-line p { margin: 0; color: var(--first-line-text); font-size: 1.35rem; font-weight: 700; line-height: 1.55; }
+.answer-learning-first-line-status { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.answer-learning-first-line-status .status-button { min-width: 0; min-height: 44px; padding: 7px 8px; font-size: .94rem; }
+.answer-learning-first-line-status .status-button-content { gap: 5px; transform: none; }
 .answer-learning-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
 .answer-learning-tabs button { min-height: 44px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--surface); font-weight: 700; }
 .answer-learning-tabs button[aria-selected="true"] { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
@@ -8745,7 +8749,8 @@ input:focus-visible + .toggle-switch {
     font-size: 0.9rem;
     line-height: 1.5;
   }
-  .answer-learning-first-line { align-items: stretch; flex-direction: column; }
+  .answer-learning-first-line-content { align-items: stretch; flex-direction: column; }
+  .answer-learning-first-line-status .status-button { padding-inline: 3px; font-size: clamp(.78rem, 3.2vw, .94rem); }
   .answer-learning-status-buttons button { min-width: 0; padding: 8px 3px; font-size: clamp(.88rem, 3.4vw, 1rem); }
   .answer-learning-status-buttons button span { margin-right: 3px; }
   .answer-learning-secondary-actions { display: grid; grid-template-columns: 1fr; }

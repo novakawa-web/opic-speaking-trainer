@@ -1328,7 +1328,10 @@ function App() {
     });
   }
 
-  function updateStatus(status: FirstLineResult) {
+  function updateStatus(
+    status: FirstLineResult,
+    { syncMockSession = true }: { syncMockSession?: boolean } = {},
+  ) {
     if (!selectedCard) return;
 
     const cardId = selectedCard.id;
@@ -1352,7 +1355,11 @@ function App() {
       attemptTimestamp: attempt.timestamp,
     });
     setFeedbackMessage(null);
-    if (mockSession?.screen === "exam" && mockSession.cardOrder.includes(cardId)) {
+    if (
+      syncMockSession
+      && mockSession?.screen === "exam"
+      && mockSession.cardOrder.includes(cardId)
+    ) {
       const answers = { ...mockSession.answers, [cardId]: status };
       const nextMock: FirstLineMockSession = {
         ...mockSession,
@@ -1364,6 +1371,10 @@ function App() {
       saveFirstLineMockSession(nextMock);
       setMockSession(nextMock);
     }
+  }
+
+  function updateAnswerLearningFirstLineStatus(status: FirstLineResult) {
+    updateStatus(status, { syncMockSession: false });
   }
 
   function undoLastStatus() {
@@ -1972,6 +1983,7 @@ function App() {
           card={selectedCard}
           myAnswer={myAnswers[selectedCard.id]}
           status={answerLearningStatuses[selectedCard.id] ?? null}
+          firstLineStatus={statuses[selectedCard.id] ?? null}
           answerSource={answerSource}
           reveal={reveal}
           currentPosition={currentPosition}
@@ -1998,6 +2010,7 @@ function App() {
           onPrevious={() => navigateAnswerLearning(-1)}
           onNext={() => navigateAnswerLearning(1)}
           onStatusChange={updateAnswerLearningStatus}
+          onFirstLineStatusChange={updateAnswerLearningFirstLineStatus}
           onUndo={undoAnswerLearningStatus}
           onReset={resetAnswerLearningStatus}
           onStartShadowing={startAnswerLearningShadowing}

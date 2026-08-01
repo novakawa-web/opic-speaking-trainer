@@ -4,6 +4,8 @@ import { useSwipeNavigation } from "../hooks/useSwipeNavigation";
 import type {
   AnswerLearningAnswerSource,
   AnswerLearningStatus,
+  FirstLineResult,
+  FirstLineStatus,
   OpicCard,
 } from "../types";
 import type { AnswerLearningRevealState } from "../utils/answerLearningSession";
@@ -13,11 +15,16 @@ import { createPassageParagraphs } from "../utils/passageParagraphs";
 import { joinAnswerLines } from "../utils/answerText";
 import { readTtsRate, stripQuestionPrefix } from "../utils/ttsSettings";
 import { isFirstLineOnlyCard } from "../utils/cardContent";
+import {
+  ANSWER_LEARNING_STATUS_OPTIONS,
+  FIRST_LINE_STATUS_OPTIONS,
+} from "../utils/studyStatusOptions";
 
 type Props = {
   card: OpicCard;
   myAnswer?: string;
   status: AnswerLearningStatus | null;
+  firstLineStatus: FirstLineStatus;
   answerSource: AnswerLearningAnswerSource;
   reveal: AnswerLearningRevealState;
   currentPosition: number;
@@ -31,22 +38,18 @@ type Props = {
   onPrevious: () => void;
   onNext: () => void;
   onStatusChange: (status: AnswerLearningStatus) => void;
+  onFirstLineStatusChange: (status: FirstLineResult) => void;
   onUndo: () => void;
   onReset: () => void;
   onStartShadowing: (source: ShadowingSource) => void;
   onBack: () => void;
 };
 
-const statusOptions = [
-  { value: "hard", label: "어려움", symbol: "!" },
-  { value: "learning", label: "익히는 중", symbol: "↻" },
-  { value: "speakable", label: "말할 수 있음", symbol: "✓" },
-] as const;
-
 export function AnswerLearning({
   card,
   myAnswer,
   status,
+  firstLineStatus,
   answerSource,
   reveal,
   currentPosition,
@@ -60,6 +63,7 @@ export function AnswerLearning({
   onPrevious,
   onNext,
   onStatusChange,
+  onFirstLineStatusChange,
   onUndo,
   onReset,
   onStartShadowing,
@@ -158,10 +162,30 @@ export function AnswerLearning({
         )}
         {reveal.firstLine && (
           <div className="answer-learning-first-line">
-            <p>{firstLine}</p>
-            <button type="button" disabled={!isSupported} onClick={() => toggleSpeech(firstLine, "firstLine")}>
-              {activeTarget === "firstLine" ? "첫 문장 듣기 중지" : "첫 문장 듣기"}
-            </button>
+            <div className="answer-learning-first-line-content">
+              <p>{firstLine}</p>
+              <button type="button" disabled={!isSupported} onClick={() => toggleSpeech(firstLine, "firstLine")}>
+                {activeTarget === "firstLine" ? "첫 문장 듣기 중지" : "첫 문장 듣기"}
+              </button>
+            </div>
+            <div className="answer-learning-first-line-status" role="group" aria-label="첫 문장 상태">
+              {FIRST_LINE_STATUS_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`status-button status-button-${option.value} ${
+                    firstLineStatus === option.value ? "is-selected" : ""
+                  }`}
+                  aria-pressed={firstLineStatus === option.value}
+                  onClick={() => onFirstLineStatusChange(option.value)}
+                >
+                  <span className="status-button-content">
+                    <span className="status-button-icon" aria-hidden="true">{option.symbol}</span>
+                    <span className="status-button-label">{option.label}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
         {reveal.answer && (
@@ -213,7 +237,7 @@ export function AnswerLearning({
         <h2 id="answer-learning-rating-title">전체 답변을 얼마나 말할 수 있나요?</h2>
         <p className="answer-learning-rating-description">완벽히 외웠는지보다, 핵심 내용을 연결해 끝까지 말할 수 있는지를 기준으로 선택하세요.</p>
         <div className="answer-learning-status-buttons">
-          {statusOptions.map((option) => (
+          {ANSWER_LEARNING_STATUS_OPTIONS.map((option) => (
             <button key={option.value} type="button" aria-pressed={status === option.value} className={`answer-status-${option.value}`} onClick={() => onStatusChange(option.value)}>
               <span aria-hidden="true">{option.symbol}</span>{option.label}
             </button>

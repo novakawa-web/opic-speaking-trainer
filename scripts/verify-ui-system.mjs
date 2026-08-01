@@ -16,6 +16,7 @@ const quickStart = await readFile(new URL("../src/components/HomeQuickStart.tsx"
 const dashboard = await readFile(new URL("../src/components/HomeCardDashboard.tsx", import.meta.url), "utf8");
 const personalMemos = await readFile(new URL("../src/components/PersonalMemoManager.tsx", import.meta.url), "utf8");
 const answerLearning = await readFile(new URL("../src/components/AnswerLearning.tsx", import.meta.url), "utf8");
+const firstLineDrill = await readFile(new URL("../src/components/FirstLineDrill.tsx", import.meta.url), "utf8");
 const answerLearningSetup = await readFile(new URL("../src/components/AnswerLearningSetup.tsx", import.meta.url), "utf8");
 const cardLibrary = await readFile(new URL("../src/components/CardLibrary.tsx", import.meta.url), "utf8");
 const tagFilter = await readFile(new URL("../src/components/TagFilter.tsx", import.meta.url), "utf8");
@@ -245,12 +246,43 @@ test("답변 익히기 세로 밀도는 설명 범위와 safe-area·터치 계�
   assert.doesNotMatch(css, /\.answer-learning-navigation\s*\{[^}]*margin-bottom:\s*-/);
   assert.doesNotMatch(css, /\.answer-learning-page\s*\{[^}]*height:\s*100vh/);
 
-  assert.match(css, /\.answer-learning-question-actions button,[\s\S]*?\.answer-learning-first-line button\s*\{[\s\S]*?min-height:\s*44px/);
+  assert.match(css, /\.answer-learning-question-actions button,[\s\S]*?\.answer-learning-first-line-content button\s*\{[\s\S]*?min-height:\s*44px/);
   assert.match(css, /\.answer-learning-tabs button\s*\{[^}]*min-height:\s*44px/);
   assert.match(css, /\.answer-learning-status-buttons button\s*\{[^}]*min-height:\s*56px/);
   assert.match(css, /\.answer-learning-shadowing\s*\{[^}]*min-height:\s*48px/);
   assert.match(css, /\.answer-learning-navigation button\s*\{[^}]*min-height:\s*48px/);
   assert.match(css, /\.utility-action\s*\{[\s\S]*?min-height:\s*42px/);
+});
+test("첫 문장과 전체 답변 상태 선택지는 공통 정의를 사용한다", () => {
+  assert.match(firstLineDrill, /import \{ FIRST_LINE_STATUS_OPTIONS \} from "\.\.\/utils\/studyStatusOptions"/);
+  assert.match(firstLineDrill, /FIRST_LINE_STATUS_OPTIONS\.map\(\(option\) =>/);
+  assert.match(answerLearning, /ANSWER_LEARNING_STATUS_OPTIONS\.map\(\(option\) =>/);
+  assert.match(answerLearning, /FIRST_LINE_STATUS_OPTIONS\.map\(\(option\) =>/);
+});
+test("답변 익히기 첫 문장 공개 아래에서 기존 첫 문장 상태를 입력한다", () => {
+  const revealIndex = answerLearning.indexOf("{reveal.firstLine && (");
+  const statusIndex = answerLearning.indexOf('className="answer-learning-first-line-status"');
+  const answerIndex = answerLearning.indexOf("{reveal.answer && (");
+  assert.ok(revealIndex >= 0 && revealIndex < statusIndex && statusIndex < answerIndex);
+  assert.match(answerLearning, /role="group" aria-label="첫 문장 상태"/);
+  assert.match(answerLearning, /aria-pressed=\{firstLineStatus === option\.value\}/);
+  assert.match(answerLearning, /onClick=\{\(\) => onFirstLineStatusChange\(option\.value\)\}/);
+  assert.match(app, /firstLineStatus=\{statuses\[selectedCard\.id\] \?\? null\}/);
+  assert.match(
+    app,
+    /function updateAnswerLearningFirstLineStatus\(status: FirstLineResult\) \{[\s\S]*?updateStatus\(status, \{ syncMockSession: false \}\);[\s\S]*?\}/,
+  );
+  assert.match(app, /onFirstLineStatusChange=\{updateAnswerLearningFirstLineStatus\}/);
+});
+test("답변 익히기 첫 문장 상태는 작은 화면에서도 한 줄 44px 조작을 유지한다", () => {
+  assert.match(css, /\.answer-learning-first-line-status\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(css, /\.answer-learning-first-line-status \.status-button\s*\{[^}]*min-width:\s*0;[^}]*min-height:\s*44px/);
+  const mobileAnswerLearningBlocks = extractCssAtRuleBlocks(
+    css,
+    "@media (max-width: 700px)",
+  ).filter((block) => block.includes(".answer-learning-page"));
+  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-first-line-content\s*\{[^}]*flex-direction:\s*column/);
+  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-first-line-status \.status-button\s*\{[^}]*padding-inline:\s*3px/);
 });
 test("공통 AppHeader는 내부 rail에서 기존 표시 요소를 유지한다", () => {
   assert.match(appHeader, /<header[\s\S]*?<div className="app-header-rail">[\s\S]*?study-header-back[\s\S]*?brand-home[\s\S]*?compact-header-title[\s\S]*?compact-header-position[\s\S]*?theme-toggle[\s\S]*?mobile-header-progress/);
