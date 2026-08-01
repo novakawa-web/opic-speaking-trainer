@@ -6,6 +6,7 @@ import {
   exportCardsToTsv,
   parseCardTsv,
 } from "../src/utils/cardTsv.ts";
+import { parseCardTsvBatch } from "../src/utils/cardTsvBatch.ts";
 import {
   CARD_DATASET_STORAGE_KEY,
   CARD_IMPORT_BACKUP_KEY,
@@ -297,6 +298,213 @@ test("알 수 없는 header는 경고 후 무시", () => {
   assert.deepEqual(parsed.unknownHeaders, ["extraColumn"]);
 });
 
+test("복수 TSV 단일 파일 결과는 기존 파서와 같다", () => {
+  const text = exportCardsToTsv([baseCard]);
+  const single = parseCardTsv(text);
+  const batch = parseCardTsvBatch([
+    { fileKey: "0:single.tsv", fileName: "single.tsv", text },
+  ]);
+
+  assert.equal(batch.totalFiles, 1);
+  assert.equal(batch.readableFiles, 1);
+  assert.equal(batch.totalRows, single.totalRows);
+  assert.equal(batch.errorCount, single.errorCount);
+  assert.deepEqual(batch.validCards, single.validCards);
+});
+
+test("복수 TSV는 파일 선택 순서대로 카드를 합친다", () => {
+  const first = { ...baseCard, id: "batch-first-001" };
+  const second = { ...baseCard, id: "batch-second-001" };
+  const batch = parseCardTsvBatch([
+    {
+      fileKey: "0:first.tsv",
+      fileName: "first.tsv",
+      text: exportCardsToTsv([first]),
+    },
+    {
+      fileKey: "1:second.tsv",
+      fileName: "second.tsv",
+      text: exportCardsToTsv([second]),
+    },
+  ]);
+
+  assert.equal(batch.totalFiles, 2);
+  assert.equal(batch.totalRows, 2);
+  assert.equal(batch.errorCount, 0);
+  assert.deepEqual(batch.validCards.map((card) => card.id), [first.id, second.id]);
+  assert.deepEqual(batch.files.map((file) => file.validCardCount), [1, 1]);
+});
+
+test("선택한 파일 사이의 중복 ID는 관련된 모든 행을 차단한다", () => {
+  const duplicate = { ...baseCard, id: "batch-duplicate-001" };
+  const batch = parseCardTsvBatch([
+    {
+      fileKey: "0:first.tsv",
+      fileName: "first.tsv",
+      text: exportCardsToTsv([duplicate]),
+    },
+    {
+      fileKey: "1:second.tsv",
+      fileName: "second.tsv",
+      text: exportCardsToTsv([duplicate]),
+    },
+  ]);
+
+  assert.equal(batch.validCards.length, 0);
+  assert.equal(batch.duplicateIdCount, 2);
+  assert.equal(batch.errorRowCount, 2);
+  assert.ok(batch.rows.every((row) => row.status === "error"));
+  assert.equal(
+    batch.issues.filter((issue) =>
+      issue.message.includes("선택한 다른 파일과 id가 중복"),
+    ).length,
+    2,
+  );
+});
+
+test("한 파일 안의 중복 ID 오류도 배치 결과에 유지한다", () => {
+  const duplicate = { ...baseCard, id: "batch-inside-duplicate" };
+  const batch = parseCardTsvBatch([
+    {
+      fileKey: "0:inside.tsv",
+      fileName: "inside.tsv",
+      text: exportCardsToTsv([duplicate, duplicate]),
+    },
+  ]);
+
+  assert.equal(batch.validCards.length, 0);
+  assert.equal(batch.duplicateIdCount, 2);
+  assert.equal(batch.errorRowCount, 2);
+  assert.equal(
+    batch.issues.filter((issue) =>
+      issue.message.includes("파일 안에서 id가 중복"),
+    ).length,
+    2,
+  );
+  assert.equal(
+    batch.issues.some((issue) =>
+      issue.message.includes("선택한 다른 파일과 id가 중복"),
+    ),
+    false,
+  );
+});
+
+test("현재 앱의 기존 ID는 파일 간 중복이 아니라 기존 경고다", () => {
+  const batch = parseCardTsvBatch(
+    [
+      {
+        fileKey: "0:existing.tsv",
+        fileName: "existing.tsv",
+        text: exportCardsToTsv([baseCard]),
+      },
+    ],
+    [baseCard],
+  );
+
+  assert.equal(batch.errorCount, 0);
+  assert.equal(batch.duplicateIdCount, 0);
+  assert.equal(batch.existingConflictCount, 1);
+  assert.equal(batch.rows[0].status, "existing");
+});
+
+test("읽기 실패 파일 하나가 있어도 전체 배치가 오류 상태다", () => {
+  const valid = { ...baseCard, id: "batch-readable-001" };
+  const batch = parseCardTsvBatch([
+    {
+      fileKey: "0:valid.tsv",
+      fileName: "valid.tsv",
+      text: exportCardsToTsv([valid]),
+    },
+    {
+      fileKey: "1:unreadable.tsv",
+      fileName: "unreadable.tsv",
+      readError: true,
+    },
+  ]);
+
+  assert.equal(batch.readableFiles, 1);
+  assert.equal(batch.validCards.length, 1);
+  assert.equal(batch.errorCount, 1);
+  assert.equal(batch.files[1].readError, true);
+  assert.ok(batch.issues.some((issue) => issue.fileName === "unreadable.tsv"));
+});
+
+test("같은 표시 파일명도 내부 키로 구분한다", () => {
+  const first = { ...baseCard, id: "same-name-first" };
+  const second = { ...baseCard, id: "same-name-second" };
+  const batch = parseCardTsvBatch([
+    {
+      fileKey: "0:cards.tsv",
+      fileName: "cards.tsv",
+      text: exportCardsToTsv([first]),
+    },
+    {
+      fileKey: "1:cards.tsv",
+      fileName: "cards.tsv",
+      text: exportCardsToTsv([second]),
+    },
+  ]);
+
+  assert.equal(batch.files[0].fileName, batch.files[1].fileName);
+  assert.notEqual(batch.files[0].fileKey, batch.files[1].fileKey);
+  assert.deepEqual(batch.rows.map((row) => row.fileKey), ["0:cards.tsv", "1:cards.tsv"]);
+});
+
+test("여러 파일의 같은 행 번호 오류를 각각 센다", () => {
+  const first = replaceCell(exportCardsToTsv([baseCard]), "id", "");
+  const second = replaceCell(exportCardsToTsv([baseCard]), "id", "");
+  const batch = parseCardTsvBatch([
+    { fileKey: "0:first.tsv", fileName: "first.tsv", text: first },
+    { fileKey: "1:second.tsv", fileName: "second.tsv", text: second },
+  ]);
+
+  assert.equal(batch.rows[0].rowNumber, 2);
+  assert.equal(batch.rows[1].rowNumber, 2);
+  assert.equal(batch.errorRowCount, 2);
+});
+
+test("알 수 없는 header 경고에 파일 정보를 유지한다", () => {
+  const text = exportCardsToTsv([{ ...baseCard, id: "batch-header-001" }])
+    .replace("final_rep", "final_rep\textraColumn")
+    .replace(/true\s*$/, "true\tignored");
+  const batch = parseCardTsvBatch([
+    { fileKey: "0:headers.tsv", fileName: "headers.tsv", text },
+  ]);
+
+  assert.equal(batch.errorCount, 0);
+  assert.equal(batch.unknownHeaders[0].fileName, "headers.tsv");
+  assert.equal(batch.unknownHeaders[0].header, "extraColumn");
+  assert.ok(batch.issues.some((issue) => issue.fileName === "headers.tsv"));
+});
+
+test("복수 TSV 결과는 기존 세 가지 가져오기 정책에 그대로 적용된다", () => {
+  const updated = { ...baseCard, front: "Q: Batch updated question?" };
+  const added = { ...baseCard, id: "batch-policy-new-001" };
+  const batch = parseCardTsvBatch(
+    [
+      {
+        fileKey: "0:updated.tsv",
+        fileName: "updated.tsv",
+        text: exportCardsToTsv([updated]),
+      },
+      {
+        fileKey: "1:added.tsv",
+        fileName: "added.tsv",
+        text: exportCardsToTsv([added]),
+      },
+    ],
+    [baseCard],
+  );
+
+  assert.equal(batch.errorCount, 0);
+  assert.equal(applyCardImport([baseCard], batch.validCards, "new-only").added, 1);
+  assert.equal(applyCardImport([baseCard], batch.validCards, "overwrite").updated, 1);
+  assert.deepEqual(
+    applyCardImport([baseCard], batch.validCards, "replace").cards,
+    [updated, added],
+  );
+});
+
 test("TSV 가져오기 UI는 선택·미리보기·실행 단계를 표시", () => {
   const source = readFileSync(
     new URL("../src/components/CardDataManager.tsx", import.meta.url),
@@ -306,7 +514,25 @@ test("TSV 가져오기 UI는 선택·미리보기·실행 단계를 표시", () 
   assert.ok(source.includes("파일 선택 완료"));
   assert.ok(source.includes("가져오기 미리보기"));
   assert.ok(source.includes("가져오기 실행"));
-  assert.ok(source.includes("카드 TSV 파일을 선택한 뒤 내용을 검토하고 가져옵니다."));
+  assert.ok(source.includes("카드 TSV 파일을 하나 이상 선택한 뒤 내용을 함께 검토하고 가져옵니다."));
+});
+
+test("TSV 가져오기 UI는 여러 파일을 한 묶음으로 처리", () => {
+  const source = readFileSync(
+    new URL("../src/components/CardDataManager.tsx", import.meta.url),
+    "utf8",
+  );
+  const batchSource = readFileSync(
+    new URL("../src/utils/cardTsvBatch.ts", import.meta.url),
+    "utf8",
+  );
+  assert.ok(source.includes("multiple"));
+  assert.ok(source.includes("Array.from(event.target.files ?? [])"));
+  assert.ok(source.includes("parseCardTsvBatch(inputs, cards)"));
+  assert.ok(source.includes("선택한 파일 전체를 하나의 가져오기로 처리합니다."));
+  assert.ok(batchSource.includes("선택한 다른 파일과 id가 중복되었습니다."));
+  assert.equal(source.match(/saveImportBackup\(cards\)/g)?.length, 1);
+  assert.equal(source.match(/applyCardImport\(cards, preview\.validCards, policy\)/g)?.length, 1);
 });
 
 test("TSV 가져오기 UI는 파일 상태와 재선택을 안내", () => {
@@ -318,7 +544,7 @@ test("TSV 가져오기 UI는 파일 상태와 재선택을 안내", () => {
   assert.ok(source.includes("파일을 확인하고 있어요."));
   assert.ok(source.includes("가져오기 준비됨"));
   assert.ok(source.includes("가져오기 완료:"));
-  assert.ok(source.includes("다른 파일 선택"));
+  assert.ok(source.includes("파일 다시 선택"));
   assert.ok(source.includes('aria-live="polite"'));
 });
 
@@ -329,7 +555,7 @@ test("TSV 가져오기 오류는 실행을 막고 이유를 표시", () => {
   );
   assert.ok(source.includes("hasBlockingErrors"));
   assert.ok(source.includes("importDisabled"));
-  assert.ok(source.includes("오류가 하나라도 있으면 가져올 수 없습니다."));
+  assert.ok(source.includes("선택한 파일 중 오류가 하나라도 있으면 전체를 가져올 수 없습니다."));
 });
 
 test("TSV 되돌리기는 가져오기 영역에만 조건부 표시", () => {
@@ -352,6 +578,7 @@ test("긴 파일명은 모바일에서 가로 넘침 없이 처리", () => {
     "utf8",
   );
   assert.ok(styles.includes(".managed-file-name"));
+  assert.ok(styles.includes(".import-file-summary"));
   assert.ok(styles.includes("text-overflow: ellipsis"));
   assert.ok(styles.includes("overflow-wrap: anywhere"));
 });

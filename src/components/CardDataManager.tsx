@@ -4,9 +4,12 @@ import type { OpicCard } from "../types";
 import {
   createSampleCards,
   exportCardsToTsv,
-  parseCardTsv,
-  type CardTsvParseResult,
 } from "../utils/cardTsv";
+import {
+  parseCardTsvBatch,
+  type CardTsvBatchFileInput,
+  type CardTsvBatchParseResult,
+} from "../utils/cardTsvBatch";
 import {
   applyCardImport,
   clearImportBackup,
@@ -62,8 +65,8 @@ export function CardDataManager({
   onCardsChange,
 }: CardDataManagerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [fileName, setFileName] = useState("");
-  const [preview, setPreview] = useState<CardTsvParseResult | null>(null);
+  const [fileNames, setFileNames] = useState<string[]>([]);
+  const [preview, setPreview] = useState<CardTsvBatchParseResult | null>(null);
   const [policy, setPolicy] = useState<CardConflictPolicy>("new-only");
   const [replaceConfirmed, setReplaceConfirmed] = useState(false);
   const [backupAvailable, setBackupAvailable] = useState(
@@ -81,39 +84,52 @@ export function CardDataManager({
     (policy === "replace" && !replaceConfirmed);
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) return;
 
     setIsReading(true);
     setMessage("");
     setPolicy("new-only");
     setReplaceConfirmed(false);
-    setFileName(file.name);
+    setFileNames(files.map((file) => file.name));
     try {
-      const parsed = parseCardTsv(await file.text(), cards);
+      const inputs = await Promise.all(
+        files.map<Promise<CardTsvBatchFileInput>>(async (file, index) => {
+          const identity = {
+            fileKey: `${index}:${file.name}`,
+            fileName: file.name,
+          };
+          try {
+            return { ...identity, text: await file.text() };
+          } catch {
+            return { ...identity, readError: true };
+          }
+        }),
+      );
+      const parsed = parseCardTsvBatch(inputs, cards);
       setPreview(parsed);
       setMessage(
         parsed.errorCount > 0
-          ? `검증에서 오류 ${parsed.errorCount}건을 찾았습니다. 파일을 수정한 뒤 다시 선택해 주세요.`
-          : `가져오기 준비됨: ${parsed.validCards.length}장을 가져올 수 있습니다.`,
+          ? `선택한 ${parsed.totalFiles}개 파일에서 오류 ${parsed.errorCount}건을 찾았습니다. 파일을 수정한 뒤 다시 선택해 주세요.`
+          : `가져오기 준비됨: ${parsed.totalFiles}개 파일의 카드 ${parsed.validCards.length}장을 가져올 수 있습니다.`,
       );
     } catch {
       setPreview(null);
-      setMessage("파일을 읽을 수 없습니다. UTF-8 TSV 파일인지 확인해 주세요.");
+      setMessage("선택한 파일을 확인하지 못했습니다. UTF-8 TSV 파일인지 확인해 주세요.");
     } finally {
       setIsReading(false);
     }
   }
 
-  function clearSelectedFile() {
-    setFileName("");
+  function clearSelectedFiles() {
+    setFileNames([]);
     setPreview(null);
     setReplaceConfirmed(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  function chooseAnotherFile() {
-    clearSelectedFile();
+  function chooseOtherFiles() {
+    clearSelectedFiles();
     window.setTimeout(() => fileInputRef.current?.click(), 0);
   }
 
@@ -133,7 +149,7 @@ export function CardDataManager({
           `추가 ${result.added}장, 업데이트 ${result.updated}장, ` +
           `건너뜀 ${result.skipped}장, 전체 ${result.cards.length}장`,
       );
-      clearSelectedFile();
+      clearSelectedFiles();
     } catch {
       setMessage(
         "카드 데이터를 저장하지 못했습니다. 브라우저 저장 공간과 개인정보 보호 설정을 확인해 주세요.",
@@ -154,7 +170,7 @@ export function CardDataManager({
       onCardsChange(backup.cards);
       clearImportBackup();
       setBackupAvailable(false);
-      clearSelectedFile();
+      clearSelectedFiles();
       setMessage(`직전 가져오기 전 카드 ${backup.cards.length}장으로 복구했습니다.`);
     } catch {
       setMessage("백업 카드를 복구하지 못했습니다. 브라우저 저장 공간을 확인해 주세요.");
@@ -169,9 +185,15 @@ export function CardDataManager({
       ? preview.errorCount > 0
         ? "가져오기 준비 불가"
         : "가져오기 준비됨"
-      : fileName
-        ? "파일을 확인하지 못했어요."
+      : fileNames.length > 0
+        ? "선택한 파일을 확인하지 못했어요."
         : "선택한 카드 파일이 없어요.";
+  const selectedFileLabel =
+    fileNames.length === 0
+      ? "선택한 카드 파일이 없어요."
+      : fileNames.length === 1
+        ? fileNames[0]
+        : `${fileNames.length}개 파일: ${fileNames.join(", ")}`;
 
   return (
     <section className="card-data-manager" aria-labelledby="card-data-title">
@@ -241,13 +263,13 @@ export function CardDataManager({
       <div className="data-transfer-section is-import">
         <h3>TSV 가져오기</h3>
         <p className="data-helper-text">
-          카드 TSV 파일을 선택한 뒤 내용을 검토하고 가져옵니다.
+          카드 TSV 파일을 하나 이상 선택한 뒤 내용을 함께 검토하고 가져옵니다.
         </p>
 
       <ol className="file-workflow-steps" aria-label="TSV 카드 가져오기 단계">
         <li className={preview || isReading ? "is-complete" : "is-current"}>
           <span>1</span>
-          <strong>{fileName ? "파일 선택 완료" : "파일 선택"}</strong>
+          <strong>{fileNames.length > 0 ? "파일 선택 완료" : "파일 선택"}</strong>
         </li>
         <li className={preview ? "is-complete" : isReading ? "is-current" : ""}>
           <span>2</span>
@@ -267,8 +289,9 @@ export function CardDataManager({
           id="card-tsv-file"
           className="managed-file-input"
           type="file"
+          multiple
           accept=".tsv,text/tab-separated-values,text/plain"
-          aria-label="TSV 가져오기"
+          aria-label="TSV 파일 여러 개 가져오기"
           aria-describedby="card-tsv-file-help"
           onChange={handleFileChange}
         />
@@ -277,14 +300,14 @@ export function CardDataManager({
             className="managed-file-trigger"
             htmlFor="card-tsv-file"
           >
-            TSV 가져오기
+            TSV 파일 선택
           </label>
           <span className="managed-file-name">
-            {fileName || "선택한 카드 파일이 없어요."}
+            {selectedFileLabel}
           </span>
         </div>
         <p id="card-tsv-file-help" className="data-helper-text">
-          카드 TSV 파일을 선택한 뒤 내용을 검토하고 가져옵니다.
+          여러 파일을 한 번에 선택할 수 있으며, 선택한 파일 전체를 하나의 가져오기로 처리합니다.
         </p>
       </div>
 
@@ -304,7 +327,7 @@ export function CardDataManager({
               <p className={`transfer-ready-label ${hasBlockingErrors ? "is-error" : ""}`.trim()}>
                 {hasBlockingErrors ? "오류를 수정해 주세요" : "가져오기 준비됨"}
               </p>
-              <h3>파일명: {fileName}</h3>
+              <h3>선택 파일 {preview.totalFiles}개</h3>
               <p className="transfer-preview-summary">
                 정상 카드 {preview.validCards.length}장 · 오류 {preview.errorRowCount}건 · 기존 ID {preview.existingConflictCount}건
               </p>
@@ -312,11 +335,24 @@ export function CardDataManager({
             <button
               type="button"
               className="preview-clear-button"
-              onClick={(event) => activateButton(event, chooseAnotherFile)}
+              onClick={(event) => activateButton(event, chooseOtherFiles)}
             >
-              다른 파일 선택
+              파일 다시 선택
             </button>
           </div>
+
+          <ul className="import-file-summary" aria-label="선택한 TSV 파일별 검증 결과">
+            {preview.files.map((file) => (
+              <li className={file.errorCount > 0 ? "has-error" : ""} key={file.fileKey}>
+                <strong>{file.fileName}</strong>
+                <span>
+                  {file.readError
+                    ? "읽기 실패"
+                    : `정상 ${file.validCardCount}장 · 오류 ${file.errorRowCount}건`}
+                </span>
+              </li>
+            ))}
+          </ul>
 
           <dl className="preview-stats">
             <div><dt>전체 행</dt><dd>{preview.totalRows}</dd></div>
@@ -328,9 +364,9 @@ export function CardDataManager({
 
           <div className="preview-card-list" aria-label="가져오기 카드 미리보기">
             {preview.rows.slice(0, 100).map((row) => (
-              <article className={`preview-card is-${row.status}`} key={`${row.rowNumber}-${row.id}`}>
+              <article className={`preview-card is-${row.status}`} key={`${row.fileKey}-${row.rowNumber}-${row.id}`}>
                 <div className="preview-card-topline">
-                  <span>행 {row.rowNumber}</span>
+                  <span>{row.fileName} · 행 {row.rowNumber}</span>
                   <span className={`preview-status is-${row.status}`}>
                     {previewStatusLabel(row.status)}
                   </span>
@@ -350,10 +386,10 @@ export function CardDataManager({
               <h4 id="validation-title">검증 메시지</h4>
               <ul>
                 {visibleIssues.map((issue, index) => (
-                  <li className={`is-${issue.severity}`} key={`${issue.rowNumber}-${issue.field}-${index}`}>
+                  <li className={`is-${issue.severity}`} key={`${issue.fileKey}-${issue.rowNumber}-${issue.field}-${index}`}>
                     <strong>{issue.severity === "error" ? "오류" : "경고"}</strong>
                     <span>
-                      행 {issue.rowNumber}
+                      {issue.fileName} · 행 {issue.rowNumber}
                       {issue.cardId ? ` · ${issue.cardId}` : ""}
                       {issue.field ? ` · ${issue.field}` : ""}: {issue.message}
                     </span>
@@ -388,7 +424,7 @@ export function CardDataManager({
           <p className="data-helper-text policy-help">
             {policy === "new-only" && "기존 ID는 건너뛰고 새로운 ID만 뒤에 추가합니다."}
             {policy === "overwrite" && "같은 ID의 카드 내용만 바꾸며 해당 ID의 학습 기록은 유지합니다."}
-            {policy === "replace" && "활성 카드 전체를 정상 TSV 카드로 교체합니다. 사라진 ID의 학습 기록은 삭제하지 않습니다."}
+            {policy === "replace" && "활성 카드 전체를 선택한 모든 TSV의 정상 카드로 교체합니다. 사라진 ID의 학습 기록은 삭제하지 않습니다."}
           </p>
 
           {policy === "replace" && (
@@ -399,7 +435,7 @@ export function CardDataManager({
                 onChange={(event) => setReplaceConfirmed(event.target.checked)}
               />
               <span>
-                현재 {cards.length}장을 가져올 {preview.validCards.length}장으로 전체 교체하는 것을 확인했습니다.
+                현재 {cards.length}장을 선택한 {preview.totalFiles}개 파일의 카드 {preview.validCards.length}장으로 전체 교체하는 것을 확인했습니다.
               </span>
             </label>
           )}
@@ -415,7 +451,7 @@ export function CardDataManager({
           </button>
           <p id="import-disabled-reason" className="data-helper-text">
             {hasBlockingErrors
-              ? "오류가 하나라도 있으면 가져올 수 없습니다. 모든 오류를 수정해 주세요."
+              ? "선택한 파일 중 오류가 하나라도 있으면 전체를 가져올 수 없습니다. 모든 오류를 수정해 주세요."
               : policy === "replace" && !replaceConfirmed
                 ? "전체 교체 확인에 체크해야 실행할 수 있습니다."
                 : !hasImportableCards

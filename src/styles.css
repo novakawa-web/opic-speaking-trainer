@@ -1500,6 +1500,46 @@ input:focus-visible + .toggle-switch {
   font-size: 17px;
 }
 
+.import-file-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.import-file-summary li {
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid var(--status-success-border);
+  border-radius: 10px;
+  background: var(--status-success-bg);
+}
+
+.import-file-summary li.has-error {
+  border-color: var(--status-hard-border);
+  background: var(--status-hard-bg);
+}
+
+.import-file-summary strong,
+.import-file-summary span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.import-file-summary strong {
+  color: var(--heading);
+  font-size: 11px;
+}
+
+.import-file-summary span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
 .preview-clear-button {
   min-height: 40px;
   flex: 0 0 auto;
@@ -1567,6 +1607,11 @@ input:focus-visible + .toggle-switch {
 .preview-card-topline {
   color: var(--muted);
   font-size: 10px;
+}
+
+.preview-card-topline > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .preview-status {
@@ -4272,6 +4317,10 @@ input:focus-visible + .toggle-switch {
 
   .preview-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .import-file-summary {
+    grid-template-columns: 1fr;
   }
 
   .preview-card-list {
