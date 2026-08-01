@@ -62,6 +62,29 @@ export type CardTsvBatchParseResult = {
   unknownHeaders: CardTsvBatchUnknownHeader[];
 };
 
+export type CardTsvReadRequestGuard = {
+  begin: () => number;
+  isCurrent: (requestId: number) => boolean;
+  cancel: () => void;
+};
+
+export function createCardTsvReadRequestGuard(): CardTsvReadRequestGuard {
+  let currentRequestId = 0;
+
+  return {
+    begin() {
+      currentRequestId += 1;
+      return currentRequestId;
+    },
+    isCurrent(requestId) {
+      return requestId === currentRequestId;
+    },
+    cancel() {
+      currentRequestId += 1;
+    },
+  };
+}
+
 function withFileContext(
   issue: CardTsvIssue,
   input: CardTsvBatchFileInput,

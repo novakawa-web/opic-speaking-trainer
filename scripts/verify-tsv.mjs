@@ -6,7 +6,10 @@ import {
   exportCardsToTsv,
   parseCardTsv,
 } from "../src/utils/cardTsv.ts";
-import { parseCardTsvBatch } from "../src/utils/cardTsvBatch.ts";
+import {
+  createCardTsvReadRequestGuard,
+  parseCardTsvBatch,
+} from "../src/utils/cardTsvBatch.ts";
 import {
   CARD_DATASET_STORAGE_KEY,
   CARD_IMPORT_BACKUP_KEY,
@@ -581,6 +584,41 @@ test("긴 파일명은 모바일에서 가로 넘침 없이 처리", () => {
   assert.ok(styles.includes(".import-file-summary"));
   assert.ok(styles.includes("text-overflow: ellipsis"));
   assert.ok(styles.includes("overflow-wrap: anywhere"));
+});
+
+test("TSV file reads only accept the latest selection", () => {
+  const guard = createCardTsvReadRequestGuard();
+  const firstRequest = guard.begin();
+  const secondRequest = guard.begin();
+
+  assert.equal(guard.isCurrent(firstRequest), false);
+  assert.equal(guard.isCurrent(secondRequest), true);
+});
+
+test("TSV file read cancellation invalidates the active selection", () => {
+  const guard = createCardTsvReadRequestGuard();
+  const cancelledRequest = guard.begin();
+  guard.cancel();
+
+  assert.equal(guard.isCurrent(cancelledRequest), false);
+  assert.equal(guard.isCurrent(guard.begin()), true);
+});
+
+test("TSV import UI clears stale preview and blocks actions while reading", () => {
+  const source = readFileSync(
+    new URL("../src/components/CardDataManager.tsx", import.meta.url),
+    "utf8",
+  );
+  const handlerStart = source.indexOf("async function handleFileChange");
+  const clearPreview = source.indexOf("setPreview(null);", handlerStart);
+  const readFiles = source.indexOf("await Promise.all", handlerStart);
+
+  assert.ok(source.includes("isReading ||"));
+  assert.ok(handlerStart >= 0 && clearPreview > handlerStart);
+  assert.ok(readFiles > clearPreview);
+  assert.ok(source.includes("fileReadGuardRef.current.begin()"));
+  assert.ok(source.includes("fileReadGuardRef.current.isCurrent(requestId)"));
+  assert.ok(source.includes("fileReadGuardRef.current.cancel()"));
 });
 
 let passed = 0;

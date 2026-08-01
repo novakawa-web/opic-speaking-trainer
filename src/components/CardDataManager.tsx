@@ -6,6 +6,7 @@ import {
   exportCardsToTsv,
 } from "../utils/cardTsv";
 import {
+  createCardTsvReadRequestGuard,
   parseCardTsvBatch,
   type CardTsvBatchFileInput,
   type CardTsvBatchParseResult,
@@ -65,6 +66,7 @@ export function CardDataManager({
   onCardsChange,
 }: CardDataManagerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileReadGuardRef = useRef(createCardTsvReadRequestGuard());
   const [fileNames, setFileNames] = useState<string[]>([]);
   const [preview, setPreview] = useState<CardTsvBatchParseResult | null>(null);
   const [policy, setPolicy] = useState<CardConflictPolicy>("new-only");
@@ -78,6 +80,7 @@ export function CardDataManager({
   const hasBlockingErrors = (preview?.errorCount ?? 0) > 0;
   const hasImportableCards = (preview?.validCards.length ?? 0) > 0;
   const importDisabled =
+    isReading ||
     !preview ||
     hasBlockingErrors ||
     !hasImportableCards ||
@@ -87,7 +90,9 @@ export function CardDataManager({
     const files = Array.from(event.target.files ?? []);
     if (files.length === 0) return;
 
+    const requestId = fileReadGuardRef.current.begin();
     setIsReading(true);
+    setPreview(null);
     setMessage("");
     setPolicy("new-only");
     setReplaceConfirmed(false);
@@ -106,6 +111,8 @@ export function CardDataManager({
           }
         }),
       );
+      if (!fileReadGuardRef.current.isCurrent(requestId)) return;
+
       const parsed = parseCardTsvBatch(inputs, cards);
       setPreview(parsed);
       setMessage(
@@ -114,14 +121,20 @@ export function CardDataManager({
           : `가져오기 준비됨: ${parsed.totalFiles}개 파일의 카드 ${parsed.validCards.length}장을 가져올 수 있습니다.`,
       );
     } catch {
+      if (!fileReadGuardRef.current.isCurrent(requestId)) return;
+
       setPreview(null);
       setMessage("선택한 파일을 확인하지 못했습니다. UTF-8 TSV 파일인지 확인해 주세요.");
     } finally {
-      setIsReading(false);
+      if (fileReadGuardRef.current.isCurrent(requestId)) {
+        setIsReading(false);
+      }
     }
   }
 
   function clearSelectedFiles() {
+    fileReadGuardRef.current.cancel();
+    setIsReading(false);
     setFileNames([]);
     setPreview(null);
     setReplaceConfirmed(false);
