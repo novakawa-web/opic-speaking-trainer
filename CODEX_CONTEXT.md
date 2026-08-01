@@ -2,7 +2,7 @@
 
 > 마지막 내용 동기화: 2026-08-01 (Asia/Seoul)
 >
-> 문서 내용의 앱 기능 기준 SHA: `7e43a887a98c5e56cfa8ea740ded7d91b61195a1`
+> 문서 내용의 앱 기능 기준 SHA: `b2f83884b98204b75b8748098c4e9a2ab38fc314`
 >
 > 이 SHA는 마지막 앱 runtime·동작 변경을 가리킨다. 문서·repository Skill 전용 commit은 이 값을 올리지 않으며, 현재 repository HEAD와 최신 Pages 상태는 live Git·GitHub에서 확인한다.
 
@@ -16,10 +16,10 @@
 - 운영 앱: <https://novakawa-web.github.io/opic-speaking-trainer/>
 - production Vite base는 `/opic-speaking-trainer/`, 개발 base는 `/`다.
 - 기본 카드 소스는 12장이지만 활성 카드 데이터셋은 TSV 사용에 따라 달라진다. 운영 카드 수를 코드 상수처럼 문서화하지 않는다.
-- 2026-08-01 운영 배포 검증에서 운영 URL, `manifest.webmanifest`, `sw.js`, `404.html`과 배포 HTML·JS에서 동적으로 확인한 현재 asset은 HTTP 200이었다. hash가 바뀌는 asset 이름은 고정해 기록하지 않는다.
-- 2026-08-01 문서 작성 시 확인한 운영 검증 표본은 commit `695024a9d94ae6380703f92f6019bca37b3ee5a2`의 Actions run `30682927226`에서 build job `91323306139`, deploy job `91323399347`과 Pages deployment `5701414355`가 모두 success였다. 이는 역사적 검증 기록이며 현재의 최신 배포를 뜻하지 않는다.
+- 2026-08-01 운영 배포 검증에서 운영 URL, `manifest.webmanifest`, `sw.js`, `404.html`과 배포 HTML·JS·manifest·service worker에서 동적으로 확인한 현재 asset 20개는 모두 HTTP 200이었다. hash가 바뀌는 asset 이름은 고정해 기록하지 않는다.
+- 2026-08-01 최신 운영 검증은 commit `b2f83884b98204b75b8748098c4e9a2ab38fc314`의 Actions run `30700460508`에서 build job `91370463815`, deploy job `91370506054`와 Pages deployment `5704694520`가 모두 success였다.
 - 운영본 브라우저 시각 검증은 사용자 Chrome 프로필의 기존 학습 데이터가 표시되어 클릭·입력·storage 조회 없이 중단했다. 이를 운영본 시각 QA 통과로 기록하지 않으며, 헤더 기능은 release 전 격리 브라우저와 PC·Galaxy 수동 검증 결과를 근거로 한다.
-- storage transaction, 카드 삭제 transaction, 공통 브랜드 홈 이동, 쉐도잉 UX, 단일 카드 직접 추가, UX 안정화 1차, 카드 통합 검색, 기본 답변과 나만의 답변의 줄바꿈 정규화, 답변 익히기 카드 선택 조작, 첫 문장 답변 연습 상태 필터, 답변 익히기 상태 통합 필터, 공통 학습 화면 rail과 모바일 헤더 action 정렬, 짧은 가로 화면 쉐도잉·답변 익히기 밀도, 카드 라이브러리 답변 연습 상태 있음·없음 필터, 화면별 학습 제목·홈 문구 정리, 복수 TSV 선택과 최신 선택 미리보기 보호가 main과 운영 Pages에 포함되어 있다.
+- storage transaction, 카드 삭제 transaction, 공통 브랜드 홈 이동, 쉐도잉 UX, 단일 카드 직접 추가, UX 안정화 1차, 카드 통합 검색, 기본 답변과 나만의 답변의 줄바꿈 정규화, 답변 익히기 카드 선택 조작, 첫 문장 답변 연습 상태 필터, 답변 익히기 상태 통합 필터, 공통 학습 화면 rail과 모바일 헤더 action 정렬, 짧은 가로 화면 쉐도잉·답변 익히기 밀도, 카드 라이브러리 답변 연습 상태 있음·없음 필터, 화면별 학습 제목·홈 문구 정리, 복수 TSV 선택과 최신 선택 미리보기 보호, 앱 내부 history 뒤로가기, 답변 익히기 선택 보존·첫 문장 상태 입력·새 학습 공개 상태 초기화, 세로 모바일 쉐도잉 문장 폭 개선이 main과 운영 Pages에 포함되어 있다.
 
 ## 2. 구현된 사용자 흐름
 
@@ -33,8 +33,12 @@
 - 3초 카운트다운, 결과 요약, 어려운 카드 다시 도전
 - 첫 문장 상태 `success | again | hard | null`, UUID 시도 기록, 날짜별 통계와 실행 취소
 - 답변 익히기 전용 상태 `hard | learning | speakable`와 별도 시도·통계·실행 취소
+- 첫 문장 상태 버튼은 `성공 → 연습 필요 → 어려움`, 답변 익히기 상태 버튼은 `말할 수 있음 → 익히는 중 → 어려움`으로 배치해 두 화면 모두 긍정·완료 상태에서 어려운 상태 방향으로 읽는다. 두 컴포넌트는 `src/utils/studyStatusOptions.ts`의 공통 option을 사용한다.
+- 답변 익히기에서 `첫 문장`을 열면 첫 문장 바로 아래에서 현재 첫 문장 상태를 입력·변경할 수 있다. 이 입력은 기존 첫 문장 상태·시도 저장 경로를 재사용하되 진행 중인 첫 문장 모의고사의 답안은 바꾸지 않는다.
 - 답변 익히기 준비의 상태 필터에는 `답변 연습 상태 없음`, `답변 연습 상태 있음`과 기존 `어려움`, `익히는 중`, `말할 수 있음`이 있다. `hard | learning | speakable`만 유효한 상태로 판정하고 다른 필터와 AND로 결합한다. 필터 전환은 선택 ID와 상태 map을 바꾸지 않으며, 기존 N/M·전체 선택·선택 해제·실제 시작 카드 수 계약을 그대로 따른다. `opic-answer-learning-session` key와 session version 1도 유지한다.
 - 답변 익히기 준비 화면은 카드 목록 위에서 현재 필터 결과와 선택 ID의 교집합을 `학습할 카드 N장`으로 표시한다. `전체 선택`은 현재 결과를 기존 선택에 추가하고, `선택 해제`는 필터 밖 선택까지 모두 제거하며, 숨은 선택이 있으면 `필터 밖에서 선택한 M장은 유지되지만 이번 학습에는 포함되지 않아요.`를 표시한다. N이 0이면 시작 버튼을 비활성화한다.
+- 답변 익히기 준비에서 선택한 카드와 필터는 다른 앱 화면을 다녀와도 현재 탭 session에 보존된다. 새 학습을 시작할 때는 이번 `cardOrder`에 포함된 카드의 힌트·첫 문장·전체 답변·질문 공개 상태를 모두 닫고 첫 카드부터 시작하며, 이번 학습 범위 밖 카드의 기존 공개 상태는 유지한다.
+- 홈을 제외한 앱 내부 화면은 브라우저 History API의 `history.state.opicHistory`와 화면별 복귀 문맥을 사용한다. 휴대폰·브라우저 뒤로가기는 준비 화면, 학습 화면, 상세, 카드 라이브러리 등에서 앱을 즉시 종료하지 않고 해당 앱 내부 이전 화면으로 이동하며, 미저장 draft가 있으면 기존 이탈 확인을 유지한다.
 - 기본 답변과 카드 ID별 나만의 답변
 - 전체·문단·문장 쉐도잉, 1·3·5·10·무한 반복, 휴식 5단계, 속도 5단계
 - 질문 확인, 이전·다음 카드, 문장별 반복 완료 후 다음 문장 자동 진행, 재생 unit 가시성 스크롤, 백그라운드 복귀 시 paused 전환과 Wake Lock
@@ -48,6 +52,7 @@
 - header 전용 `:focus-visible`은 theme-aware `--header-focus-ring`으로 3px outline과 2px offset을 사용한다. 700px 이하 쉐도잉 제목은 14px/1.2, 진행도는 13px/800과 최소 42px로 compact AppHeader와 맞춘다.
 - 쉐도잉 단축키 안내는 문장 목록 아래의 스크롤 영역에 있고, 본문 bottom reserve는 controller 높이·safe-area와 최소 24px 간격을 고려한다. TTS·반복·휴식·녹음과 5버튼 controller 구조는 변경하지 않았다.
 - 짧은 가로 화면인 `orientation: landscape`, 높이 700px 이하에서는 너비 제한 없이 공통 study header와 쉐도잉 header를 고정하지 않고 문서와 함께 스크롤한다. 쉐도잉은 현재 문단에 전체 문장 진행도를 표시하고, 중복 이어듣기 문구는 접근성 상태를 유지한 채 시각적으로만 숨긴다. header action의 44px 계약은 유지하며 하단 5개 재생 조작과 속도 선택은 safe-area를 포함한 높이 40px 한 행으로 배치한다.
+- 세로 방향 700px 이하 쉐도잉 문장 카드는 우측의 문장별 재생 상태를 시각적으로 숨기고 번호·본문 2열로 넓게 표시한다. 현재 문장과 재생 동작의 접근성 이름, 하단 controller의 재생 상태, 가로·데스크톱 상태 표시는 유지한다.
 - 답변 익히기는 700px 이하와 짧은 가로 화면에서 문제 제목, 평가 제목·설명과 이전·다음 조작의 세로 간격을 줄인다. 평가 feedback과 disabled reason은 별도 범위로 유지하고, safe-area 여백과 기존 터치 최소 높이 및 데스크톱 레이아웃은 보존한다.
 
 ### 사용자 데이터와 관리
@@ -128,11 +133,13 @@
 | `opic-saved-passage-library-open` | 저장 지문 목록 펼침 상태 |
 | `opic-personal-memo-editor-session` | 개인 메모 작성·수정 초안 |
 | `opic-personal-memo-library-open` | 개인 메모 목록 펼침 상태 |
-| `opic-answer-learning-session` | 답변 익히기 카드 순서와 화면 상태 |
+| `opic-answer-learning-session` | 답변 익히기 선택·필터·카드 순서·현재 위치·답변 source·카드별 공개 상태 |
 | `opic-first-line-mock-session` | 모의고사 출제·답변·결과 |
 | `opic-post-restore-navigation` | 전체 복구 후 관리 영역 복귀 의도 |
 
 세션 값은 AppBackupV1, TSV와 클라우드 백업에 포함하지 않는다. 완전히 새 세션에서는 사라져도 되는 UI·진행 데이터다.
+
+브라우저 History API의 `history.state.opicHistory`는 localStorage·sessionStorage key가 아니다. 현재 앱 화면과 depth만 담고, 실제 복귀에 필요한 카드·필터·학습 상태는 위 sessionStorage 상태와 React 상태에서 복원한다.
 
 ## 6. AppBackupV1 정책
 
@@ -199,7 +206,8 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 - 카드 목록·상세·생성·수정: `src/components/CardList.tsx`, `CardLibrary.tsx`, `CardDetail.tsx`, `CardEditor.tsx`, `src/utils/cardCreation.ts`
 - 카드 수정·보관·삭제 규칙: `src/utils/cardEditor.ts`, `cardArchiveStorage.ts`, `cardDeletion.ts`
 - 첫 문장: `src/components/FirstLineSetup.tsx`, `FirstLineDrill.tsx`, `src/utils/firstLineMockSession.ts`
-- 답변 익히기와 공통 상태 selector: `src/components/AnswerLearningSetup.tsx`, `AnswerLearning.tsx`, `src/utils/answerLearningStorage.ts`, `answerLearningSession.ts`, `answerLearningSelectors.ts`
+- 답변 익히기와 공통 상태 selector: `src/components/AnswerLearningSetup.tsx`, `AnswerLearning.tsx`, `src/utils/answerLearningStorage.ts`, `answerLearningSession.ts`, `answerLearningSelectors.ts`, `studyStatusOptions.ts`
+- 앱 내부 history와 화면 복귀: `src/utils/appHistory.ts`, `src/App.tsx`
 - 공통 학습 화면 레이아웃: `src/components/AppHeader.tsx`, `src/components/ShadowingPlayer.tsx`, `src/styles.css`
 - 쉐도잉: `src/components/ShadowingPlayer.tsx`, `src/hooks/useShadowingPlayer.ts`, `src/utils/shadowingPlayer.ts`, `shadowingSettings.ts`
 - 답변 개행·문장·문단: `src/utils/answerText.ts`, `sentenceSegmenter.ts`, `passageParagraphs.ts`
@@ -218,7 +226,7 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 
 쉐도잉 session은 마지막 유효한 미완료 재생 1건만 보존한다. 카드 또는 저장 지문 식별자, 답변 문장 지문, 현재 반복 설정과 진행 범위가 모두 일치할 때만 `이어 듣기`로 복원한다. 완료됨, 손상됨, 다른 소스, 답변 변경, 범위 이탈 또는 설정 불일치는 처음부터 상태로 정규화한다. 홈·뒤로 이동은 떠나기 직전 현재 진행을 한 번 저장하며 이후 TTS 정리가 그 값을 덮어쓰지 않는다.
 
-`package.json`의 `test:all`은 다음 22개 스크립트를 순서대로 실행한다. 현재 main의 최신 검증 기준은 934/934다.
+`package.json`의 `test:all`은 다음 23개 스크립트를 순서대로 실행한다. 현재 main의 최신 검증 기준은 960/960이다.
 
 | 명령 | 개수 |
 | --- | ---: |
@@ -235,19 +243,20 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 | `test:personal-memos` | 47 |
 | `test:passages` | 41 |
 | `test:recorder` | 66 |
-| `test:shadowing` | 122 |
+| `test:shadowing` | 123 |
 | `test:ui-session` | 20 |
+| `test:navigation` | 13 |
 | `test:tsv` | 44 |
-| `test:answer-learning` | 68 |
+| `test:answer-learning` | 76 |
 | `test:first-line-mock` | 28 |
 | `test:card-management` | 32 |
 | `test:cloud-backup` | 82 |
 | `test:home-layout` | 19 |
-| `test:ui-system` | 37 |
+| `test:ui-system` | 41 |
 
 `test:cloud-rules` 22개는 실행 중인 Firestore·Storage Emulator가 필요한 별도 Security Rules 검증이다. `test:pwa`도 build 후 별도로 실행한다.
 
-commit `451b4844f22e6dd762b96e114668b44867e233f6`의 기준은 880/880이었다. 답변 익히기 상태 통합 필터 commit `022084a7c22b5e2aad7ea3f7adedc0b9dbe0fbc9`에서 892/892로, 공통 학습 화면 rail commit `03c5082fc0a3fabbe81ba6c6e0b6759650c94ff9`에서 899/899로, 모바일 헤더 action 정렬 commit `abbc66464d50785276e373320ccb3fbc059cf90d`에서 909/909로 증가했다. 짧은 가로 화면 쉐도잉 밀도 commit `650859cb8556f764b7a03515d17b75ee13218a3a`에서 912/912로, 답변 익히기 세로 밀도 commit `498fe3c648fd12e88bd70587402afb44f66aea13`에서 913/913으로 증가했다. 이후 카드 라이브러리 답변 상태 presence 필터 `911fab4`, 짧은 가로 쉐도잉 controller `402bb2d`, 화면별 헤더·홈 문구 `5eacf01`, 복수 TSV 선택 `3eef744`, 최신 TSV 선택 보호 `7e43a88`이 반영되어 현재 기준은 934/934다. 현재 main과 해당 SHA의 CI 기준 TypeScript, production build와 PWA/Pages 검증도 통과했다.
+commit `451b4844f22e6dd762b96e114668b44867e233f6`의 기준은 880/880이었다. 답변 익히기 상태 통합 필터 commit `022084a7c22b5e2aad7ea3f7adedc0b9dbe0fbc9`에서 892/892로, 공통 학습 화면 rail commit `03c5082fc0a3fabbe81ba6c6e0b6759650c94ff9`에서 899/899로, 모바일 헤더 action 정렬 commit `abbc66464d50785276e373320ccb3fbc059cf90d`에서 909/909로 증가했다. 짧은 가로 화면 쉐도잉 밀도 commit `650859cb8556f764b7a03515d17b75ee13218a3a`에서 912/912로, 답변 익히기 세로 밀도 commit `498fe3c648fd12e88bd70587402afb44f66aea13`에서 913/913으로 증가했다. 이후 카드 라이브러리 답변 상태 presence 필터 `911fab4`, 짧은 가로 쉐도잉 controller `402bb2d`, 화면별 헤더·홈 문구 `5eacf01`, 복수 TSV 선택 `3eef744`, 최신 TSV 선택 보호 `7e43a88`이 반영되어 934/934가 되었다. 앱 내부 history와 답변 익히기 선택 보존 `f59838c`, 답변 익히기 첫 문장 상태 `a5d84ac`, 새 학습 공개 상태 초기화 `713873a`, 세로 모바일 쉐도잉 문장 폭 `b2f8388`이 이어져 현재 기준은 960/960이다. 현재 main과 `b2f83884b98204b75b8748098c4e9a2ab38fc314`의 CI 기준 TypeScript, production build와 PWA/Pages 검증도 통과했다.
 
 ### dependency audit 기준
 
@@ -293,9 +302,14 @@ git diff --check
 8. 사용자가 결과 보고를 먼저 요청하면 승인 전 commit·push·배포하지 않는다.
 9. Firebase 값, 실제 사용자 식별자, 백업 본문과 진단 원문을 저장소 문서에 넣지 않는다.
 
-## 12. 의도적으로 미구현 또는 보류
+## 12. 사용자 결정으로 제외 또는 의도적으로 보류
 
-- 녹음 영구 저장, 다운로드, 히스토리와 서버 업로드
+### 사용자 결정으로 제외
+
+- 녹음 영구 저장, 다운로드, 히스토리와 서버 업로드는 구현하지 않는다. 현재 세션의 임시 녹음·재생 기능만 유지하며 이 항목을 후속 backlog로 되살리지 않는다.
+
+### 의도적으로 미구현 또는 보류
+
 - STT, Whisper, AI 발음·답변 평가
 - 클라우드 다운로드·복원·병합·삭제 UI·자동 동기화
 - 지문 폴더·태그·공유
@@ -304,7 +318,6 @@ git diff --check
 
 ### UX backlog
 
-- 완료된 최근 UX·관리 작업은 `OPIC-SHADOWING-LANDSCAPE-20260729-P01`, `OPIC-ANSWER-LEARNING-DENSITY-20260729-P01`, 카드 라이브러리 답변 상태 presence 필터, 짧은 가로 쉐도잉 40px 한 행 controller, 화면별 학습 제목·홈 문구 정리, 복수 TSV 선택과 최신 선택 미리보기 보호다.
 - 후속 기능의 현재 추천 순서는 공통 카드 편집·저장 transaction → 답변 익히기 녹음 위치와 TTS 정책 → 카드 라이브러리 필터 결과의 학습 화면 전달이다.
 - 카드 라이브러리의 현재 필터 결과를 첫 문장 연습과 답변 익히기로 직접 전달하는 흐름은 상태 통합 필터와 분리해 설계한다.
 - 녹음 UI를 답변 익히기 화면 아래로 이동하고 답변 익히기 맥락에 맞게 문구와 디자인을 조정한다.
