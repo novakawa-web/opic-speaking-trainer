@@ -759,6 +759,22 @@ test("only the current sentence can show a stable playback status", () => {
   assert.match(stylesSource, /\.shadowing-sentence-action \{[\s\S]*?min-height: 1\.4em/);
   assert.doesNotMatch(stylesSource, /\.shadowing-sentence\.is-current p \{\s*font-size:/);
 });
+test("portrait mobile gives sentence text the visual status column", () => {
+  const portraitMobile = stylesSource.slice(
+    stylesSource.indexOf("@media (orientation: portrait) and (max-width: 700px)"),
+    stylesSource.indexOf("@media (orientation: landscape) and (max-height: 700px)"),
+  );
+  assert.match(portraitMobile, /\.shadowing-sentence\s*\{\s*grid-template-columns:\s*28px minmax\(0, 1fr\)/);
+  assert.match(portraitMobile, /\.shadowing-sentence-action\s*\{\s*display:\s*none/);
+  assert.match(shadowingComponentSource, /aria-label=\{index === currentIndex && isPlaying[\s\S]*?status === "paused"/);
+  assert.match(shadowingComponentSource, /className="shadowing-sentence-action" aria-hidden="true"/);
+
+  const shortLandscape = stylesSource.slice(
+    stylesSource.indexOf("@media (orientation: landscape) and (max-height: 700px)"),
+    stylesSource.indexOf("@media (prefers-reduced-motion: reduce)"),
+  );
+  assert.doesNotMatch(shortLandscape, /\.shadowing-sentence-action\s*\{[\s\S]*?display:\s*none/);
+});
 test("sentence selection requests one visibility check", () => {
   const clickHandler = shadowingComponentSource.slice(
     shadowingComponentSource.indexOf("const startFromSentence"),

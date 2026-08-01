@@ -7205,6 +7205,16 @@ input:focus-visible + .toggle-switch {
   }
 }
 
+@media (orientation: portrait) and (max-width: 700px) {
+  .shadowing-sentence {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .shadowing-sentence-action {
+    display: none;
+  }
+}
+
 @media (orientation: landscape) and (max-height: 700px) {
   .shadowing-screen {
     --shadowing-controller-max-height: calc(40px + 8px + 1px);
