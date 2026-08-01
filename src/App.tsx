@@ -51,8 +51,8 @@ import {
   saveAnswerLearningStatuses,
 } from "./utils/answerLearningStorage";
 import {
-  clearAnswerLearningSession,
   readAnswerLearningSession,
+  returnToAnswerLearningSetup,
   saveAnswerLearningSession,
   shuffleAnswerLearningIds,
   type AnswerLearningStatusFilter,
@@ -75,7 +75,13 @@ import {
   saveNavigationSession,
   type NavigationSession,
 } from "./utils/navigationSession";
-import { runGuardedNavigation } from "./utils/navigationGuard";
+import {
+  getAppBackView,
+  pushAppHistoryView,
+  readAppHistoryEntry,
+  replaceAppHistoryView,
+  type AppView,
+} from "./utils/appHistory";
 import { consumePostRestoreNavigation } from "./utils/postRestoreNavigation";
 import {
   saveStudyCardScope,
@@ -179,17 +185,7 @@ import {
   executeCardCreationTransaction,
 } from "./utils/cardCreation";
 
-type View =
-  | "list"
-  | "library"
-  | "createCard"
-  | "detail"
-  | "drillSetup"
-  | "drill"
-  | "answerSetup"
-  | "answerLearning"
-  | "shadowing"
-  | "personalMemos";
+type View = AppView;
 type CardNavigationSource = "manual" | "auto";
 
 const CARD_MANAGEMENT_NOTICE_DURATION_MS = 3_500;
@@ -336,9 +332,12 @@ function App() {
   const [cardCreationDirty, setCardCreationDirty] = useState(false);
   const [cardCreationError, setCardCreationError] = useState<string | null>(null);
   const [duplicateCardId, setDuplicateCardId] = useState<string | null>(null);
-  const cardCreationExitApprovedRef = useRef(false);
   const cardManagementNoticeIdRef = useRef(0);
   const homeNavigationGuardRef = useRef<(() => boolean) | null>(null);
+  const historyInitializedRef = useRef(false);
+  const historyDepthRef = useRef(0);
+  const historyExitApprovedRef = useRef(false);
+  const pendingHistoryTargetRef = useRef<View | null>(null);
   const registerHomeNavigationGuard = useCallback((guard: () => boolean) => {
     homeNavigationGuardRef.current = guard;
     return () => {
@@ -469,6 +468,24 @@ function App() {
   useEffect(() => {
     saveAnswerLearningSession(answerSession);
   }, [answerSession]);
+
+  useEffect(() => {
+    if (historyInitializedRef.current) return;
+    historyInitializedRef.current = true;
+
+    const entry = readAppHistoryEntry(window.history.state);
+    if (entry?.view === view) {
+      historyDepthRef.current = entry.depth;
+      return;
+    }
+
+    replaceAppHistoryView(window.history, "list", 0);
+    historyDepthRef.current = 0;
+    if (view !== "list") {
+      pushAppHistoryView(window.history, view);
+      historyDepthRef.current = 1;
+    }
+  }, [view]);
 
   const selectedCard =
     cardCatalog.find((card) => card.id === selectedCardId) ?? null;
@@ -693,8 +710,7 @@ function App() {
 
     const recoveredIds = createDrillCardIds(orderedFilteredCards);
     if (recoveredIds.length === 0) {
-      setSelectedCardId(null);
-      setView("list");
+      navigateHome();
       return;
     }
 
@@ -716,8 +732,7 @@ function App() {
     }
 
     // Invalid or filtered-out restored cards always return to a safe home state.
-    setSelectedCardId(null);
-    setView("list");
+    navigateHome();
   }, [answerLearningCards.length, drillCards.length, selectedCardId, selectedFilteredIndex, view]);
 
   useEffect(() => {
@@ -752,74 +767,168 @@ function App() {
     view,
   ]);
 
-  useEffect(() => {
-    if (view !== "shadowing") return;
+  function getCurrentBackView() {
+    return getAppBackView(view, {
+      detailReturnView,
+      drillReturnView,
+      answerLearningReturnView,
+      shadowingReturnView,
+    });
+  }
 
-    const handlePopState = () => {
-      setShadowingSource(null);
+  function canLeaveCurrentView() {
+    if (
+      view === "createCard" &&
+      cardCreationDirty &&
+      !window.confirm("저장하지 않은 새 카드 내용이 있습니다. 화면을 나갈까요?")
+    ) {
+      return false;
+    }
+    if (view === "personalMemos") {
+      const draft = readPersonalMemoEditorSession();
       if (
-        shadowingReturnView === "answerLearning" &&
-        answerSession.cardOrder.length > 0
+        draft?.dirty &&
+        !window.confirm("저장하지 않은 개인 학습 메모가 있습니다. 변경 내용을 버릴까요?")
       ) {
-        const index = Math.min(answerSession.currentIndex, answerSession.cardOrder.length - 1);
-        setSelectedCardId(answerSession.cardOrder[index] ?? null);
-        setView("answerLearning");
-      } else if (
-        shadowingReturnView === "detail" &&
-        selectedCardId &&
-        cardCatalog.some((card) => card.id === selectedCardId)
-      ) {
-        setView("detail");
-      } else {
-        setSelectedCardId(null);
-        setView("list");
+        return false;
       }
-      window.scrollTo({ top: 0, behavior: "auto" });
-    };
+    }
+    return !homeNavigationGuardRef.current || homeNavigationGuardRef.current();
+  }
 
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [answerSession.cardOrder, answerSession.currentIndex, cardCatalog, selectedCardId, shadowingReturnView, view]);
+  function performHistoryTransition(target: View) {
+    let resolvedTarget = target;
+    if (resolvedTarget === "detail" && !selectedCard) resolvedTarget = "list";
+    if (resolvedTarget === "answerLearning") {
+      const index = Math.min(answerSession.currentIndex, answerSession.cardOrder.length - 1);
+      const cardId = answerSession.cardOrder[index];
+      if (cardId) setSelectedCardId(cardId);
+      else resolvedTarget = "answerSetup";
+    }
+    if (resolvedTarget === "shadowing" && !shadowingSource) resolvedTarget = "list";
+
+    if (view === "createCard" && resolvedTarget !== "createCard") {
+      setCardCreationDirty(false);
+      setCardCreationError(null);
+      setDuplicateCardId(null);
+    }
+    if (view === "personalMemos" && resolvedTarget !== "personalMemos") {
+      savePersonalMemoLibrarySession(false);
+      clearPersonalMemoEditorSession();
+    }
+    if (view === "detail" && resolvedTarget !== "detail") {
+      clearCardDetailUiSession();
+      setLastUndo(null);
+      setFeedbackMessage(null);
+      setMemoFocus(null);
+    }
+    if (view === "drill" && resolvedTarget !== "drill") {
+      clearFirstLineMockSession();
+      setMockSession(null);
+      setLastUndo(null);
+      setFeedbackMessage(null);
+    }
+    if (view === "answerLearning" && resolvedTarget !== "answerLearning") {
+      setAnswerLearningUndo(null);
+      setAnswerLearningFeedback(null);
+      updateAnswerSession(returnToAnswerLearningSetup(answerSession));
+    }
+    if (view === "shadowing" && resolvedTarget !== "shadowing") {
+      setShadowingSource(null);
+    }
+
+    if (
+      resolvedTarget === "list" ||
+      resolvedTarget === "library" ||
+      resolvedTarget === "drillSetup" ||
+      resolvedTarget === "answerSetup" ||
+      resolvedTarget === "personalMemos"
+    ) {
+      setSelectedCardId(null);
+    }
+    if (
+      resolvedTarget === "answerSetup" &&
+      view !== "answerLearning" &&
+      answerSession.screen !== "setup"
+    ) {
+      updateAnswerSession(returnToAnswerLearningSetup(answerSession));
+    }
+    if (resolvedTarget === "personalMemos") {
+      savePersonalMemoLibrarySession(true);
+    }
+
+    setView(resolvedTarget);
+    window.scrollTo({ top: 0, behavior: "auto" });
+    return resolvedTarget;
+  }
+
+  function pushHistoryView(nextView: View) {
+    pushAppHistoryView(window.history, nextView);
+    historyDepthRef.current = readAppHistoryEntry(window.history.state)?.depth ?? 0;
+  }
+
+  function replaceHistoryView(nextView: View) {
+    replaceAppHistoryView(window.history, nextView);
+    historyDepthRef.current = readAppHistoryEntry(window.history.state)?.depth ?? 0;
+  }
+
+  function requestAppBack(exitApproved = false) {
+    const target = getCurrentBackView();
+    if (!target) return;
+    if (!exitApproved && !canLeaveCurrentView()) return;
+
+    const entry = readAppHistoryEntry(window.history.state);
+    if (entry && entry.view === view && entry.depth > 0) {
+      historyExitApprovedRef.current = true;
+      window.history.back();
+      return;
+    }
+
+    const resolvedTarget = performHistoryTransition(target);
+    replaceAppHistoryView(window.history, resolvedTarget, Math.max((entry?.depth ?? 1) - 1, 0));
+    historyDepthRef.current = readAppHistoryEntry(window.history.state)?.depth ?? 0;
+  }
 
   useEffect(() => {
-    if (view !== "library" && view !== "detail" && view !== "createCard") return;
-
     const handlePopState = () => {
-      if (view === "createCard") {
-        if (
-          !cardCreationExitApprovedRef.current &&
-          cardCreationDirty &&
-          !window.confirm("저장하지 않은 새 카드 내용이 있습니다. 화면을 나갈까요?")
-        ) {
-          window.history.pushState(
-            { ...window.history.state, opicView: "createCard" },
-            "",
-          );
-          return;
-        }
-        cardCreationExitApprovedRef.current = false;
-        setCardCreationDirty(false);
-        setCardCreationError(null);
-        setDuplicateCardId(null);
-        setView("library");
-        window.scrollTo({ top: 0, behavior: "auto" });
+      const nextEntry = readAppHistoryEntry(window.history.state);
+      const nextDepth = nextEntry?.depth ?? 0;
+
+      if (nextDepth > historyDepthRef.current) {
+        replaceAppHistoryView(window.history, view, nextDepth);
+        historyDepthRef.current = nextDepth;
         return;
       }
-      if (view === "detail") {
-        clearCardDetailUiSession();
-        setLastUndo(null);
-        setFeedbackMessage(null);
-        setSelectedCardId(null);
-        setMemoFocus(null);
-        setView(detailReturnView === "library" ? "library" : "list");
-      } else {
-        setView("list");
+
+      const exitApproved = historyExitApprovedRef.current;
+      historyExitApprovedRef.current = false;
+      const target = pendingHistoryTargetRef.current ?? getCurrentBackView() ?? "list";
+      pendingHistoryTargetRef.current = null;
+
+      if (!exitApproved && !canLeaveCurrentView()) {
+        pushAppHistoryView(window.history, view);
+        historyDepthRef.current = readAppHistoryEntry(window.history.state)?.depth ?? 0;
+        return;
       }
+
+      historyDepthRef.current = nextDepth;
+      const resolvedTarget = performHistoryTransition(target);
+      replaceAppHistoryView(window.history, resolvedTarget, nextDepth);
     };
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [cardCreationDirty, detailReturnView, view]);
+  }, [
+    answerLearningReturnView,
+    answerSession,
+    cardCreationDirty,
+    detailReturnView,
+    drillReturnView,
+    selectedCard,
+    shadowingReturnView,
+    shadowingSource,
+    view,
+  ]);
 
   function openCard(card: OpicCard, source: "home" | "library" = "library") {
     clearCardDetailUiSession();
@@ -830,14 +939,14 @@ function App() {
     setShadowingSource(null);
     setDetailReturnView(source);
     setSelectedCardId(card.id);
-    window.history.pushState({ ...window.history.state, opicView: "detail" }, "");
+    pushHistoryView("detail");
     setView("detail");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function openCardLibrary() {
     setSelectedCardId(null);
-    window.history.pushState({ ...window.history.state, opicView: "library" }, "");
+    pushHistoryView("library");
     setView("library");
     window.scrollTo({ top: 0, behavior: "auto" });
   }
@@ -846,35 +955,17 @@ function App() {
     setCardCreationDirty(false);
     setCardCreationError(null);
     setDuplicateCardId(null);
-    window.history.pushState(
-      { ...window.history.state, opicView: "createCard" },
-      "",
-    );
+    pushHistoryView("createCard");
     setView("createCard");
     window.scrollTo({ top: 0, behavior: "auto" });
   }
 
   function closeCardCreation() {
-    setCardCreationDirty(false);
-    setCardCreationError(null);
-    setDuplicateCardId(null);
-    if (window.history.state?.opicView === "createCard") {
-      cardCreationExitApprovedRef.current = true;
-      window.history.back();
-      return;
-    }
-    setView("library");
-    window.scrollTo({ top: 0, behavior: "auto" });
+    requestAppBack(true);
   }
 
   function requestCloseCardCreation() {
-    if (
-      cardCreationDirty &&
-      !window.confirm("저장하지 않은 새 카드 내용이 있습니다. 화면을 나갈까요?")
-    ) {
-      return;
-    }
-    closeCardCreation();
+    requestAppBack();
   }
 
   function openDuplicateCard(cardId: string) {
@@ -892,42 +983,25 @@ function App() {
     clearCardDetailUiSession();
     setDetailReturnView("library");
     setSelectedCardId(duplicate.id);
-    window.history.replaceState(
-      { ...window.history.state, opicView: "detail" },
-      "",
-    );
+    replaceHistoryView("detail");
     setView("detail");
     window.scrollTo({ top: 0, behavior: "auto" });
   }
 
   function closeCardLibrary() {
-    if (window.history.state?.opicView === "library") {
-      window.history.back();
-      return;
-    }
-    setView("list");
-    window.scrollTo({ top: 0, behavior: "auto" });
+    requestAppBack(true);
   }
 
   function closeCardDetail() {
-    if (window.history.state?.opicView === "detail") {
-      window.history.back();
-      return;
-    }
-    clearCardDetailUiSession();
-    setLastUndo(null);
-    setFeedbackMessage(null);
-    setSelectedCardId(null);
-    setMemoFocus(null);
-    setView(detailReturnView === "library" ? "library" : "list");
+    requestAppBack(true);
   }
 
   function requestCloseCardDetail() {
-    runGuardedNavigation(homeNavigationGuardRef.current, closeCardDetail);
+    requestAppBack();
   }
 
   function startCardShadowing(source: ShadowingSource) {
-    window.history.pushState({ ...window.history.state, opicShadowing: true }, "");
+    pushHistoryView("shadowing");
     setShadowingSource(source);
     setShadowingReturnView("detail");
     setView("shadowing");
@@ -936,7 +1010,7 @@ function App() {
 
   function startDirectShadowing(source: ShadowingSource) {
     clearShadowingPlayerSession();
-    window.history.pushState({ ...window.history.state, opicShadowing: true }, "");
+    pushHistoryView("shadowing");
     setShadowingSource(source);
     setShadowingReturnView("direct");
     setSelectedCardId(null);
@@ -1000,6 +1074,7 @@ function App() {
     setDrillCardIds(nextDrillCardIds);
     setSelectedCardId(firstCardId);
     setDrillReturnView("list");
+    replaceHistoryView("drill");
     setView("drill");
     window.scrollTo({ top: 0, behavior: "auto" });
   }
@@ -1008,6 +1083,7 @@ function App() {
     // The answer-learning status filter is not shown in this setup screen.
     setAnswerLearningStatusFilter("all");
     setSelectedCardId(null);
+    pushHistoryView("drillSetup");
     setView("drillSetup");
     window.scrollTo({ top: 0, behavior: "auto" });
   }
@@ -1030,6 +1106,7 @@ function App() {
     setDrillReturnView("list");
     setLastUndo(null);
     setFeedbackMessage(null);
+    replaceHistoryView("drill");
     setView("drill");
     window.scrollTo({ top: 0, behavior: "auto" });
   }
@@ -1056,9 +1133,10 @@ function App() {
   function openAnswerLearningSetup() {
     setAnswerLearningUndo(null);
     setAnswerLearningFeedback(null);
-    updateAnswerSession({ ...answerSession, screen: "setup" });
+    updateAnswerSession(returnToAnswerLearningSetup(answerSession));
     setSelectedCardId(null);
     setAnswerLearningReturnView("setup");
+    pushHistoryView("answerSetup");
     setView("answerSetup");
     window.scrollTo({ top: 0, behavior: "auto" });
   }
@@ -1098,6 +1176,7 @@ function App() {
     setAnswerLearningUndo(null);
     setAnswerLearningFeedback(null);
     setSelectedCardId(cardOrder[0]);
+    pushHistoryView("answerLearning");
     setView("answerLearning");
     window.scrollTo({ top: 0, behavior: "auto" });
   }
@@ -1106,7 +1185,6 @@ function App() {
     const nextSession: AnswerLearningSession = {
       ...answerSession,
       screen: "learning",
-      selectedCardIds: [card.id],
       cardOrder: [card.id],
       currentIndex: 0,
       answerSources: {
@@ -1123,38 +1201,17 @@ function App() {
     setAnswerLearningFeedback(null);
     setSelectedCardId(card.id);
     setAnswerLearningReturnView("detail");
+    pushHistoryView("answerLearning");
     setView("answerLearning");
     window.scrollTo({ top: 0, behavior: "auto" });
   }
 
   function leaveAnswerLearning() {
-    setAnswerLearningUndo(null);
-    setAnswerLearningFeedback(null);
-    if (answerLearningReturnView === "detail" && selectedCard) {
-      updateAnswerSession({ ...answerSession, screen: "setup" });
-      setView("detail");
-    } else {
-      updateAnswerSession({ ...answerSession, screen: "setup" });
-      setSelectedCardId(null);
-      setView("answerSetup");
-    }
-    window.scrollTo({ top: 0, behavior: "auto" });
+    requestAppBack(true);
   }
 
   function closeAnswerLearning() {
-    clearAnswerLearningSession();
-    setAnswerSession({
-      ...answerSession,
-      screen: "setup",
-      selectedCardIds: [],
-      cardOrder: [],
-      currentIndex: 0,
-      answerSources: {},
-      reveals: {},
-    });
-    setSelectedCardId(null);
-    setView("list");
-    window.scrollTo({ top: 0, behavior: "auto" });
+    requestAppBack(true);
   }
 
   function navigateAnswerLearning(offset: -1 | 1) {
@@ -1240,7 +1297,7 @@ function App() {
   }
 
   function startAnswerLearningShadowing(source: ShadowingSource) {
-    window.history.pushState({ ...window.history.state, opicShadowing: true }, "");
+    pushHistoryView("shadowing");
     setShadowingSource(source);
     setShadowingReturnView("answerLearning");
     setView("shadowing");
@@ -1434,26 +1491,17 @@ function App() {
       savePersonalMemoEditorSession(createEmptyPersonalMemoEditorSession());
     }
     setSelectedCardId(null);
+    pushHistoryView("personalMemos");
     setView("personalMemos");
     window.scrollTo({ top: 0, behavior: "auto" });
   }
 
   function closePersonalMemos() {
-    savePersonalMemoLibrarySession(false);
-    clearPersonalMemoEditorSession();
-    setView("list");
-    window.scrollTo({ top: 0, behavior: "auto" });
+    requestAppBack(true);
   }
 
   function requestClosePersonalMemos() {
-    const draft = readPersonalMemoEditorSession();
-    if (
-      draft?.dirty &&
-      !window.confirm("저장하지 않은 개인 학습 메모가 있습니다. 변경 내용을 버릴까요?")
-    ) {
-      return;
-    }
-    closePersonalMemos();
+    requestAppBack();
   }
 
   function navigateHome() {
@@ -1466,33 +1514,17 @@ function App() {
       });
       return;
     }
-    if (view === "personalMemos") {
-      requestClosePersonalMemos();
+    if (!canLeaveCurrentView()) return;
+    const entry = readAppHistoryEntry(window.history.state);
+    if (entry && entry.depth > 0) {
+      historyExitApprovedRef.current = true;
+      pendingHistoryTargetRef.current = "list";
+      window.history.go(-entry.depth);
       return;
     }
-    if (view === "createCard") {
-      if (
-        cardCreationDirty &&
-        !window.confirm("저장하지 않은 새 카드 내용이 있습니다. 화면을 나갈까요?")
-      ) {
-        return;
-      }
-      setCardCreationDirty(false);
-      setCardCreationError(null);
-      setDuplicateCardId(null);
-    }
-    if (homeNavigationGuardRef.current && !homeNavigationGuardRef.current()) return;
-    clearCardDetailUiSession();
-    setLastUndo(null);
-    setFeedbackMessage(null);
-    setSelectedCardId(null);
-    setMemoFocus(null);
-    setShadowingSource(null);
-    const { opicShadowing: _shadowing, opicView: _view, ...historyState } =
-      window.history.state ?? {};
-    window.history.replaceState({ ...historyState, opicView: "list" }, "");
-    setView("list");
-    window.scrollTo({ top: 0, behavior: "auto" });
+    const resolvedTarget = performHistoryTransition("list");
+    replaceAppHistoryView(window.history, resolvedTarget, 0);
+    historyDepthRef.current = 0;
   }
 
   function addPersonalMemo(title: string, content: string) {
@@ -1592,7 +1624,7 @@ function App() {
       (view === "answerLearning" && nextAnswerOrder.length === 0)
     ) {
       setSelectedCardId(null);
-      setView("list");
+      navigateHome();
     }
   }
 
@@ -1627,10 +1659,7 @@ function App() {
       setCardCreationDirty(false);
       setDetailReturnView("library");
       setSelectedCardId(plan.card.id);
-      window.history.replaceState(
-        { ...window.history.state, opicView: "detail" },
-        "",
-      );
+      replaceHistoryView("detail");
       setView("detail");
       showCardManagementNotice("새 카드가 추가되었습니다.", "detail");
       window.scrollTo({ top: 0, behavior: "auto" });
@@ -1684,8 +1713,7 @@ function App() {
     if (archived) {
       clearCardDetailUiSession();
       setSelectedCardId(null);
-      setView("library");
-      window.scrollTo({ top: 0, behavior: "auto" });
+      requestAppBack(true);
     }
   }
 
@@ -1739,11 +1767,12 @@ function App() {
     setCardScope(state.navigationSession.filters.cardScope);
     setStudyOrder(state.navigationSession.filters.studyOrder);
     setShadowingSource(null);
-    setView(
+    const restoredView: View =
       state.navigationSession.currentView === "home"
         ? "list"
-        : state.navigationSession.currentView,
-    );
+        : state.navigationSession.currentView;
+    replaceHistoryView(restoredView);
+    setView(restoredView);
   }
 
   function handleCardDeletionFailure(error: unknown, operation: "delete" | "undo") {
@@ -1838,22 +1867,7 @@ function App() {
         onPreviousCard={() => navigateShadowingCard(-1)}
         onNextCard={() => navigateShadowingCard(1)}
         onSourceTypeChange={changeShadowingSource}
-        onBack={() => {
-          if (window.history.state?.opicShadowing) {
-            window.history.back();
-            return;
-          }
-          setShadowingSource(null);
-          if (shadowingReturnView === "answerLearning" && selectedCard) {
-            setView("answerLearning");
-          } else if (shadowingReturnView === "detail" && selectedCard) {
-            setView("detail");
-          } else {
-            setSelectedCardId(null);
-            setView("list");
-          }
-          window.scrollTo({ top: 0, behavior: "auto" });
-        }}
+        onBack={() => requestAppBack(true)}
       />
     );
   }
@@ -1861,7 +1875,7 @@ function App() {
   if (view === "drillSetup") {
     return (
       <div className="app-shell">
-        <AppHeader theme={theme} studyTitle="첫 문장 연습 준비" onBack={() => setView("list")} onHome={navigateHome} onToggleTheme={toggleTheme} />
+        <AppHeader theme={theme} studyTitle="첫 문장 연습 준비" onBack={() => requestAppBack(true)} onHome={navigateHome} onToggleTheme={toggleTheme} />
         <FirstLineSetup
           cardCount={orderedFirstLineCards.length}
           decks={decks}
@@ -1888,7 +1902,7 @@ function App() {
           onQuestionCountChange={setMockQuestionCount}
           onReset={resetVisibleStudyFilters}
           onStart={startFirstLineFromSetup}
-          onBack={() => setView("list")}
+          onBack={() => requestAppBack(true)}
           archiveFilter={archiveFilter}
           onArchiveFilterChange={setArchiveFilter}
         />
@@ -2114,13 +2128,13 @@ function App() {
   if (view === "drill" && mockSession?.screen === "complete") {
     return (
       <div className="app-shell">
-        <AppHeader theme={theme} studyTitle="첫 문장 모의고사 결과" onBack={() => { clearFirstLineMockSession(); setMockSession(null); setSelectedCardId(null); setView("list"); }} onHome={navigateHome} onToggleTheme={toggleTheme} />
+        <AppHeader theme={theme} studyTitle="첫 문장 모의고사 결과" onBack={() => requestAppBack(true)} onHome={navigateHome} onToggleTheme={toggleTheme} />
         <FirstLineMockResult
           session={mockSession}
           cards={cardCatalog}
           onRetryHard={() => restartMock(mockSession.cardOrder.filter((id) => mockSession.answers[id] === "hard"), "all")}
           onRestart={() => restartMock(mockSession.sourceCardIds, mockSession.questionCount)}
-          onHome={() => { clearFirstLineMockSession(); setMockSession(null); setDrillCardIds([]); setSelectedCardId(null); setView("list"); window.scrollTo({ top: 0, behavior: "auto" }); }}
+          onHome={navigateHome}
         />
       </div>
     );
@@ -2130,18 +2144,7 @@ function App() {
     const undoCard = lastUndo
       ? cardCatalog.find((card) => card.id === lastUndo.cardId) ?? null
       : null;
-    const leaveDrill = () => {
-      clearFirstLineMockSession();
-      setMockSession(null);
-      setLastUndo(null);
-      setFeedbackMessage(null);
-      if (drillReturnView === "list") {
-        setSelectedCardId(null);
-        setView("list");
-      } else {
-        setView("detail");
-      }
-    };
+    const leaveDrill = () => requestAppBack(true);
 
     return (
       <div className="app-shell">
@@ -2221,6 +2224,7 @@ function App() {
             setMemoFocus(null);
             setDrillCardIds(nextDrillCardIds);
             setDrillReturnView("detail");
+            pushHistoryView("drill");
             setView("drill");
           }}
           onStartAnswerLearning={() => startSingleCardAnswerLearning(selectedCard)}

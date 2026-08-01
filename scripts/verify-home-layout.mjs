@@ -131,7 +131,8 @@ test("짧은 가로 공통 학습 header는 너비와 무관하게 compact하고
 
 test("compact 카드 상세는 header 뒤로가기만 표시하고 본문 중복 조작을 숨긴다", () => {
   assert.match(app, /studyTitle="카드 상세"[\s\S]*?onBack=\{requestCloseCardDetail\}/);
-  assert.match(app, /function requestCloseCardDetail\(\)[\s\S]*?runGuardedNavigation\(homeNavigationGuardRef\.current, closeCardDetail\)/);
+  assert.match(app, /function requestCloseCardDetail\(\)\s*{\s*requestAppBack\(\);\s*}/);
+  assert.match(app, /function canLeaveCurrentView\(\)[\s\S]*?homeNavigationGuardRef\.current\(\)/);
   const mobileDetailBlocks = extractCssBlocks(
     css,
     "@media (max-width: 700px)",

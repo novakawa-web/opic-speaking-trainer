@@ -15,6 +15,7 @@ import {
 import {
   createEmptyAnswerLearningSession,
   normalizeAnswerLearningSession,
+  returnToAnswerLearningSetup,
   shuffleAnswerLearningIds,
 } from "../src/utils/answerLearningSession.ts";
 import {
@@ -190,6 +191,32 @@ test("학습 카드 순서 유지", () => {
   const session = normalizeAnswerLearningSession({ ...createEmptyAnswerLearningSession(), screen: "learning", selectedCardIds: [cardA.id, cardB.id], cardOrder: [cardB.id, cardA.id], currentIndex: 1 }, cards.map((card) => card.id));
   assert.deepEqual(session.cardOrder, [cardB.id, cardA.id]);
   assert.equal(session.currentIndex, 1);
+});
+test("카드 상세 단일 학습은 준비 화면 선택과 독립된 순서를 복원", () => {
+  const session = normalizeAnswerLearningSession({
+    ...createEmptyAnswerLearningSession(),
+    screen: "learning",
+    selectedCardIds: [cardA.id],
+    cardOrder: [cardB.id],
+  }, cards.map((card) => card.id));
+  assert.deepEqual(session.selectedCardIds, [cardA.id]);
+  assert.deepEqual(session.cardOrder, [cardB.id]);
+  assert.equal(session.screen, "learning");
+});
+test("답변 익히기 종료는 준비 화면 선택과 학습 순서를 보존", () => {
+  const learning = normalizeAnswerLearningSession({
+    ...createEmptyAnswerLearningSession(),
+    screen: "learning",
+    selectedCardIds: [cardA.id, cardB.id],
+    cardOrder: [cardB.id],
+    currentIndex: 0,
+    filters: { ...createEmptyAnswerLearningSession().filters, status: "with-status" },
+  }, cards.map((card) => card.id));
+  const setup = returnToAnswerLearningSetup(learning);
+  assert.equal(setup.screen, "setup");
+  assert.deepEqual(setup.selectedCardIds, [cardA.id, cardB.id]);
+  assert.deepEqual(setup.cardOrder, [cardB.id]);
+  assert.equal(setup.filters.status, "with-status");
 });
 test("현재 인덱스 경계", () => {
   const session = normalizeAnswerLearningSession({ ...createEmptyAnswerLearningSession(), screen: "learning", selectedCardIds: [cardA.id], cardOrder: [cardA.id], currentIndex: 99 }, cards.map((card) => card.id));

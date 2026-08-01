@@ -87,7 +87,7 @@ export function normalizeAnswerLearningSession(
   if (!isRecord(value) || value.version !== 1) return fallback;
   const validIds = new Set(availableCardIds);
   const selectedCardIds = safeIds(value.selectedCardIds, validIds);
-  const cardOrder = safeIds(value.cardOrder, validIds).filter((id) => selectedCardIds.includes(id));
+  const cardOrder = safeIds(value.cardOrder, validIds);
   const filtersValue = isRecord(value.filters) ? value.filters : {};
   const filters: AnswerLearningFilters = {
     deck: typeof filtersValue.deck === "string" ? filtersValue.deck : "all",
@@ -155,6 +155,15 @@ export function saveAnswerLearningSession(session: AnswerLearningSession) {
   } catch {
     // The in-memory session can continue when storage is unavailable.
   }
+}
+
+export function returnToAnswerLearningSetup(
+  session: AnswerLearningSession,
+): AnswerLearningSession {
+  return {
+    ...session,
+    screen: "setup",
+  };
 }
 
 export function clearAnswerLearningSession() {
