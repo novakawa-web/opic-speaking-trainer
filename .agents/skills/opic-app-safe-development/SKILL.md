@@ -1,14 +1,15 @@
 ---
 name: opic-app-safe-development
-description: Safely investigate, implement, and validate scoped feature additions, bug fixes, UI/UX polish, storage changes, and tests in the OPIc Speaking Trainer repository. Use for OPIcApp development tickets that should run on a feature branch and stop before main merge, main push, GitHub Pages deployment, live Firebase operations, or Galaxy device interaction.
+description: Safely investigate, implement, and validate OPIc Speaking Trainer work, including plan-only investigations, CODEX_CONTEXT.md or repository-skill maintenance, scoped feature additions, bug fixes, UI/UX polish, storage changes, and tests. Use for OPIcApp work that should run on a codex-prefixed feature branch and stop before main merge, main push, GitHub Pages deployment, live Firebase operations, or Galaxy device interaction.
 ---
 
 # OPIc App Safe Development
 
 ## 역할
 
-OPIc Speaking Trainer의 기능 추가, 버그 수정, 작은 UI·UX 개선,
-storage 관련 변경과 테스트 추가를 일관된 안전 절차로 수행한다.
+OPIc Speaking Trainer의 조사, 문서·저장소 Skill 정비, 기능 추가,
+버그 수정, 작은 UI·UX 개선, storage 관련 변경과 테스트 추가를
+일관된 안전 절차로 수행한다.
 
 개발과 검증까지만 담당한다.
 
@@ -22,8 +23,8 @@ storage 관련 변경과 테스트 추가를 일관된 안전 절차로 수행�
 - 영어 지문이나 학습 콘텐츠 제작
 - 다른 저장소의 일반 개발 작업
 
-사용자가 해당 작업을 명시적으로 별도 요청하면 이 Skill의 범위를
-종료하고 독립적인 승인·검증 단계로 분리한다.
+사용자가 main ff-only 병합과 Pages 배포를 명시적으로 별도 요청하면
+이 Skill의 범위를 종료하고 `$opic-app-safe-release`로 인계한다.
 
 ## 필요한 사용자 입력
 
@@ -69,9 +70,9 @@ commit·push 허용 여부가 명확하지 않으면 기본값을 금지로 처�
 
 - main에서 직접 수정하지 않는다.
 - 최신 main에서 목적이 분명한 브랜치를 만든다.
-- 기능은 `feature/<purpose>`를 사용한다.
-- 오류 수정은 `fix/<purpose>`를 사용한다.
-- 문서·도구·정비는 `chore/<purpose>`를 사용한다.
+- 기능은 `codex/feature-<purpose>`를 사용한다.
+- 오류 수정은 `codex/fix-<purpose>`를 사용한다.
+- 문서·도구·정비는 `codex/chore-<purpose>`를 사용한다.
 - 기존 feature 브랜치에서 계속하라는 요청이면 해당 브랜치와 원격
   SHA를 확인한 뒤 작업한다.
 - 진행 중인 다른 feature가 있으면 사용자 의도를 확인한다.
@@ -113,6 +114,22 @@ UX 수정에 섞지 않는다.
 
 기존 공개 계약을 변경하지 않고는 요구사항을 구현할 수 없으면 먼저
 중단하고 필요한 변경과 위험을 설명한다.
+
+## 프로젝트 문서와 저장소 Skill 정비
+
+`CODEX_CONTEXT.md`를 동기화할 때는 live Git, 실제 source,
+`package.json`, 현재 audit와 GitHub Pages 증거를 문서보다 우선한다.
+
+- main·배포 SHA와 Actions·job·deployment ID를 직접 확인한다.
+- 테스트 표는 현재 `package.json`의 스크립트와 실제 통과 개수를 합산한다.
+- Vite asset 이름은 운영 HTML과 main JS에서 동적으로 찾고 고정하지 않는다.
+- 완료된 작업을 backlog에서 제거하고 사용자가 거절한 기능은 되살리지 않는다.
+- 문서 전용 변경은 브라우저 검증을 생략한 이유를 보고한다.
+
+저장소 Skill을 만들거나 고칠 때는 `$skill-creator`를 함께 사용한다.
+기존 Skill이 500줄에 가까워지거나 독립된 승인·위험 경계를 두 개 이상
+다룰 때만 reference 또는 별도 Skill로 분리한다. `quick_validate.py`와
+UTF-8 YAML 파싱으로 `SKILL.md`와 `agents/openai.yaml`을 검증한다.
 
 ## 코드 조사 원칙
 
@@ -289,7 +306,9 @@ Galaxy 검증이 필요한 대표 사례는 다음과 같다.
 - force push
 - feature 브랜치 삭제
 
-main 병합·배포 요청은 이 Skill의 범위 밖인 독립 작업으로 처리한다.
+push 후에는 멈춘다. feature commit·push 승인을 main release 승인으로
+간주하지 않는다. main 병합·배포 요청은 `$opic-app-safe-release`의
+독립 작업으로 처리한다.
 
 ## 완료 보고 형식
 

@@ -1,0 +1,7 @@
+interface:
+  display_name: "OPIc App Safe Release"
+  short_description: "OPIcApp main 병합과 Pages 배포를 안전하게 수행"
+  default_prompt: "Use $opic-app-safe-release to fast-forward the validated OPIcApp feature branch to main and verify the GitHub Pages deployment."
+
+policy:
+  allow_implicit_invocation: true
