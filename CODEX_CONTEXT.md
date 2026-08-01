@@ -2,7 +2,7 @@
 
 > 마지막 내용 동기화: 2026-08-01 (Asia/Seoul)
 >
-> 문서 내용의 앱 기능 기준 SHA: `b2f83884b98204b75b8748098c4e9a2ab38fc314`
+> 문서 내용의 앱 기능 기준 SHA: `47bf2d7685897bcd01e6b1be158ac2cbb9b672ed`
 >
 > 이 SHA는 마지막 앱 runtime·동작 변경을 가리킨다. 문서·repository Skill 전용 commit은 이 값을 올리지 않으며, 현재 repository HEAD와 최신 Pages 상태는 live Git·GitHub에서 확인한다.
 
@@ -16,10 +16,10 @@
 - 운영 앱: <https://novakawa-web.github.io/opic-speaking-trainer/>
 - production Vite base는 `/opic-speaking-trainer/`, 개발 base는 `/`다.
 - 기본 카드 소스는 12장이지만 활성 카드 데이터셋은 TSV 사용에 따라 달라진다. 운영 카드 수를 코드 상수처럼 문서화하지 않는다.
-- 2026-08-01 운영 배포 검증에서 운영 URL, `manifest.webmanifest`, `sw.js`, `404.html`과 배포 HTML·JS·manifest·service worker에서 동적으로 확인한 현재 asset 20개는 모두 HTTP 200이었다. hash가 바뀌는 asset 이름은 고정해 기록하지 않는다.
-- 2026-08-01 최신 운영 검증은 commit `b2f83884b98204b75b8748098c4e9a2ab38fc314`의 Actions run `30700460508`에서 build job `91370463815`, deploy job `91370506054`와 Pages deployment `5704694520`가 모두 success였다.
-- 운영본 브라우저 시각 검증은 사용자 Chrome 프로필의 기존 학습 데이터가 표시되어 클릭·입력·storage 조회 없이 중단했다. 이를 운영본 시각 QA 통과로 기록하지 않으며, 헤더 기능은 release 전 격리 브라우저와 PC·Galaxy 수동 검증 결과를 근거로 한다.
-- storage transaction, 카드 삭제 transaction, 공통 브랜드 홈 이동, 쉐도잉 UX, 단일 카드 직접 추가, UX 안정화 1차, 카드 통합 검색, 기본 답변과 나만의 답변의 줄바꿈 정규화, 답변 익히기 카드 선택 조작, 첫 문장 답변 연습 상태 필터, 답변 익히기 상태 통합 필터, 공통 학습 화면 rail과 모바일 헤더 action 정렬, 짧은 가로 화면 쉐도잉·답변 익히기 밀도, 카드 라이브러리 답변 연습 상태 있음·없음 필터, 화면별 학습 제목·홈 문구 정리, 복수 TSV 선택과 최신 선택 미리보기 보호, 앱 내부 history 뒤로가기, 답변 익히기 선택 보존·첫 문장 상태 입력·새 학습 공개 상태 초기화, 세로 모바일 쉐도잉 문장 폭 개선이 main과 운영 Pages에 포함되어 있다.
+- 2026-08-01 운영 배포 검증에서 운영 URL, `manifest.webmanifest`, `sw.js`, `404.html`과 배포 HTML·JS·manifest·service worker에서 동적으로 확인한 현재 asset 20개는 모두 HTTP 200이었다. main bundle에서 공통 카드·나만의 답변 편집 기능 문구도 확인했으며 hash가 바뀌는 asset 이름은 고정해 기록하지 않는다.
+- 2026-08-01 최신 운영 검증은 commit `47bf2d7685897bcd01e6b1be158ac2cbb9b672ed`의 Actions run `30704058893`에서 build job `91379989430`, deploy job `91380042196`와 Pages deployment `5705430454`가 모두 success였다.
+- 최신 release의 운영 검증은 읽기 전용 HTTP·bundle 검사이며 운영 앱에서 클릭·입력·storage 조회를 하지 않았다. 공통 카드 편집 흐름은 release 전 격리 localhost에서 자동 검증했지만 실제 Galaxy 기능 검증은 이번 release에서 별도로 수행하지 않았다.
+- storage transaction, 카드 삭제 transaction, 공통 브랜드 홈 이동, 쉐도잉 UX, 단일 카드 직접 추가, UX 안정화 1차, 카드 통합 검색, 기본 답변과 나만의 답변의 줄바꿈 정규화, 답변 익히기 카드 선택 조작, 첫 문장 답변 연습 상태 필터, 답변 익히기 상태 통합 필터, 공통 학습 화면 rail과 모바일 헤더 action 정렬, 짧은 가로 화면 쉐도잉·답변 익히기 밀도, 카드 라이브러리 답변 연습 상태 있음·없음 필터, 화면별 학습 제목·홈 문구 정리, 복수 TSV 선택과 최신 선택 미리보기 보호, 앱 내부 history 뒤로가기, 답변 익히기 선택 보존·첫 문장 상태 입력·새 학습 공개 상태 초기화, 세로 모바일 쉐도잉 문장 폭 개선, 카드와 나만의 답변의 공통 편집 transaction이 main과 운영 Pages에 포함되어 있다.
 
 ## 2. 구현된 사용자 흐름
 
@@ -40,6 +40,8 @@
 - 답변 익히기 준비에서 선택한 카드와 필터는 다른 앱 화면을 다녀와도 현재 탭 session에 보존된다. 새 학습을 시작할 때는 이번 `cardOrder`에 포함된 카드의 힌트·첫 문장·전체 답변·질문 공개 상태를 모두 닫고 첫 카드부터 시작하며, 이번 학습 범위 밖 카드의 기존 공개 상태는 유지한다.
 - 홈을 제외한 앱 내부 화면은 브라우저 History API의 `history.state.opicHistory`와 화면별 복귀 문맥을 사용한다. 휴대폰·브라우저 뒤로가기는 준비 화면, 학습 화면, 상세, 카드 라이브러리 등에서 앱을 즉시 종료하지 않고 해당 앱 내부 이전 화면으로 이동하며, 미저장 draft가 있으면 기존 이탈 확인을 유지한다.
 - 기본 답변과 카드 ID별 나만의 답변
+- 카드 상세와 답변 익히기는 동일한 기존 `CardEditor`에서 카드 본문과 나만의 답변을 함께 수정한다. 답변 익히기에서 편집해도 새 history 화면을 만들지 않고 저장 후 현재 카드·학습 위치로 돌아오며, 미저장 변경은 공통 이탈 확인을 거친다.
+- 나만의 답변을 비우고 확인해 저장하면 해당 카드의 나만의 답변만 삭제한다. 답변 익히기에서 현재 source가 나만의 답변이었다면 기본 답변으로 전환하며, 추가·수정 시 기존 source 선택은 유지한다.
 - 전체·문단·문장 쉐도잉, 1·3·5·10·무한 반복, 휴식 5단계, 속도 5단계
 - 질문 확인, 이전·다음 카드, 문장별 반복 완료 후 다음 문장 자동 진행, 재생 unit 가시성 스크롤, 백그라운드 복귀 시 paused 전환과 Wake Lock
 
@@ -126,7 +128,7 @@
 | --- | --- |
 | `opic-navigation-session` | 현재 화면, 카드, 필터, drill 순서와 복귀 경로 |
 | `opic-card-library-session` | 표시 개수, 필터 signature, 스크롤 위치 |
-| `opic-card-detail-ui-session` | 상세 펼침 상태, 선택 답변, 나만의 답변·메모 초안 |
+| `opic-card-detail-ui-session` | 상세 펼침 상태, 선택 답변, 메모 초안과 구버전 나만의 답변 편집 필드 호환 |
 | `opic-shadowing-player-session` | 소스 식별자·문장 지문, 현재 문장·완료 반복 수, 반복·휴식 설정, paused 상태, 질문 표시 |
 | `opic-swipe-navigation-hint-seen` | 스와이프 안내 표시 여부 |
 | `opic-saved-passage-editor-session` | 저장 지문 작성·수정 초안 |
@@ -138,6 +140,8 @@
 | `opic-post-restore-navigation` | 전체 복구 후 관리 영역 복귀 의도 |
 
 세션 값은 AppBackupV1, TSV와 클라우드 백업에 포함하지 않는다. 완전히 새 세션에서는 사라져도 되는 UI·진행 데이터다.
+
+`opic-card-detail-ui-session` parser는 기존 `myAnswerEditing`·`myAnswerDraft` 필드를 계속 안전하게 읽지만, 현재 공통 `CardEditor`는 해당 필드를 새 초안 저장에 사용하지 않고 `false`·빈 문자열로 기록한다. 공통 편집기의 미저장 카드·나만의 답변 draft는 현재 컴포넌트 메모리에만 존재하며 이탈 시 확인한다.
 
 브라우저 History API의 `history.state.opicHistory`는 localStorage·sessionStorage key가 아니다. 현재 앱 화면과 depth만 담고, 실제 복귀에 필요한 카드·필터·학습 상태는 위 sessionStorage 상태와 React 상태에서 복원한다.
 
@@ -151,7 +155,7 @@
 - `src/utils/appBackup.ts`는 복구 대상 raw snapshot을 잡고, 중간 저장 실패 시 이전 값을 복원한다. rollback 성공 여부는 `BackupApplyError`로 전달한다.
 - 구버전 v1에서 선택 필드가 빠진 경우 안전한 기본값으로 호환한다. 알 수 없는 필드는 무시하고 위험한 prototype 키를 거부한다.
 
-## 7. 카드 보관과 완전 삭제
+## 7. 카드 생성·수정·보관과 완전 삭제
 
 - 보관은 카드 본문을 변경하지 않고 `opic-archived-card-ids`만 갱신한다. 학습 기록, 나만의 답변, 메모를 유지한다.
 - 완전 삭제는 카드 본문과 해당 카드 ID의 첫 문장 상태·시도, 답변 익히기 상태·시도, 나만의 답변, 카드 메모, 보관 ID 및 현재 학습 세션 참조를 정리한다.
@@ -166,7 +170,7 @@
 
 `src/utils/cardDeletionPlan.ts`는 현재 카드와 ID 연관 local/session 상태를 입력받아 삭제 후 semantic 상태와 기존 saver 형식의 raw `StorageMutation[]`을 메모리에서만 계산한다. 주입된 `now`를 dataset `updatedAt`에 사용하고, session 정리 → 카드 종속 local 데이터 → `opic-card-dataset` 순으로 mutation을 만든 뒤 불변 조건을 검증한다. 개인 메모와 저장 지문은 입력·mutation 범위에서 제외한다. plan 생성 중 storage 접근, React 상태 변경, UI 이동, Firebase 호출은 없다.
 
-카드 완전 삭제와 새로고침 전 한 번 실행 취소에는 transaction과 deletion plan이 연결되어 있다. snapshot 또는 apply 실패와 rollback 성공은 React 상태를 바꾸지 않으며, rollback 일부 실패는 추가 destructive action을 잠그고 새로고침 후 상태 재확인을 요구한다. Web Storage는 여전히 ACID 저장소가 아니고, undo snapshot은 메모리에만 있으므로 새로고침 후에는 실행 취소할 수 없다. AppBackupV1 복구와 카드 수정·보관은 이 transaction 기반에 연결하지 않았다.
+카드 완전 삭제와 새로고침 전 한 번 실행 취소에는 transaction과 deletion plan이 연결되어 있다. snapshot 또는 apply 실패와 rollback 성공은 React 상태를 바꾸지 않으며, rollback 일부 실패는 추가 destructive action을 잠그고 새로고침 후 상태 재확인을 요구한다. Web Storage는 여전히 ACID 저장소가 아니고, undo snapshot은 메모리에만 있으므로 새로고침 후에는 실행 취소할 수 없다. AppBackupV1 복구와 카드 보관은 이 transaction 기반에 연결하지 않았다.
 
 1. 관련 키 원문 snapshot
 2. 모든 다음 값 사전 계산·검증·직렬화
@@ -181,6 +185,12 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 ### 새 카드 생성 저장 경계
 
 `src/utils/cardCreation.ts`는 CardEditor가 검증한 카드 내용에 충돌 없는 ID를 붙이고, 기존 카드 끝에 추가한 v1 dataset raw JSON을 만든 뒤 `parseCardDataset`으로 재검증한다. mutation은 `opic-card-dataset` 한 건뿐이며 `runStorageTransaction` 성공 후에만 `setCardCatalog`을 한 번 호출한다. 실패 시 React 카드 목록, 화면, 입력 draft와 기존 저장값을 바꾸지 않는다. 생성 직후 별도 상태·시도·메모·session key를 만들지 않으며 JSON 백업과 TSV 내보내기는 기존 card dataset을 읽으므로 자동 포함된다.
+
+### 카드와 나만의 답변 수정 저장 경계
+
+`src/utils/cardEditTransaction.ts`는 현재 선택한 카드 ID가 존재하고 편집 결과의 ID가 바뀌지 않았는지 확인한 뒤 `OpicCard` validator를 통과시킨다. 기존 카드 순서와 다른 카드 내용을 유지한 v1 dataset을 만들고 `parseCardDataset`으로 재검증하며, 카드 ID별 나만의 답변도 기존 normalizer와 `parseMyAnswers`로 검증한다. 빈 나만의 답변은 다른 카드 답변을 건드리지 않고 현재 카드 항목만 제거한다.
+
+mutation은 `opic-my-answers`와 `opic-card-dataset` 순서로 하나의 `runStorageTransaction`에 전달한다. 두 저장이 모두 성공한 뒤에만 `setCardCatalog`과 `setMyAnswers`를 한 semantic commit에서 반영한다. snapshot 또는 apply 실패 시 React 상태와 입력 draft를 유지하고, rollback 성공은 기존 저장값 복구로 안내하며, rollback 일부 실패는 추가 destructive action을 잠그고 새로고침 후 상태 재확인을 요구한다. 자동 재시도, 새 저장 key, JSON·TSV·AppBackup 스키마 변경과 Firebase 호출은 없다.
 
 ## 8. 클라우드 수동 백업
 
@@ -203,8 +213,8 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 
 - 앱 상태·화면 조립: `src/App.tsx`
 - 공통 타입과 기본 카드: `src/types.ts`, `src/data/cards.ts`
-- 카드 목록·상세·생성·수정: `src/components/CardList.tsx`, `CardLibrary.tsx`, `CardDetail.tsx`, `CardEditor.tsx`, `src/utils/cardCreation.ts`
-- 카드 수정·보관·삭제 규칙: `src/utils/cardEditor.ts`, `cardArchiveStorage.ts`, `cardDeletion.ts`
+- 카드 목록·상세·생성·수정: `src/components/CardList.tsx`, `CardLibrary.tsx`, `CardDetail.tsx`, `CardEditor.tsx`, `src/utils/cardCreation.ts`, `cardEditTransaction.ts`
+- 카드 수정·보관·삭제 규칙: `src/utils/cardEditor.ts`, `cardEditTransaction.ts`, `cardArchiveStorage.ts`, `cardDeletion.ts`
 - 첫 문장: `src/components/FirstLineSetup.tsx`, `FirstLineDrill.tsx`, `src/utils/firstLineMockSession.ts`
 - 답변 익히기와 공통 상태 selector: `src/components/AnswerLearningSetup.tsx`, `AnswerLearning.tsx`, `src/utils/answerLearningStorage.ts`, `answerLearningSession.ts`, `answerLearningSelectors.ts`, `studyStatusOptions.ts`
 - 앱 내부 history와 화면 복귀: `src/utils/appHistory.ts`, `src/App.tsx`
@@ -226,7 +236,7 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 
 쉐도잉 session은 마지막 유효한 미완료 재생 1건만 보존한다. 카드 또는 저장 지문 식별자, 답변 문장 지문, 현재 반복 설정과 진행 범위가 모두 일치할 때만 `이어 듣기`로 복원한다. 완료됨, 손상됨, 다른 소스, 답변 변경, 범위 이탈 또는 설정 불일치는 처음부터 상태로 정규화한다. 홈·뒤로 이동은 떠나기 직전 현재 진행을 한 번 저장하며 이후 TTS 정리가 그 값을 덮어쓰지 않는다.
 
-`package.json`의 `test:all`은 다음 23개 스크립트를 순서대로 실행한다. 현재 main의 최신 검증 기준은 960/960이다.
+`package.json`의 `test:all`은 다음 24개 스크립트를 순서대로 실행한다. 현재 main의 최신 검증 기준은 996/996이다.
 
 | 명령 | 개수 |
 | --- | ---: |
@@ -234,6 +244,7 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 | `test:minor-ui-feedback` | 37 |
 | `test:card-search` | 22 |
 | `test:card-creation` | 41 |
+| `test:card-edit-transaction` | 33 |
 | `test:card-deletion-transaction` | 36 |
 | `test:card-deletion-plan` | 40 |
 | `test:storage-transaction` | 30 |
@@ -249,14 +260,14 @@ AppBackupV1의 도메인 정책과 일반 저장 transaction 책임을 합치지
 | `test:tsv` | 44 |
 | `test:answer-learning` | 76 |
 | `test:first-line-mock` | 28 |
-| `test:card-management` | 32 |
+| `test:card-management` | 34 |
 | `test:cloud-backup` | 82 |
 | `test:home-layout` | 19 |
-| `test:ui-system` | 41 |
+| `test:ui-system` | 42 |
 
 `test:cloud-rules` 22개는 실행 중인 Firestore·Storage Emulator가 필요한 별도 Security Rules 검증이다. `test:pwa`도 build 후 별도로 실행한다.
 
-commit `451b4844f22e6dd762b96e114668b44867e233f6`의 기준은 880/880이었다. 답변 익히기 상태 통합 필터 commit `022084a7c22b5e2aad7ea3f7adedc0b9dbe0fbc9`에서 892/892로, 공통 학습 화면 rail commit `03c5082fc0a3fabbe81ba6c6e0b6759650c94ff9`에서 899/899로, 모바일 헤더 action 정렬 commit `abbc66464d50785276e373320ccb3fbc059cf90d`에서 909/909로 증가했다. 짧은 가로 화면 쉐도잉 밀도 commit `650859cb8556f764b7a03515d17b75ee13218a3a`에서 912/912로, 답변 익히기 세로 밀도 commit `498fe3c648fd12e88bd70587402afb44f66aea13`에서 913/913으로 증가했다. 이후 카드 라이브러리 답변 상태 presence 필터 `911fab4`, 짧은 가로 쉐도잉 controller `402bb2d`, 화면별 헤더·홈 문구 `5eacf01`, 복수 TSV 선택 `3eef744`, 최신 TSV 선택 보호 `7e43a88`이 반영되어 934/934가 되었다. 앱 내부 history와 답변 익히기 선택 보존 `f59838c`, 답변 익히기 첫 문장 상태 `a5d84ac`, 새 학습 공개 상태 초기화 `713873a`, 세로 모바일 쉐도잉 문장 폭 `b2f8388`이 이어져 현재 기준은 960/960이다. 현재 main과 `b2f83884b98204b75b8748098c4e9a2ab38fc314`의 CI 기준 TypeScript, production build와 PWA/Pages 검증도 통과했다.
+commit `451b4844f22e6dd762b96e114668b44867e233f6`의 기준은 880/880이었다. 답변 익히기 상태 통합 필터 commit `022084a7c22b5e2aad7ea3f7adedc0b9dbe0fbc9`에서 892/892로, 공통 학습 화면 rail commit `03c5082fc0a3fabbe81ba6c6e0b6759650c94ff9`에서 899/899로, 모바일 헤더 action 정렬 commit `abbc66464d50785276e373320ccb3fbc059cf90d`에서 909/909로 증가했다. 짧은 가로 화면 쉐도잉 밀도 commit `650859cb8556f764b7a03515d17b75ee13218a3a`에서 912/912로, 답변 익히기 세로 밀도 commit `498fe3c648fd12e88bd70587402afb44f66aea13`에서 913/913으로 증가했다. 이후 카드 라이브러리 답변 상태 presence 필터 `911fab4`, 짧은 가로 쉐도잉 controller `402bb2d`, 화면별 헤더·홈 문구 `5eacf01`, 복수 TSV 선택 `3eef744`, 최신 TSV 선택 보호 `7e43a88`이 반영되어 934/934가 되었다. 앱 내부 history와 답변 익히기 선택 보존 `f59838c`, 답변 익히기 첫 문장 상태 `a5d84ac`, 새 학습 공개 상태 초기화 `713873a`, 세로 모바일 쉐도잉 문장 폭 `b2f8388`이 이어져 960/960이 되었다. 공통 카드·나만의 답변 편집 transaction commit `47bf2d7685897bcd01e6b1be158ac2cbb9b672ed`에서 전용 33개, 카드 관리 2개와 UI system 1개가 추가되어 현재 기준은 996/996이다. 현재 main과 `47bf2d7685897bcd01e6b1be158ac2cbb9b672ed`의 CI 기준 TypeScript, production build와 PWA/Pages 검증도 통과했다.
 
 ### dependency audit 기준
 
@@ -318,7 +329,7 @@ git diff --check
 
 ### UX backlog
 
-- 후속 기능의 현재 추천 순서는 공통 카드 편집·저장 transaction → 답변 익히기 녹음 위치와 TTS 정책 → 카드 라이브러리 필터 결과의 학습 화면 전달이다.
+- 후속 기능의 현재 추천 순서는 답변 익히기 녹음 위치와 TTS 정책 → 카드 라이브러리 필터 결과의 학습 화면 전달이다.
 - 카드 라이브러리의 현재 필터 결과를 첫 문장 연습과 답변 익히기로 직접 전달하는 흐름은 상태 통합 필터와 분리해 설계한다.
 - 녹음 UI를 답변 익히기 화면 아래로 이동하고 답변 익히기 맥락에 맞게 문구와 디자인을 조정한다.
 - 첫 문장 연습·답변 익히기·카드 라이브러리의 카드 선택 UI를 공통 패턴으로 정리한다.
@@ -328,5 +339,4 @@ git diff --check
 - 첫 문장 훈련의 다시 도전 버튼 디자인을 다른 학습 조작과 일관되게 정리한다.
 - 답변 익히기 전체 답변 영역의 3중 테두리를 단순화하고 녹음 위치를 쉐도잉과 함께 재검토한다.
 - 답변 익히기 TTS에는 속도 선택과 다음 상태 정책을 적용한다: 정지 상태 문장 터치는 선택 문장만 재생 후 정지, 전체 답변 듣기는 처음부터 끝까지 연속 재생, 일시정지는 현재 문장을 기억, 이어 듣기는 멈춘 문장 처음부터 끝까지, 연속 재생 중 문장 터치는 누른 문장부터 끝까지, 전체 완료 후 문장 터치는 선택 문장만 재생 후 정지.
-- 나만의 답변 공통 편집은 카드 라이브러리와 답변 익히기에서 동일한 기존 `CardEditor`로 진입한다. 기본 카드 내용과 나만의 답변을 함께 편집하고, 답변 익히기에서 진입한 경우 저장 후 기존 학습 위치로 안전하게 복귀한다. 기본 카드 dataset과 나만의 답변 저장소는 하나의 storage transaction 경계로 처리하고 두 저장이 모두 성공한 뒤에만 React 상태를 반영하며, 실패하면 입력값과 기존 데이터를 유지한다.
 - 쉐도잉 하단 5버튼 controller의 더 넓은 재설계는 완료된 공통 rail 정렬·짧은 가로 40px 한 행 compact 처리와 별도 티켓으로 유지한다.
