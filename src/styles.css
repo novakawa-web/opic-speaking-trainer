@@ -4849,6 +4849,12 @@ input:focus-visible + .toggle-switch {
   line-height: 1.55;
 }
 
+.card-editor-my-answer {
+  margin-top: 6px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
 .card-editor-field small,
 .card-management-help {
   color: var(--muted);

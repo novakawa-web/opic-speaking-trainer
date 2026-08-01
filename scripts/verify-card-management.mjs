@@ -153,9 +153,26 @@ test("카드 관리 UI는 수정 보관 완전 삭제를 제공", () => {
   assert.ok(source.includes("이 카드와 관련 기록을 완전히 삭제할까요?"));
 });
 
+test("카드 상세는 기본 카드와 나만의 답변에 같은 CardEditor를 사용", () => {
+  const detailSource = readFileSync(new URL("../src/components/CardDetail.tsx", import.meta.url), "utf8");
+  const editorSource = readFileSync(new URL("../src/components/CardEditor.tsx", import.meta.url), "utf8");
+  assert.match(detailSource, /<CardEditor[\s\S]*?includeMyAnswer[\s\S]*?onSave=\{saveCard\}/);
+  assert.doesNotMatch(detailSource, /className="my-answer-editor"/);
+  assert.match(editorSource, /카드와 답변 수정/);
+  assert.match(editorSource, /isMyAnswerDeletion\(storedMyAnswer, normalizedMyAnswer\)/);
+});
+
+test("카드 수정은 두 storage 성공 뒤에만 두 React 상태를 반영", () => {
+  const appSource = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
+  assert.match(appSource, /function saveCardEdit\([\s\S]*?createCardEditPlan\([\s\S]*?executeCardEditTransaction\(/);
+  assert.match(appSource, /const targetCardId = selectedCard\?\.id;[\s\S]*?cardId: targetCardId/);
+  assert.match(appSource, /commit: \(state\) => \{[\s\S]*?setCardCatalog\(state\.cards\);[\s\S]*?setMyAnswers\(state\.myAnswers\);/);
+  assert.match(appSource, /if \(notice\.blockDestructiveActions\) setDestructiveActionsBlocked\(true\)/);
+});
+
 test("카드 수정 이탈 확인은 홈과 뒤로가기 모두에 맞는 중립 문구를 사용", () => {
   const source = readFileSync(new URL("../src/components/CardDetail.tsx", import.meta.url), "utf8");
-  assert.ok(source.includes("저장하지 않은 카드 수정 내용이 있습니다. 현재 화면을 나갈까요?"));
+  assert.ok(source.includes("저장하지 않은 카드와 나만의 답변 수정 내용이 있습니다. 현재 화면을 나갈까요?"));
   assert.ok(!source.includes("저장하지 않은 카드 수정 내용이 있습니다. 홈으로 이동할까요?"));
 });
 

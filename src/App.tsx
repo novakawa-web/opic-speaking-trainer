@@ -91,7 +91,7 @@ import {
   type StudyOrder,
 } from "./utils/studyPreferences";
 import { applyTheme, readInitialTheme, saveTheme } from "./utils/themeStorage";
-import { readActiveCards, saveActiveCards } from "./utils/cardStorage";
+import { readActiveCards } from "./utils/cardStorage";
 import { readStoredStatuses, saveStatuses } from "./utils/statusStorage";
 import {
   matchesAnswerContentFilter,
@@ -185,6 +185,13 @@ import {
   describeCardCreationError,
   executeCardCreationTransaction,
 } from "./utils/cardCreation";
+import {
+  createCardEditPlan,
+  describeCardEditFailure,
+  executeCardEditTransaction,
+  resolveAnswerSourceAfterCardEdit,
+  type CardEditFailureNotice,
+} from "./utils/cardEditTransaction";
 
 type View = AppView;
 type CardNavigationSource = "manual" | "auto";
@@ -333,6 +340,8 @@ function App() {
   const [cardCreationDirty, setCardCreationDirty] = useState(false);
   const [cardCreationError, setCardCreationError] = useState<string | null>(null);
   const [duplicateCardId, setDuplicateCardId] = useState<string | null>(null);
+  const [cardEditFailure, setCardEditFailure] =
+    useState<CardEditFailureNotice | null>(null);
   const cardManagementNoticeIdRef = useRef(0);
   const homeNavigationGuardRef = useRef<(() => boolean) | null>(null);
   const historyInitializedRef = useRef(false);
@@ -1200,7 +1209,7 @@ function App() {
   }
 
   function leaveAnswerLearning() {
-    requestAppBack(true);
+    requestAppBack();
   }
 
   function closeAnswerLearning() {
@@ -1632,16 +1641,57 @@ function App() {
     }
   }
 
-  function updateCard(nextCard: OpicCard) {
-    if (destructiveActionsBlocked) return;
-    const nextCards = cardCatalog.map((card) =>
-      card.id === nextCard.id ? nextCard : card,
-    );
-    saveActiveCards(nextCards);
-    setCardCatalog(nextCards);
-    setCardStorageWarning(false);
-    setCardDeletionFailure(null);
-    showCardManagementNotice("카드가 수정되었습니다.", "detail");
+  function saveCardEdit(nextCard: OpicCard, nextMyAnswer: string) {
+    if (destructiveActionsBlocked) return false;
+    const targetCardId = selectedCard?.id;
+    if (!targetCardId) return false;
+    setCardEditFailure(null);
+    try {
+      const plan = createCardEditPlan({
+        cardId: targetCardId,
+        card: nextCard,
+        myAnswer: nextMyAnswer,
+        currentCards: cardCatalog,
+        currentMyAnswers: myAnswers,
+        localStorage,
+        now: new Date(),
+      });
+      const execution = executeCardEditTransaction({
+        plan,
+        commit: (state) => {
+          setCardCatalog(state.cards);
+          setMyAnswers(state.myAnswers);
+        },
+      });
+      const currentSource = answerSession.answerSources[targetCardId] ?? "default";
+      const nextSource = resolveAnswerSourceAfterCardEdit(
+        currentSource,
+        execution.state.myAnswers[targetCardId] ?? "",
+      );
+      if (nextSource !== currentSource) {
+        updateAnswerSession({
+          ...answerSession,
+          answerSources: {
+          ...answerSession.answerSources,
+            [targetCardId]: nextSource,
+          },
+        });
+      }
+      setCardStorageWarning(false);
+      setCardDeletionFailure(null);
+      setCardEditFailure(null);
+      if (view === "answerLearning") {
+        setAnswerLearningFeedback("카드와 나만의 답변을 저장했어요.");
+      } else {
+        showCardManagementNotice("카드와 나만의 답변을 저장했습니다.", "detail");
+      }
+      return true;
+    } catch (error) {
+      const notice = describeCardEditFailure(error);
+      setCardEditFailure(notice);
+      if (notice.blockDestructiveActions) setDestructiveActionsBlocked(true);
+      return false;
+    }
   }
 
   function createCard(cardDraft: OpicCard) {
@@ -2008,6 +2058,11 @@ function App() {
           onReset={resetAnswerLearningStatus}
           onStartShadowing={startAnswerLearningShadowing}
           onBack={leaveAnswerLearning}
+          onSaveCardEdit={saveCardEdit}
+          cardEditError={cardEditFailure?.message ?? null}
+          onCardEditInputChange={() => setCardEditFailure(null)}
+          cardEditingBlocked={destructiveActionsBlocked}
+          registerHomeNavigationGuard={registerHomeNavigationGuard}
         />
       </div>
     );
@@ -2251,7 +2306,9 @@ function App() {
             myAnswers,
             cardMemos,
           })}
-          onUpdateCard={updateCard}
+          onSaveCardEdit={saveCardEdit}
+          cardEditError={cardEditFailure?.message ?? null}
+          onCardEditInputChange={() => setCardEditFailure(null)}
           onArchiveCard={changeCardArchive}
           onDeleteCard={deleteCardPermanently}
           destructiveActionsBlocked={destructiveActionsBlocked}

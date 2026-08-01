@@ -9,7 +9,7 @@ import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
 import type { AnswerLearningStatus, FirstLineStatus, OpicCard } from "../types";
 import { activateButton } from "../utils/buttonFocus";
-import { extractMyFirstLine, normalizeMyAnswerText } from "../utils/myAnswerStorage";
+import { extractMyFirstLine } from "../utils/myAnswerStorage";
 import {
   createAnswerDisplayRows,
   joinAnswerLines,
@@ -65,7 +65,9 @@ type CardDetailProps = {
   onStartShadowing: (source: ShadowingSource) => void;
   isArchived: boolean;
   hasRelatedRecords: boolean;
-  onUpdateCard: (card: OpicCard) => void;
+  onSaveCardEdit: (card: OpicCard, myAnswer: string) => boolean;
+  cardEditError?: string | null;
+  onCardEditInputChange?: () => void;
   onArchiveCard: (cardId: string, archived: boolean) => void;
   onDeleteCard: (cardId: string) => void;
   destructiveActionsBlocked?: boolean;
@@ -113,7 +115,9 @@ export function CardDetail({
   onStartShadowing,
   isArchived,
   hasRelatedRecords,
-  onUpdateCard,
+  onSaveCardEdit,
+  cardEditError,
+  onCardEditInputChange,
   onArchiveCard,
   onDeleteCard,
   destructiveActionsBlocked = false,
@@ -125,8 +129,6 @@ export function CardDetail({
   const [showHint, setShowHint] = useState(initialUiSession.showHint);
   const [showAnswer, setShowAnswer] = useState(initialUiSession.showAnswer);
   const [answerTab, setAnswerTab] = useState<AnswerTab>(initialUiSession.answerTab);
-  const [isEditing, setIsEditing] = useState(initialUiSession.myAnswerEditing);
-  const [draft, setDraft] = useState(initialUiSession.myAnswerDraft);
   const [message, setMessage] = useState("");
   const [deletedAnswer, setDeletedAnswer] = useState<string | null>(null);
   const [ttsRate] = useState(readTtsRate);
@@ -140,6 +142,7 @@ export function CardDetail({
     useState<RecordingStatus>("idle");
   const [isEditingCard, setIsEditingCard] = useState(false);
   const [isCardEditorDirty, setIsCardEditorDirty] = useState(false);
+  const [cardEditorMyAnswerSeed, setCardEditorMyAnswerSeed] = useState<string | null>(null);
   const {
     isSupported,
     activeTarget,
@@ -147,9 +150,6 @@ export function CardDetail({
     speak,
     stop,
   } = useSpeechSynthesis(ttsRate);
-  const normalizedDraft = normalizeMyAnswerText(draft);
-  const originalAnswer = myAnswer ? normalizeMyAnswerText(myAnswer) : "";
-  const isDirty = isEditing && normalizedDraft !== originalAnswer;
   const myFirstLine = myAnswer ? extractMyFirstLine(myAnswer) : "";
   const modelAnswerText = joinAnswerLines(card.back);
   const modelAnswerRows = createAnswerDisplayRows(modelAnswerText);
@@ -165,53 +165,44 @@ export function CardDetail({
     setShowHint((current) => !current);
   }, []);
 
-  const confirmDiscard = useCallback(() => {
-    if (!isDirty) return true;
-    return window.confirm(
-      "저장하지 않은 나만의 답변 수정 내용이 있습니다. 변경 내용을 버릴까요?",
-    );
-  }, [isDirty]);
-
   const runAfterDiscardCheck = useCallback(
     (action: () => void) => {
-      if (!confirmDiscard()) return;
       if (!(memoSectionRef.current?.confirmDiscardAndClose() ?? true)) return;
       recorderRef.current?.clearRecording();
       stop();
-      setIsEditing(false);
       action();
     },
-    [confirmDiscard, stop],
+    [stop],
   );
 
   const confirmDetailNavigation = useCallback(() => {
     if (
       isEditingCard &&
       isCardEditorDirty &&
-      !window.confirm("저장하지 않은 카드 수정 내용이 있습니다. 현재 화면을 나갈까요?")
+      !window.confirm("저장하지 않은 카드와 나만의 답변 수정 내용이 있습니다. 현재 화면을 나갈까요?")
     ) {
       return false;
     }
-    if (!confirmDiscard()) return false;
     if (!(memoSectionRef.current?.confirmDiscardAndClose() ?? true)) return false;
     recorderRef.current?.clearRecording();
     stop();
     return true;
-  }, [confirmDiscard, isCardEditorDirty, isEditingCard, stop]);
+  }, [isCardEditorDirty, isEditingCard, stop]);
 
   useLayoutEffect(() => {
     if (!registerHomeNavigationGuard) return;
     return registerHomeNavigationGuard(confirmDetailNavigation);
   }, [confirmDetailNavigation, registerHomeNavigationGuard]);
 
-  // A discarded mobile tab restores the same detail controls and unsaved answer draft.
+  // A discarded mobile tab restores the same detail controls.
   useLayoutEffect(() => {
     const restored = readCardDetailUiSession(card.id, Boolean(myAnswer));
     setShowHint(restored.showHint);
     setShowAnswer(restored.showAnswer);
     setAnswerTab(restored.answerTab);
-    setIsEditing(restored.myAnswerEditing);
-    setDraft(restored.myAnswerDraft);
+    setIsEditingCard(false);
+    setIsCardEditorDirty(false);
+    setCardEditorMyAnswerSeed(null);
     setMessage("");
     setDeletedAnswer(null);
     recorderRef.current?.clearRecording();
@@ -223,20 +214,10 @@ export function CardDetail({
       showHint,
       showAnswer,
       answerTab,
-      myAnswerEditing: isEditing,
-      myAnswerDraft: isEditing ? draft : "",
+      myAnswerEditing: false,
+      myAnswerDraft: "",
     });
-  }, [answerTab, card.id, draft, isEditing, myAnswer, showAnswer, showHint]);
-
-  useEffect(() => {
-    if (!isDirty) return;
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [isDirty]);
+  }, [answerTab, card.id, myAnswer, showAnswer, showHint]);
 
   const goPrevious = useCallback(
     () => runAfterDiscardCheck(onPrevious),
@@ -254,39 +235,10 @@ export function CardDetail({
     Space: toggleHint,
   }, !isEditingCard);
 
-  function startEditing(seed: string) {
-    if (!(memoSectionRef.current?.confirmDiscardAndClose() ?? true)) return;
-    recorderRef.current?.clearRecording();
-    stop();
-    setAnswerTab("mine");
-    setDraft(seed);
-    setIsEditing(true);
-    setMessage("");
-  }
-
-  function cancelEditing() {
-    if (!confirmDiscard()) return;
-    setDraft("");
-    setIsEditing(false);
-    setMessage("수정을 취소했습니다.");
-  }
-
-  function saveAnswer() {
-    if (!normalizedDraft) return;
-    onSaveMyAnswer(card.id, normalizedDraft);
-    setDraft("");
-    setIsEditing(false);
-    setAnswerTab("mine");
-    setDeletedAnswer(null);
-    setMessage("나만의 답변을 저장했습니다.");
-  }
-
   function changeTab(nextTab: AnswerTab) {
-    if (nextTab === answerTab || !confirmDiscard()) return;
+    if (nextTab === answerTab) return;
     recorderRef.current?.clearRecording();
     stop();
-    setIsEditing(false);
-    setDraft("");
     setAnswerTab(nextTab);
   }
 
@@ -312,7 +264,6 @@ export function CardDetail({
     onDeleteMyAnswer(card.id);
     setDeletedAnswer(removed);
     setAnswerTab("model");
-    setIsEditing(false);
     setMessage("나만의 답변을 삭제했습니다.");
     closeDeleteDialog();
   }
@@ -326,21 +277,25 @@ export function CardDetail({
   }
 
   function prepareMemoEditing() {
-    if (!confirmDiscard()) return false;
     stop();
-    setIsEditing(false);
-    setDraft("");
     return true;
   }
 
-  function startCardEditing() {
+  function startCardEditing(seed = myAnswer ?? "") {
     runAfterDiscardCheck(() => {
+      onCardEditInputChange?.();
+      setCardEditorMyAnswerSeed(seed);
       setIsEditingCard(true);
+      setMessage("");
     });
   }
 
-  function saveCard(nextCard: OpicCard) {
-    onUpdateCard(nextCard);
+  function saveCard(nextCard: OpicCard, nextMyAnswer = "") {
+    if (!onSaveCardEdit(nextCard, nextMyAnswer)) return;
+    setAnswerTab(nextMyAnswer ? "mine" : "model");
+    setDeletedAnswer(null);
+    setMessage("카드와 나만의 답변을 저장했습니다.");
+    setCardEditorMyAnswerSeed(null);
     setIsEditingCard(false);
   }
 
@@ -353,9 +308,19 @@ export function CardDetail({
     return (
       <CardEditor
         card={card}
+        myAnswer={myAnswer}
+        myAnswerSeed={cardEditorMyAnswerSeed ?? myAnswer ?? ""}
+        includeMyAnswer
         onSave={saveCard}
-        onCancel={() => setIsEditingCard(false)}
+        onCancel={() => {
+          onCardEditInputChange?.();
+          setCardEditorMyAnswerSeed(null);
+          setIsEditingCard(false);
+        }}
         onDirtyChange={setIsCardEditorDirty}
+        submissionError={cardEditError}
+        onInputChange={onCardEditInputChange}
+        savingBlocked={destructiveActionsBlocked}
       />
     );
   }
@@ -437,8 +402,6 @@ export function CardDetail({
               aria-label={showAnswer ? "답변 숨기기" : "답변 보기"}
               onClick={(event) =>
                 activateButton(event, () => {
-                  if (showAnswer && !confirmDiscard()) return;
-                  if (showAnswer) setIsEditing(false);
                   setShowAnswer((value) => !value);
                 })
               }
@@ -465,7 +428,7 @@ export function CardDetail({
           <button
             type="button"
             className="secondary-button"
-            onClick={startCardEditing}
+            onClick={() => startCardEditing()}
             disabled={destructiveActionsBlocked}
           >
             수정
@@ -586,7 +549,7 @@ export function CardDetail({
             <button
               type="button"
               className="primary-button"
-              disabled={!shadowingSource || isEditing || recorderBusy}
+              disabled={!shadowingSource || recorderBusy}
               onClick={() => {
                 if (!shadowingSource) return;
                 runAfterDiscardCheck(() => onStartShadowing(shadowingSource));
@@ -648,50 +611,7 @@ export function CardDetail({
               role="tabpanel"
               aria-labelledby="my-answer-tab"
             >
-              {isEditing ? (
-                <div className="my-answer-editor">
-                  <label htmlFor={`my-answer-${card.id}`}>나만의 답변</label>
-                  <textarea
-                    id={`my-answer-${card.id}`}
-                    value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-                        event.preventDefault();
-                        saveAnswer();
-                      } else if (event.key === "Escape") {
-                        event.preventDefault();
-                        cancelEditing();
-                      }
-                    }}
-                    placeholder="내 상황에 맞는 영어 답변을 작성해 보세요."
-                    autoFocus
-                  />
-                  <div className="editor-meta">
-                    <span>{draft.length.toLocaleString()}자</span>
-                    <span>{draft ? draft.split(/\r?\n/).length : 0}줄</span>
-                  </div>
-                  <div className="editor-actions">
-                    <button
-                      type="button"
-                      className="primary-button"
-                      disabled={!normalizedDraft}
-                      onClick={saveAnswer}
-                    >
-                      저장
-                    </button>
-                    <button type="button" className="secondary-button" onClick={cancelEditing}>
-                      취소
-                    </button>
-                  </div>
-                  {!normalizedDraft && (
-                    <p className="disabled-reason">
-                      공백이 아닌 답변을 입력하면 저장할 수 있습니다.
-                    </p>
-                  )}
-                  <p className="editor-shortcut-help">Ctrl/Cmd + Enter 저장 · Esc 취소</p>
-                </div>
-              ) : myAnswer ? (
+              {myAnswer ? (
                 <div className="my-answer-view">
                   <div className="my-answer-toolbar">
                     <button
@@ -707,7 +627,7 @@ export function CardDetail({
                       <button
                         type="button"
                         className="secondary-button"
-                        onClick={() => startEditing(myAnswer)}
+                        onClick={() => startCardEditing(myAnswer)}
                       >
                         수정
                       </button>
@@ -751,14 +671,14 @@ export function CardDetail({
                     <button
                       type="button"
                       className="primary-button"
-                      onClick={() => startEditing("")}
+                      onClick={() => startCardEditing("")}
                     >
                       빈 답변으로 작성
                     </button>
                     <button
                       type="button"
                       className="secondary-button"
-                      onClick={() => startEditing(modelAnswerText)}
+                      onClick={() => startCardEditing(modelAnswerText)}
                     >
                       기본 답변 복사해서 수정
                     </button>
@@ -769,7 +689,7 @@ export function CardDetail({
             </div>
           )}
 
-          {!isEditing && (answerTab === "model" || Boolean(myAnswer)) && (
+          {(answerTab === "model" || Boolean(myAnswer)) && (
             <AudioRecorder
               ref={recorderRef}
               className="detail-audio-recorder"

@@ -284,6 +284,14 @@ test("답변 익히기 첫 문장 상태는 작은 화면에서도 한 줄 44px 
   assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-first-line-content\s*\{[^}]*flex-direction:\s*column/);
   assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-first-line-status \.status-button\s*\{[^}]*padding-inline:\s*3px/);
 });
+test("답변 익히기는 현재 학습 위치 안에서 공통 CardEditor를 연다", () => {
+  assert.match(answerLearning, /import \{ CardEditor \} from "\.\/CardEditor"/);
+  assert.match(answerLearning, /카드와 답변 수정/);
+  assert.match(answerLearning, /<CardEditor[\s\S]*?includeMyAnswer[\s\S]*?returnLabel="답변 익히기로 돌아가기"/);
+  assert.match(answerLearning, /registerHomeNavigationGuard\(confirmNavigation\)/);
+  assert.doesNotMatch(app, /pushHistoryView\("cardEdit"\)/);
+  assert.match(app, /onSaveCardEdit=\{saveCardEdit\}/);
+});
 test("공통 AppHeader는 내부 rail에서 기존 표시 요소를 유지한다", () => {
   assert.match(appHeader, /<header[\s\S]*?<div className="app-header-rail">[\s\S]*?study-header-back[\s\S]*?brand-home[\s\S]*?compact-header-title[\s\S]*?compact-header-position[\s\S]*?theme-toggle[\s\S]*?mobile-header-progress/);
   assert.match(css, /\.app-header-rail\s*{[\s\S]*?max-width:\s*var\(--app-content-max\)/);

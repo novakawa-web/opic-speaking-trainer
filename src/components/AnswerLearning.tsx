@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
 import { useSwipeNavigation } from "../hooks/useSwipeNavigation";
 import type {
@@ -19,6 +19,7 @@ import {
   ANSWER_LEARNING_STATUS_OPTIONS,
   FIRST_LINE_STATUS_OPTIONS,
 } from "../utils/studyStatusOptions";
+import { CardEditor } from "./CardEditor";
 
 type Props = {
   card: OpicCard;
@@ -43,6 +44,11 @@ type Props = {
   onReset: () => void;
   onStartShadowing: (source: ShadowingSource) => void;
   onBack: () => void;
+  onSaveCardEdit: (card: OpicCard, myAnswer: string) => boolean;
+  cardEditError?: string | null;
+  onCardEditInputChange?: () => void;
+  cardEditingBlocked?: boolean;
+  registerHomeNavigationGuard?: (guard: () => boolean) => () => void;
 };
 
 export function AnswerLearning({
@@ -68,7 +74,14 @@ export function AnswerLearning({
   onReset,
   onStartShadowing,
   onBack,
+  onSaveCardEdit,
+  cardEditError,
+  onCardEditInputChange,
+  cardEditingBlocked = false,
+  registerHomeNavigationGuard,
 }: Props) {
+  const [isEditingCard, setIsEditingCard] = useState(false);
+  const [isCardEditorDirty, setIsCardEditorDirty] = useState(false);
   const [ttsRate] = useState(readTtsRate);
   const { isSupported, activeTarget, message, speak, stop } = useSpeechSynthesis(ttsRate);
   const modelText = joinAnswerLines(card.back);
@@ -86,6 +99,23 @@ export function AnswerLearning({
 
   useEffect(() => () => stop(), [stop]);
   useEffect(() => stop(), [card.id, stop]);
+
+  const confirmNavigation = useCallback(() => {
+    if (
+      isEditingCard &&
+      isCardEditorDirty &&
+      !window.confirm("저장하지 않은 카드와 나만의 답변 수정 내용이 있습니다. 현재 화면을 나갈까요?")
+    ) {
+      return false;
+    }
+    stop();
+    return true;
+  }, [isCardEditorDirty, isEditingCard, stop]);
+
+  useLayoutEffect(() => {
+    if (!registerHomeNavigationGuard) return;
+    return registerHomeNavigationGuard(confirmNavigation);
+  }, [confirmNavigation, registerHomeNavigationGuard]);
 
   const goPrevious = useCallback(() => {
     stop();
@@ -109,6 +139,37 @@ export function AnswerLearning({
     else speak(text, target);
   }
 
+  function openCardEditor() {
+    stop();
+    onCardEditInputChange?.();
+    setIsEditingCard(true);
+  }
+
+  function saveCard(nextCard: OpicCard, nextMyAnswer = "") {
+    if (!onSaveCardEdit(nextCard, nextMyAnswer)) return;
+    setIsEditingCard(false);
+  }
+
+  if (isEditingCard) {
+    return (
+      <CardEditor
+        card={card}
+        myAnswer={myAnswer}
+        includeMyAnswer
+        returnLabel="답변 익히기로 돌아가기"
+        onSave={saveCard}
+        onCancel={() => {
+          onCardEditInputChange?.();
+          setIsEditingCard(false);
+        }}
+        onDirtyChange={setIsCardEditorDirty}
+        submissionError={cardEditError}
+        onInputChange={onCardEditInputChange}
+        savingBlocked={cardEditingBlocked}
+      />
+    );
+  }
+
   return (
     <main className="answer-learning-page" {...swipeHandlers}>
       <section className="answer-learning-question">
@@ -124,6 +185,14 @@ export function AnswerLearning({
           </button>
           <button type="button" aria-expanded={reveal.frontKo} onClick={() => toggle("frontKo")}>
             {reveal.frontKo ? "한국어 뜻 숨기기" : "한국어 뜻 보기"}
+          </button>
+          <button
+            type="button"
+            className="answer-learning-edit-card"
+            disabled={cardEditingBlocked}
+            onClick={openCardEditor}
+          >
+            카드와 답변 수정
           </button>
         </div>
         {reveal.frontKo && <p className="answer-learning-front-ko">{card.frontKo || "등록된 한국어 뜻이 없습니다."}</p>}

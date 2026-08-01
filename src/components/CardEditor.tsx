@@ -8,12 +8,19 @@ import {
   type CardEditorDraft,
 } from "../utils/cardEditor";
 import { DECK_NAMES } from "../utils/cardStorage";
+import { normalizeMyAnswerText } from "../utils/myAnswerStorage";
+import { isMyAnswerDeletion } from "../utils/cardEditTransaction";
 
 type CardEditorProps = {
   mode?: "create" | "edit";
   card?: OpicCard;
-  onSave: (card: OpicCard) => void;
+  onSave: (card: OpicCard, myAnswer?: string) => void;
   onCancel: () => void;
+  myAnswer?: string;
+  myAnswerSeed?: string;
+  includeMyAnswer?: boolean;
+  returnLabel?: string;
+  savingBlocked?: boolean;
   onDirtyChange?: (isDirty: boolean) => void;
   submissionError?: string | null;
   duplicateCardId?: string | null;
@@ -26,6 +33,11 @@ export function CardEditor({
   card,
   onSave,
   onCancel,
+  myAnswer,
+  myAnswerSeed,
+  includeMyAnswer = false,
+  returnLabel,
+  savingBlocked = false,
   onDirtyChange,
   submissionError,
   duplicateCardId,
@@ -41,11 +53,25 @@ export function CardEditor({
     [card, mode],
   );
   const [draft, setDraft] = useState<CardEditorDraft>(() => initialDraft);
+  const storedMyAnswer = useMemo(
+    () => normalizeMyAnswerText(myAnswer ?? ""),
+    [myAnswer],
+  );
+  const initialMyAnswerDraft = useMemo(
+    () => normalizeMyAnswerText(myAnswerSeed ?? storedMyAnswer),
+    [myAnswerSeed, storedMyAnswer],
+  );
+  const [myAnswerDraft, setMyAnswerDraft] = useState(initialMyAnswerDraft);
   const validation = useMemo(() => validateCardEditorDraft(draft), [draft]);
-  const changedFields = useMemo(
+  const cardChangedFields = useMemo(
     () => getChangedCardEditorDraftFields(initialDraft, draft),
     [draft, initialDraft],
   );
+  const normalizedMyAnswer = normalizeMyAnswerText(myAnswerDraft);
+  const myAnswerChanged = includeMyAnswer && normalizedMyAnswer !== storedMyAnswer;
+  const changedFields = myAnswerChanged
+    ? [...cardChangedFields, "나만의 답변"]
+    : cardChangedFields;
   const isDirty = changedFields.length > 0;
   const isCreate = mode === "create";
 
@@ -75,12 +101,15 @@ export function CardEditor({
   function cancel() {
     const message = isCreate
       ? "저장하지 않은 새 카드 내용이 있습니다. 화면을 나갈까요?"
-      : "저장하지 않은 카드 수정 내용을 버릴까요?";
+      : includeMyAnswer
+        ? "저장하지 않은 카드와 나만의 답변 수정 내용을 버릴까요?"
+        : "저장하지 않은 카드 수정 내용을 버릴까요?";
     if (isDirty && !window.confirm(message)) return;
     onCancel();
   }
 
   function save() {
+    if (savingBlocked) return;
     if (!isDirty) return;
     if (!validation.card) {
       const targetId = !draft.front.trim()
@@ -91,7 +120,14 @@ export function CardEditor({
       document.getElementById(targetId)?.focus();
       return;
     }
-    onSave(validation.card);
+    if (
+      includeMyAnswer &&
+      isMyAnswerDeletion(storedMyAnswer, normalizedMyAnswer) &&
+      !window.confirm("저장된 나만의 답변을 삭제할까요?")
+    ) {
+      return;
+    }
+    onSave(validation.card, includeMyAnswer ? normalizedMyAnswer : undefined);
   }
 
   return (
@@ -100,10 +136,12 @@ export function CardEditor({
         <div className="card-editor-heading">
           <div>
             <p className="eyebrow">{isCreate ? "CREATE CARD" : "EDIT CARD"}</p>
-            <h1 id="card-editor-title">{isCreate ? "새 카드 추가" : "카드 수정"}</h1>
+            <h1 id="card-editor-title">
+              {isCreate ? "새 카드 추가" : includeMyAnswer ? "카드와 답변 수정" : "카드 수정"}
+            </h1>
           </div>
           <button type="button" className="secondary-button" onClick={cancel}>
-            {isCreate ? "카드 라이브러리로 돌아가기" : "상세로 돌아가기"}
+            {returnLabel ?? (isCreate ? "카드 라이브러리로 돌아가기" : "상세로 돌아가기")}
           </button>
         </div>
 
@@ -180,6 +218,25 @@ export function CardEditor({
             <input type="checkbox" checked={draft.finalRep} onChange={(event) => update("finalRep", event.target.checked)} />
             <span>final_rep 카드</span>
           </label>
+
+          {includeMyAnswer && (
+            <label className="card-editor-field card-editor-field-wide card-editor-my-answer">
+              <span>나만의 답변</span>
+              <textarea
+                id="card-editor-my-answer"
+                value={myAnswerDraft}
+                onChange={(event) => {
+                  onInputChange?.();
+                  setMyAnswerDraft(event.target.value);
+                }}
+                rows={9}
+                placeholder="내 상황에 맞는 영어 답변을 작성해 보세요."
+              />
+              <small>
+                비워 두면 나만의 답변을 사용하지 않습니다. 기존 답변을 비우고 저장하면 삭제 확인이 표시됩니다.
+              </small>
+            </label>
+          )}
         </div>
 
         <section className="card-editor-review" aria-labelledby="card-editor-review-title">
@@ -219,14 +276,18 @@ export function CardEditor({
           <button
             type="button"
             className="primary-button"
-            disabled={!isDirty || (!isCreate && !validation.card)}
+            disabled={savingBlocked || !isDirty || (!isCreate && !validation.card)}
             onClick={save}
           >
             {isCreate ? "카드 추가" : "저장"}
           </button>
           <button type="button" className="secondary-button" onClick={cancel}>취소</button>
         </div>
-        {!isDirty && (
+        {savingBlocked ? (
+          <p className="disabled-reason">
+            저장 상태를 다시 확인할 때까지 추가 수정을 저장할 수 없습니다.
+          </p>
+        ) : !isDirty && (
           <p className="disabled-reason">
             {isCreate
               ? "카드 내용을 입력하면 추가할 수 있습니다."
