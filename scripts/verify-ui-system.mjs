@@ -16,6 +16,7 @@ const quickStart = await readFile(new URL("../src/components/HomeQuickStart.tsx"
 const dashboard = await readFile(new URL("../src/components/HomeCardDashboard.tsx", import.meta.url), "utf8");
 const personalMemos = await readFile(new URL("../src/components/PersonalMemoManager.tsx", import.meta.url), "utf8");
 const answerLearning = await readFile(new URL("../src/components/AnswerLearning.tsx", import.meta.url), "utf8");
+const answerLearningSpeech = await readFile(new URL("../src/hooks/useAnswerLearningSpeech.ts", import.meta.url), "utf8");
 const firstLineDrill = await readFile(new URL("../src/components/FirstLineDrill.tsx", import.meta.url), "utf8");
 const answerLearningSetup = await readFile(new URL("../src/components/AnswerLearningSetup.tsx", import.meta.url), "utf8");
 const cardLibrary = await readFile(new URL("../src/components/CardLibrary.tsx", import.meta.url), "utf8");
@@ -216,8 +217,9 @@ test("답변 익히기 세로 밀도는 설명 범위와 safe-area·터치 계�
       < answerLearning.indexOf('className="answer-learning-navigation"'),
   );
   assert.equal((answerLearning.match(/className="answer-learning-navigation"/g) ?? []).length, 1);
-  assert.match(answerLearning, /const goPrevious = useCallback\(\(\) => \{[\s\S]*?stop\(\);[\s\S]*?onPrevious\(\)/);
-  assert.match(answerLearning, /const goNext = useCallback\(\(\) => \{[\s\S]*?stop\(\);[\s\S]*?onNext\(\)/);
+  assert.match(answerLearning, /const clearCurrentAudio = useCallback\(\(\) => \{[\s\S]*?stop\(\);[\s\S]*?answerSpeech\.stop\(\);[\s\S]*?clearRecording\(\)/);
+  assert.match(answerLearning, /const goPrevious = useCallback\(\(\) => \{[\s\S]*?clearCurrentAudio\(\);[\s\S]*?onPrevious\(\)/);
+  assert.match(answerLearning, /const goNext = useCallback\(\(\) => \{[\s\S]*?clearCurrentAudio\(\);[\s\S]*?onNext\(\)/);
   assert.match(answerLearning, /onSwipeLeft:\s*canGoNext \? goNext : undefined/);
   assert.match(answerLearning, /onSwipeRight:\s*canGoPrevious \? goPrevious : undefined/);
   assert.match(answerLearning, /disabled=\{!canGoPrevious\} aria-label="이전 카드" onClick=\{goPrevious\}/);
@@ -291,6 +293,45 @@ test("답변 익히기는 현재 학습 위치 안에서 공통 CardEditor를 �
   assert.match(answerLearning, /registerHomeNavigationGuard\(confirmNavigation\)/);
   assert.doesNotMatch(app, /pushHistoryView\("cardEdit"\)/);
   assert.match(app, /onSaveCardEdit=\{saveCardEdit\}/);
+});
+test("답변 익히기 전체 답변 TTS는 연속 재생 상태와 공통 속도 설정을 제공한다", () => {
+  assert.match(answerLearning, /useAnswerLearningSpeech\(answerSentences, ttsRate/);
+  assert.match(answerLearning, /답변 익히기 TTS 읽기 속도/);
+  assert.match(answerLearning, /TTS_RATE_OPTIONS\.map/);
+  assert.match(answerLearning, /saveTtsRate\(nextRate\)/);
+  assert.match(answerLearning, /전체 답변 듣기/);
+  assert.match(answerLearning, /일시정지/);
+  assert.match(answerLearning, /이어 듣기/);
+  assert.match(answerLearning, /answerSpeech\.playFromSentence\(sentenceIndex\)/);
+  assert.match(answerLearning, /aria-current=/);
+});
+test("답변 익히기 TTS hook은 최신 영어 voice와 request id로 stale 재생을 차단한다", () => {
+  assert.match(answerLearningSpeech, /requestEnglishVoice\(window\.speechSynthesis\)/);
+  assert.match(answerLearningSpeech, /window\.speechSynthesis\.getVoices\(\)/);
+  assert.match(answerLearningSpeech, /requestIdRef\.current \+= 1/);
+  assert.match(answerLearningSpeech, /requestId !== requestIdRef\.current/);
+  assert.match(answerLearningSpeech, /finishAnswerLearningSentence/);
+  assert.doesNotMatch(answerLearningSpeech, /localStorage|sessionStorage|indexedDB|Firebase/i);
+});
+test("답변 익히기 녹음기는 평가 아래와 카드 이동 위에 있고 TTS와 상호 중지한다", () => {
+  const ratingIndex = answerLearning.indexOf('className="answer-learning-rating"');
+  const recorderIndex = answerLearning.indexOf('className="answer-learning-audio-recorder"');
+  const navigationIndex = answerLearning.indexOf('className="answer-learning-navigation"');
+  assert.ok(ratingIndex >= 0 && ratingIndex < recorderIndex && recorderIndex < navigationIndex);
+  assert.match(answerLearning, /onBeforeRecord=\{\(\) => \{[\s\S]*?answerSpeech\.stop\(\)/);
+  assert.match(answerLearning, /onBeforePlayback=\{\(\) => \{[\s\S]*?answerSpeech\.stop\(\)/);
+  assert.match(answerLearning, /recorderRef\.current\?\.stopPlayback\(\)/);
+  assert.match(answerLearning, /recorderRef\.current\?\.clearRecording\(\)/);
+});
+test("답변 익히기 오디오 조작은 모바일 터치와 현재 문장 표시 계약을 유지한다", () => {
+  assert.match(css, /\.answer-learning-tts-rate\s*\{[\s\S]*?min-height:\s*44px/);
+  assert.match(css, /\.answer-learning-sentences button\.is-current\s*\{[^}]*var\(--blue-soft\)/);
+  assert.match(css, /\.answer-learning-audio-recorder\s*\{[\s\S]*?var\(--app-content-max\)/);
+  const mobileAnswerLearningBlocks = extractCssAtRuleBlocks(
+    css,
+    "@media (max-width: 700px)",
+  ).filter((block) => block.includes(".answer-learning-page"));
+  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-answer-actions\s*\{[^}]*grid-template-columns:\s*repeat\(2/);
 });
 test("공통 AppHeader는 내부 rail에서 기존 표시 요소를 유지한다", () => {
   assert.match(appHeader, /<header[\s\S]*?<div className="app-header-rail">[\s\S]*?study-header-back[\s\S]*?brand-home[\s\S]*?compact-header-title[\s\S]*?compact-header-position[\s\S]*?theme-toggle[\s\S]*?mobile-header-progress/);

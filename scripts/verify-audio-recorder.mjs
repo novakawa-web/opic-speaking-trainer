@@ -236,6 +236,7 @@ const hookSource = await readFile(new URL("../src/hooks/useAudioRecorder.ts", im
 const componentSource = await readFile(new URL("../src/components/AudioRecorder.tsx", import.meta.url), "utf8");
 const playerSource = await readFile(new URL("../src/components/ShadowingPlayer.tsx", import.meta.url), "utf8");
 const detailSource = await readFile(new URL("../src/components/CardDetail.tsx", import.meta.url), "utf8");
+const answerLearningSource = await readFile(new URL("../src/components/AnswerLearning.tsx", import.meta.url), "utf8");
 
 test("stream tracks are stopped", () => assert.match(hookSource, /track\.stop\(\)/));
 test("object URLs are revoked", () => assert.match(hookSource, /URL\.revokeObjectURL/));
@@ -315,9 +316,21 @@ test("shadowing player pauses TTS before recording", () => {
   assert.match(playerSource, /interruptForExternalSpeech/);
   assert.match(playerSource, /<AudioRecorder/);
 });
-test("card detail reuses the common recorder", () => {
-  assert.match(detailSource, /<AudioRecorder/);
-  assert.match(detailSource, /recorderRef\.current\?\.stopPlayback/);
+test("answer learning reuses the common recorder and clears ephemeral audio", () => {
+  assert.match(answerLearningSource, /<AudioRecorder/);
+  assert.match(answerLearningSource, /className="answer-learning-audio-recorder"/);
+  assert.match(answerLearningSource, /recorderRef\.current\?\.stopPlayback/);
+  assert.match(answerLearningSource, /recorderRef\.current\?\.clearRecording/);
+});
+test("card detail no longer renders a duplicate recorder", () => {
+  assert.doesNotMatch(detailSource, /<AudioRecorder/);
+  assert.doesNotMatch(detailSource, /detail-audio-recorder/);
+});
+test("answer learning supplies context-specific recorder copy", () => {
+  assert.match(answerLearningSource, /eyebrow="SPEAK & CHECK"/);
+  assert.match(answerLearningSource, /title="말한 답변 바로 확인하기"/);
+  assert.match(answerLearningSource, /현재 선택한 기본 답변 전체를 말해 보세요/);
+  assert.match(answerLearningSource, /현재 선택한 나만의 답변 전체를 말해 보세요/);
 });
 
 let passed = 0;

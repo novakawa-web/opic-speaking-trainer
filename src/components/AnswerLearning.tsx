@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useAnswerLearningSpeech } from "../hooks/useAnswerLearningSpeech";
 import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
 import { useSwipeNavigation } from "../hooks/useSwipeNavigation";
 import type {
@@ -11,15 +12,26 @@ import type {
 import type { AnswerLearningRevealState } from "../utils/answerLearningSession";
 import { extractMyFirstLine } from "../utils/myAnswerStorage";
 import { createModelAnswerSource, createMyAnswerSource, type ShadowingSource } from "../utils/shadowingPlayer";
-import { createPassageParagraphs } from "../utils/passageParagraphs";
+import {
+  createPassageParagraphs,
+  flattenParagraphSentences,
+} from "../utils/passageParagraphs";
 import { joinAnswerLines } from "../utils/answerText";
-import { readTtsRate, stripQuestionPrefix } from "../utils/ttsSettings";
+import {
+  isTtsRate,
+  readTtsRate,
+  saveTtsRate,
+  stripQuestionPrefix,
+  TTS_RATE_OPTIONS,
+} from "../utils/ttsSettings";
 import { isFirstLineOnlyCard } from "../utils/cardContent";
+import { isRecordingBusy, type RecordingStatus } from "../utils/audioRecorder";
 import {
   ANSWER_LEARNING_STATUS_OPTIONS,
   FIRST_LINE_STATUS_OPTIONS,
 } from "../utils/studyStatusOptions";
 import { CardEditor } from "./CardEditor";
+import { AudioRecorder, type AudioRecorderHandle } from "./AudioRecorder";
 
 type Props = {
   card: OpicCard;
@@ -82,7 +94,10 @@ export function AnswerLearning({
 }: Props) {
   const [isEditingCard, setIsEditingCard] = useState(false);
   const [isCardEditorDirty, setIsCardEditorDirty] = useState(false);
-  const [ttsRate] = useState(readTtsRate);
+  const [ttsRate, setTtsRate] = useState(readTtsRate);
+  const recorderRef = useRef<AudioRecorderHandle | null>(null);
+  const [recordingStatus, setRecordingStatus] =
+    useState<RecordingStatus>("idle");
   const { isSupported, activeTarget, message, speak, stop } = useSpeechSynthesis(ttsRate);
   const modelText = joinAnswerLines(card.back);
   const resolvedSource = answerSource === "my-answer" && myAnswer ? "my-answer" : "default";
@@ -93,12 +108,31 @@ export function AnswerLearning({
     () => createPassageParagraphs(answerText),
     [answerText],
   );
+  const answerSentences = useMemo(
+    () => flattenParagraphSentences(answerParagraphs),
+    [answerParagraphs],
+  );
+  const answerSpeech = useAnswerLearningSpeech(answerSentences, ttsRate, () => {
+    stop();
+    recorderRef.current?.stopPlayback();
+  });
+  const recorderBusy = isRecordingBusy(recordingStatus);
   const shadowingSource = missingFullAnswer ? null : resolvedSource === "my-answer"
     ? createMyAnswerSource(card, answerText)
     : createModelAnswerSource(card);
 
   useEffect(() => () => stop(), [stop]);
-  useEffect(() => stop(), [card.id, stop]);
+  useEffect(() => {
+    stop();
+    answerSpeech.stop();
+    recorderRef.current?.clearRecording();
+  }, [answerSpeech.stop, card.id, resolvedSource, stop]);
+
+  const clearCurrentAudio = useCallback(() => {
+    stop();
+    answerSpeech.stop();
+    recorderRef.current?.clearRecording();
+  }, [answerSpeech.stop, stop]);
 
   const confirmNavigation = useCallback(() => {
     if (
@@ -108,9 +142,9 @@ export function AnswerLearning({
     ) {
       return false;
     }
-    stop();
+    clearCurrentAudio();
     return true;
-  }, [isCardEditorDirty, isEditingCard, stop]);
+  }, [clearCurrentAudio, isCardEditorDirty, isEditingCard]);
 
   useLayoutEffect(() => {
     if (!registerHomeNavigationGuard) return;
@@ -118,13 +152,13 @@ export function AnswerLearning({
   }, [confirmNavigation, registerHomeNavigationGuard]);
 
   const goPrevious = useCallback(() => {
-    stop();
+    clearCurrentAudio();
     onPrevious();
-  }, [onPrevious, stop]);
+  }, [clearCurrentAudio, onPrevious]);
   const goNext = useCallback(() => {
-    stop();
+    clearCurrentAudio();
     onNext();
-  }, [onNext, stop]);
+  }, [clearCurrentAudio, onNext]);
   const swipeHandlers = useSwipeNavigation({
     onSwipeLeft: canGoNext ? goNext : undefined,
     onSwipeRight: canGoPrevious ? goPrevious : undefined,
@@ -135,12 +169,57 @@ export function AnswerLearning({
   }
 
   function toggleSpeech(text: string, target: "question" | "firstLine" | "modelAnswer" | "myAnswer") {
+    if (recorderBusy) return;
+    answerSpeech.stop();
+    recorderRef.current?.stopPlayback();
     if (activeTarget === target) stop();
     else speak(text, target);
   }
 
-  function openCardEditor() {
+  function changeAnswerSource(source: AnswerLearningAnswerSource) {
+    if (source === resolvedSource) return;
+    clearCurrentAudio();
+    onAnswerSourceChange(source);
+  }
+
+  function changeRate(rawValue: string) {
+    const nextRate = Number(rawValue);
+    if (!isTtsRate(nextRate)) return;
     stop();
+    answerSpeech.stop();
+    setTtsRate(nextRate);
+    saveTtsRate(nextRate);
+  }
+
+  function toggleAnswerPlayback() {
+    if (recorderBusy) return;
+    if (
+      answerSpeech.playback.status === "loading" ||
+      answerSpeech.playback.status === "playing"
+    ) {
+      answerSpeech.pause();
+      return;
+    }
+    if (answerSpeech.playback.status === "paused") {
+      answerSpeech.resume();
+      return;
+    }
+    answerSpeech.playAll();
+  }
+
+  const answerPlaybackLabel =
+    answerSpeech.playback.status === "loading"
+      ? `${answerSpeech.playback.currentIndex + 1}번째 문장 준비 중`
+      : answerSpeech.playback.status === "playing"
+        ? `${answerSpeech.playback.currentIndex + 1}번째 문장 재생 중`
+        : answerSpeech.playback.status === "paused"
+          ? `${answerSpeech.playback.currentIndex + 1}번째 문장에서 일시정지`
+          : answerSpeech.playback.status === "completed"
+            ? "전체 답변 재생을 완료했습니다."
+            : answerSpeech.message;
+
+  function openCardEditor() {
+    clearCurrentAudio();
     onCardEditInputChange?.();
     setIsEditingCard(true);
   }
@@ -174,13 +253,13 @@ export function AnswerLearning({
     <main className="answer-learning-page" {...swipeHandlers}>
       <section className="answer-learning-question">
         <div className="answer-learning-progress" aria-live="polite">
-          <button type="button" className="answer-learning-inline-back" onClick={() => { stop(); onBack(); }}>← 준비 화면으로</button>
+          <button type="button" className="answer-learning-inline-back" onClick={() => { clearCurrentAudio(); onBack(); }}>← 준비 화면으로</button>
           <strong>{currentPosition} / {totalCards} 카드</strong>
           <span>{card.deck}</span>
         </div>
         <h1>{card.front}</h1>
         <div className="answer-learning-question-actions">
-          <button type="button" className={activeTarget === "question" ? "is-playing" : ""} disabled={!isSupported} onClick={() => toggleSpeech(stripQuestionPrefix(card.front), "question")}>
+          <button type="button" className={activeTarget === "question" ? "is-playing" : ""} disabled={!isSupported || recorderBusy} onClick={() => toggleSpeech(stripQuestionPrefix(card.front), "question")}>
             {activeTarget === "question" ? "문제 듣기 중지" : "문제 듣기"}
           </button>
           <button type="button" aria-expanded={reveal.frontKo} onClick={() => toggle("frontKo")}>
@@ -233,7 +312,7 @@ export function AnswerLearning({
           <div className="answer-learning-first-line">
             <div className="answer-learning-first-line-content">
               <p>{firstLine}</p>
-              <button type="button" disabled={!isSupported} onClick={() => toggleSpeech(firstLine, "firstLine")}>
+              <button type="button" disabled={!isSupported || recorderBusy} onClick={() => toggleSpeech(firstLine, "firstLine")}>
                 {activeTarget === "firstLine" ? "첫 문장 듣기 중지" : "첫 문장 듣기"}
               </button>
             </div>
@@ -260,14 +339,43 @@ export function AnswerLearning({
         {reveal.answer && (
           <div className="answer-learning-answer">
             <div className="answer-learning-tabs" role="tablist" aria-label="답변 종류">
-              <button type="button" role="tab" aria-selected={resolvedSource === "default"} onClick={() => onAnswerSourceChange("default")}>기본 답변</button>
-              <button type="button" role="tab" aria-selected={resolvedSource === "my-answer"} disabled={!myAnswer} onClick={() => onAnswerSourceChange("my-answer")}>나만의 답변</button>
+              <button type="button" role="tab" aria-selected={resolvedSource === "default"} onClick={() => changeAnswerSource("default")}>기본 답변</button>
+              <button type="button" role="tab" aria-selected={resolvedSource === "my-answer"} disabled={!myAnswer} onClick={() => changeAnswerSource("my-answer")}>나만의 답변</button>
             </div>
             <div className="answer-learning-answer-actions">
-              <button type="button" disabled={!isSupported} onClick={() => toggleSpeech(answerText, resolvedSource === "my-answer" ? "myAnswer" : "modelAnswer")}>
-                {activeTarget === (resolvedSource === "my-answer" ? "myAnswer" : "modelAnswer") ? "전체 답변 듣기 중지" : "전체 답변 듣기"}
+              <button
+                type="button"
+                className={answerSpeech.isActive ? "is-playing" : ""}
+                disabled={!answerSpeech.isSupported || recorderBusy}
+                onClick={toggleAnswerPlayback}
+              >
+                {answerSpeech.playback.status === "paused"
+                  ? "이어 듣기"
+                  : answerSpeech.playback.status === "loading" ||
+                      answerSpeech.playback.status === "playing"
+                    ? "일시정지"
+                    : "전체 답변 듣기"}
               </button>
+              {answerSpeech.isActive && (
+                <button type="button" onClick={answerSpeech.stop}>정지</button>
+              )}
+              <label className="answer-learning-tts-rate">
+                <span>속도</span>
+                <select
+                  aria-label="답변 익히기 TTS 읽기 속도"
+                  value={ttsRate}
+                  disabled={!answerSpeech.isSupported || recorderBusy}
+                  onChange={(event) => changeRate(event.target.value)}
+                >
+                  {TTS_RATE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
             </div>
+            <p className="answer-learning-playback-status" aria-live="polite">
+              {answerPlaybackLabel || "정지 상태에서는 문장을 누르면 선택한 문장만 재생합니다."}
+            </p>
             <div className="answer-learning-sentences">
               {answerParagraphs.map((paragraph, paragraphIndex) => (
                 <div
@@ -281,14 +389,26 @@ export function AnswerLearning({
                       <button
                         key={`${card.id}-${sentenceIndex}`}
                         type="button"
-                        onClick={() =>
-                          speak(
-                            sentence,
-                            resolvedSource === "my-answer"
-                              ? "myAnswer"
-                              : "modelAnswer",
-                          )
+                        className={
+                          answerSpeech.isActive &&
+                          answerSpeech.playback.currentIndex === sentenceIndex
+                            ? "is-current"
+                            : ""
                         }
+                        aria-current={
+                          answerSpeech.isActive &&
+                          answerSpeech.playback.currentIndex === sentenceIndex
+                            ? "true"
+                            : undefined
+                        }
+                        aria-label={`${sentenceIndex + 1}번 문장${
+                          answerSpeech.isActive &&
+                          answerSpeech.playback.mode === "continuous"
+                            ? "부터 끝까지 재생"
+                            : "만 재생"
+                        }`}
+                        disabled={recorderBusy}
+                        onClick={() => answerSpeech.playFromSentence(sentenceIndex)}
                       >
                         <span>{sentenceIndex + 1}</span>
                         {sentence}
@@ -318,12 +438,35 @@ export function AnswerLearning({
           </button>
           <button type="button" className="text-button utility-action" disabled={!status} onClick={onReset}>현재 상태 초기화</button>
         </div>
-        <button type="button" className="secondary-button answer-learning-shadowing" disabled={!shadowingSource} aria-describedby={!shadowingSource ? `shadowing-unavailable-${card.id}` : undefined} onClick={() => { if (!shadowingSource) return; stop(); onStartShadowing(shadowingSource); }}>
+        <button type="button" className="secondary-button answer-learning-shadowing" disabled={!shadowingSource || recorderBusy} aria-describedby={!shadowingSource ? `shadowing-unavailable-${card.id}` : undefined} onClick={() => { if (!shadowingSource) return; clearCurrentAudio(); onStartShadowing(shadowingSource); }}>
           이 답변 쉐도잉하기
         </button>
         {!shadowingSource && <p id={`shadowing-unavailable-${card.id}`} className="disabled-reason">전체 답변이 없어 쉐도잉을 시작할 수 없습니다.</p>}
         <p className="answer-learning-feedback" aria-live="polite">{feedbackMessage || message}</p>
       </section>
+
+      {!missingFullAnswer && (
+        <AudioRecorder
+          ref={recorderRef}
+          className="answer-learning-audio-recorder"
+          eyebrow="SPEAK & CHECK"
+          title="말한 답변 바로 확인하기"
+          scopeLabel={
+            resolvedSource === "my-answer"
+              ? "현재 선택한 나만의 답변 전체를 말해 보세요."
+              : "현재 선택한 기본 답변 전체를 말해 보세요."
+          }
+          onBeforeRecord={() => {
+            stop();
+            answerSpeech.stop();
+          }}
+          onBeforePlayback={() => {
+            stop();
+            answerSpeech.stop();
+          }}
+          onStatusChange={setRecordingStatus}
+        />
+      )}
 
       <nav className="answer-learning-navigation" aria-label="답변 익히기 카드 이동">
         <button type="button" disabled={!canGoPrevious} aria-label="이전 카드" onClick={goPrevious}>이전</button>

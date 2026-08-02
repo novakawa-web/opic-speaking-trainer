@@ -31,11 +31,6 @@ import {
   readCardDetailUiSession,
   updateCardDetailUiSession,
 } from "../utils/uiSessionStorage";
-import { isRecordingBusy, type RecordingStatus } from "../utils/audioRecorder";
-import {
-  AudioRecorder,
-  type AudioRecorderHandle,
-} from "./AudioRecorder";
 import { isFirstLineOnlyCard } from "../utils/cardContent";
 import { CardEditor } from "./CardEditor";
 
@@ -137,9 +132,6 @@ export function CardDetail({
   const cardDeleteDialogRef = useRef<HTMLDialogElement>(null);
   const cardDeleteTriggerRef = useRef<HTMLButtonElement>(null);
   const memoSectionRef = useRef<CardMemoSectionHandle>(null);
-  const recorderRef = useRef<AudioRecorderHandle | null>(null);
-  const [recordingStatus, setRecordingStatus] =
-    useState<RecordingStatus>("idle");
   const [isEditingCard, setIsEditingCard] = useState(false);
   const [isCardEditorDirty, setIsCardEditorDirty] = useState(false);
   const [cardEditorMyAnswerSeed, setCardEditorMyAnswerSeed] = useState<string | null>(null);
@@ -154,7 +146,6 @@ export function CardDetail({
   const modelAnswerText = joinAnswerLines(card.back);
   const modelAnswerRows = createAnswerDisplayRows(modelAnswerText);
   const firstLineOnly = isFirstLineOnlyCard(card);
-  const recorderBusy = isRecordingBusy(recordingStatus);
   const shadowingSource =
     answerTab === "model"
       ? firstLineOnly ? null : createModelAnswerSource(card)
@@ -168,7 +159,6 @@ export function CardDetail({
   const runAfterDiscardCheck = useCallback(
     (action: () => void) => {
       if (!(memoSectionRef.current?.confirmDiscardAndClose() ?? true)) return;
-      recorderRef.current?.clearRecording();
       stop();
       action();
     },
@@ -184,7 +174,6 @@ export function CardDetail({
       return false;
     }
     if (!(memoSectionRef.current?.confirmDiscardAndClose() ?? true)) return false;
-    recorderRef.current?.clearRecording();
     stop();
     return true;
   }, [isCardEditorDirty, isEditingCard, stop]);
@@ -205,7 +194,6 @@ export function CardDetail({
     setCardEditorMyAnswerSeed(null);
     setMessage("");
     setDeletedAnswer(null);
-    recorderRef.current?.clearRecording();
     stop();
   }, [card.id, stop]);
 
@@ -237,7 +225,6 @@ export function CardDetail({
 
   function changeTab(nextTab: AnswerTab) {
     if (nextTab === answerTab) return;
-    recorderRef.current?.clearRecording();
     stop();
     setAnswerTab(nextTab);
   }
@@ -246,8 +233,6 @@ export function CardDetail({
     text: string,
     target: "modelAnswer" | "myAnswer" | "myFirstLine",
   ) {
-    if (recorderBusy) return;
-    recorderRef.current?.stopPlayback();
     if (activeTarget === target) stop();
     else speak(text, target);
   }
@@ -549,7 +534,7 @@ export function CardDetail({
             <button
               type="button"
               className="primary-button"
-              disabled={!shadowingSource || recorderBusy}
+              disabled={!shadowingSource}
               onClick={() => {
                 if (!shadowingSource) return;
                 runAfterDiscardCheck(() => onStartShadowing(shadowingSource));
@@ -579,7 +564,7 @@ export function CardDetail({
                   type="button"
                   className={`speech-button answer-listen-button ${activeTarget === "modelAnswer" ? "is-playing" : ""}`}
                   aria-pressed={activeTarget === "modelAnswer"}
-                  disabled={!isSupported || recorderBusy}
+                  disabled={!isSupported}
                   onClick={() => toggleSpeech(modelAnswerText, "modelAnswer")}
                 >
                   {activeTarget === "modelAnswer"
@@ -618,7 +603,7 @@ export function CardDetail({
                       type="button"
                       className={`speech-button answer-listen-button ${activeTarget === "myAnswer" ? "is-playing" : ""}`}
                       aria-pressed={activeTarget === "myAnswer"}
-                      disabled={!isSupported || recorderBusy}
+                      disabled={!isSupported}
                       onClick={() => toggleSpeech(myAnswer, "myAnswer")}
                     >
                       {activeTarget === "myAnswer" ? "전체 듣기 중지" : "전체 듣기"}
@@ -654,7 +639,7 @@ export function CardDetail({
                       type="button"
                       className={`speech-button answer-listen-button ${activeTarget === "myFirstLine" ? "is-playing" : ""}`}
                       aria-pressed={activeTarget === "myFirstLine"}
-                      disabled={!isSupported || !myFirstLine || recorderBusy}
+                      disabled={!isSupported || !myFirstLine}
                       onClick={() => toggleSpeech(myFirstLine, "myFirstLine")}
                     >
                       {activeTarget === "myFirstLine"
@@ -687,21 +672,6 @@ export function CardDetail({
                 </div>
               )}
             </div>
-          )}
-
-          {(answerTab === "model" || Boolean(myAnswer)) && (
-            <AudioRecorder
-              ref={recorderRef}
-              className="detail-audio-recorder"
-              scopeLabel={
-                answerTab === "model"
-                  ? "기본 답변 전체를 말해보세요."
-                  : "나만의 답변 전체를 말해보세요."
-              }
-              onBeforeRecord={stop}
-              onBeforePlayback={stop}
-              onStatusChange={setRecordingStatus}
-            />
           )}
 
           <div className="answer-message" aria-live="polite">

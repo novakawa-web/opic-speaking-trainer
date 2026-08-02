@@ -20,6 +20,8 @@ export type AudioRecorderHandle = {
 
 type AudioRecorderProps = {
   className?: string;
+  eyebrow?: string;
+  title?: string;
   scopeLabel: string;
   onBeforeRecord?: () => void;
   onBeforePlayback?: () => void;
@@ -37,7 +39,15 @@ const statusLabels: Record<RecordingStatus, string> = {
 
 export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>(
   function AudioRecorder(
-    { className = "", scopeLabel, onBeforeRecord, onBeforePlayback, onStatusChange },
+    {
+      className = "",
+      eyebrow = "VOICE CHECK",
+      title = "녹음 후 바로 듣기",
+      scopeLabel,
+      onBeforeRecord,
+      onBeforePlayback,
+      onStatusChange,
+    },
     ref,
   ) {
     const recorder = useAudioRecorder();
@@ -88,8 +98,8 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
       >
         <div className="audio-recorder-heading">
           <div>
-            <p className="eyebrow">VOICE CHECK</p>
-            <h2>녹음 후 바로 듣기</h2>
+            <p className="eyebrow">{eyebrow}</p>
+            <h2>{title}</h2>
           </div>
           <strong
             className={recorder.recordingStatus === "recording" ? "is-recording" : ""}

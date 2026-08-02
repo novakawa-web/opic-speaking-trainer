@@ -34,6 +34,15 @@ import {
   ANSWER_LEARNING_STATUS_OPTIONS,
   FIRST_LINE_STATUS_OPTIONS,
 } from "../src/utils/studyStatusOptions.ts";
+import {
+  createAnswerLearningPlaybackState,
+  finishAnswerLearningSentence,
+  isAnswerLearningPlaybackActive,
+  pauseAnswerLearningPlayback,
+  resumeAnswerLearningPlayback,
+  startAnswerLearningSentencePlayback,
+  startFullAnswerPlayback,
+} from "../src/utils/answerLearningPlayback.ts";
 
 class MemoryStorage {
   values = new Map();
@@ -79,6 +88,88 @@ test("두 상태 선택지는 의미가 다른 저장 값을 공유하지 않음
     ANSWER_LEARNING_STATUS_OPTIONS.map(({ value }) => value),
     ["speakable", "learning", "hard"],
   );
+});
+test("답변 전체 듣기는 첫 문장부터 연속 재생으로 시작", () => {
+  assert.deepEqual(startFullAnswerPlayback(3), {
+    status: "loading",
+    mode: "continuous",
+    currentIndex: 0,
+  });
+});
+test("빈 답변 전체 듣기는 정지 상태 유지", () => {
+  assert.deepEqual(startFullAnswerPlayback(0), createAnswerLearningPlaybackState());
+});
+test("정지 상태 문장 선택은 선택 문장만 재생", () => {
+  assert.deepEqual(
+    startAnswerLearningSentencePlayback(createAnswerLearningPlaybackState(), 1, 3),
+    { status: "loading", mode: "single", currentIndex: 1 },
+  );
+});
+test("연속 재생 중 문장 선택은 해당 문장부터 연속 재생", () => {
+  assert.deepEqual(
+    startAnswerLearningSentencePlayback(
+      { status: "playing", mode: "continuous", currentIndex: 0 },
+      2,
+      4,
+    ),
+    { status: "loading", mode: "continuous", currentIndex: 2 },
+  );
+});
+test("일시정지 중 문장 선택도 해당 문장부터 연속 재생", () => {
+  assert.deepEqual(
+    startAnswerLearningSentencePlayback(
+      { status: "paused", mode: "continuous", currentIndex: 1 },
+      3,
+      5,
+    ),
+    { status: "loading", mode: "continuous", currentIndex: 3 },
+  );
+});
+test("전체 완료 후 문장 선택은 선택 문장만 재생", () => {
+  assert.deepEqual(
+    startAnswerLearningSentencePlayback(
+      { status: "completed", mode: "continuous", currentIndex: 2 },
+      1,
+      3,
+    ),
+    { status: "loading", mode: "single", currentIndex: 1 },
+  );
+});
+test("일시정지와 이어 듣기는 현재 문장을 유지", () => {
+  const playing = { status: "playing", mode: "continuous", currentIndex: 2 };
+  const paused = pauseAnswerLearningPlayback(playing);
+  assert.deepEqual(paused, { status: "paused", mode: "continuous", currentIndex: 2 });
+  assert.deepEqual(resumeAnswerLearningPlayback(paused), {
+    status: "loading",
+    mode: "continuous",
+    currentIndex: 2,
+  });
+});
+test("연속 재생은 다음 문장으로 진행하고 마지막에 완료", () => {
+  const first = { status: "playing", mode: "continuous", currentIndex: 0 };
+  const second = finishAnswerLearningSentence(first, 2);
+  assert.deepEqual(second, { status: "loading", mode: "continuous", currentIndex: 1 });
+  assert.deepEqual(
+    finishAnswerLearningSentence({ ...second, status: "playing" }, 2),
+    { status: "completed", mode: "continuous", currentIndex: 1 },
+  );
+});
+test("선택 문장 한 번 재생은 정지 상태로 종료", () => {
+  assert.deepEqual(
+    finishAnswerLearningSentence(
+      { status: "playing", mode: "single", currentIndex: 1 },
+      3,
+    ),
+    createAnswerLearningPlaybackState(),
+  );
+});
+test("답변 TTS active 상태는 loading playing paused만 포함", () => {
+  assert.equal(isAnswerLearningPlaybackActive("loading"), true);
+  assert.equal(isAnswerLearningPlaybackActive("playing"), true);
+  assert.equal(isAnswerLearningPlaybackActive("paused"), true);
+  assert.equal(isAnswerLearningPlaybackActive("idle"), false);
+  assert.equal(isAnswerLearningPlaybackActive("completed"), false);
+  assert.equal(isAnswerLearningPlaybackActive("error"), false);
 });
 
 test("빈 상태 저장소", () => assert.deepEqual(readAnswerLearningStatuses(new MemoryStorage()), {}));

@@ -115,7 +115,7 @@ test("나의 첫 문장 듣기는 공통 상태 스타일과 기존 동작을 �
   );
   assert.match(firstLineButton, /speech-button answer-listen-button/);
   assert.match(firstLineButton, /aria-pressed=\{activeTarget === "myFirstLine"\}/);
-  assert.match(firstLineButton, /disabled=\{!isSupported \|\| !myFirstLine \|\| recorderBusy\}/);
+  assert.match(firstLineButton, /disabled=\{!isSupported \|\| !myFirstLine\}/);
   assert.match(firstLineButton, /onClick=\{\(\) => toggleSpeech\(myFirstLine, "myFirstLine"\)\}/);
   assert.match(firstLineButton, /"나의 첫 문장 듣기"/);
 });
