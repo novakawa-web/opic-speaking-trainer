@@ -18,8 +18,10 @@ const personalMemos = await readFile(new URL("../src/components/PersonalMemoMana
 const answerLearning = await readFile(new URL("../src/components/AnswerLearning.tsx", import.meta.url), "utf8");
 const answerLearningSpeech = await readFile(new URL("../src/hooks/useAnswerLearningSpeech.ts", import.meta.url), "utf8");
 const firstLineDrill = await readFile(new URL("../src/components/FirstLineDrill.tsx", import.meta.url), "utf8");
+const firstLineSetup = await readFile(new URL("../src/components/FirstLineSetup.tsx", import.meta.url), "utf8");
 const answerLearningSetup = await readFile(new URL("../src/components/AnswerLearningSetup.tsx", import.meta.url), "utf8");
 const cardLibrary = await readFile(new URL("../src/components/CardLibrary.tsx", import.meta.url), "utf8");
+const studyScopeSummary = await readFile(new URL("../src/components/StudyScopeSummary.tsx", import.meta.url), "utf8");
 const tagFilter = await readFile(new URL("../src/components/TagFilter.tsx", import.meta.url), "utf8");
 const appHeader = await readFile(new URL("../src/components/AppHeader.tsx", import.meta.url), "utf8");
 const backupManager = await readFile(new URL("../src/components/BackupManager.tsx", import.meta.url), "utf8");
@@ -338,11 +340,37 @@ test("공통 AppHeader는 내부 rail에서 기존 표시 요소를 유지한다
   assert.match(appHeader, /<header[\s\S]*?<div className="app-header-rail">[\s\S]*?study-header-back[\s\S]*?brand-home[\s\S]*?compact-header-title[\s\S]*?compact-header-position[\s\S]*?theme-toggle[\s\S]*?mobile-header-progress/);
   assert.match(css, /\.app-header-rail\s*{[\s\S]*?max-width:\s*var\(--app-content-max\)/);
 });
-test("답변 익히기 선택 조작은 체크 목록보다 앞에 한 번만 배치된다", () => {
-  const controlsIndex = answerLearningSetup.indexOf('className="answer-selection-controls"');
+test("답변 익히기 학습 범위 조작은 체크 목록보다 앞에 한 번만 배치된다", () => {
+  const controlsIndex = answerLearningSetup.indexOf('className="answer-learning-scope"');
   const checklistIndex = answerLearningSetup.indexOf('className="answer-learning-card-checklist"');
   assert.ok(controlsIndex >= 0 && controlsIndex < checklistIndex);
   assert.equal((answerLearningSetup.match(/answer-learning-start/g) ?? []).length, 1);
+});
+test("세 준비 화면은 공통 학습 범위 표시를 사용하되 화면별 동작을 유지한다", () => {
+  for (const source of [answerLearningSetup, firstLineSetup, cardLibrary]) {
+    assert.match(source, /<StudyScopeSummary/);
+    assert.match(source, /eyebrow="STUDY SCOPE"/);
+  }
+  assert.match(answerLearningSetup, /description=\{`현재 필터·정렬 결과 \$\{visibleCards\.length\}장 중 학습할 카드를 선택하세요\.`\}/);
+  assert.match(firstLineSetup, /description="현재 조건에 맞는 카드를 모두 사용합니다\."/);
+  assert.match(cardLibrary, /description="현재 검색·필터 결과 전체를 학습 범위로 사용합니다\."/);
+  assert.match(answerLearningSetup, /onClick=\{selectAllVisible\}/);
+  assert.match(answerLearningSetup, /onClick=\{clearSelection\}/);
+  assert.match(firstLineSetup, /onClick=\{props\.onStart\}/);
+  assert.match(cardLibrary, /onClick=\{onStartFirstLine\}/);
+  assert.match(cardLibrary, /onClick=\{onStartAnswerLearning\}/);
+});
+test("공통 학습 범위 표시는 제목 연결과 동적 카드 수 안내를 제공한다", () => {
+  assert.match(studyScopeSummary, /role="group" aria-labelledby=\{titleId\}/);
+  assert.match(studyScopeSummary, /<Heading id=\{titleId\}>\{title\}<\/Heading>/);
+  assert.match(studyScopeSummary, /announceCount = true/);
+  assert.match(studyScopeSummary, /aria-live=\{announceCount \? "polite" : undefined\}/);
+  assert.match(studyScopeSummary, /className="study-scope-summary-actions"/);
+});
+test("카드 라이브러리는 기존 상세 결과 수만 live 영역으로 유지한다", () => {
+  assert.match(cardLibrary, /announceCount=\{false\}/);
+  assert.equal((cardLibrary.match(/aria-live="polite"/g) ?? []).length, 1);
+  assert.match(cardLibrary, /className="card-library-result-count" aria-live="polite"/);
 });
 test("답변 익히기 선택 조작은 정확한 문구와 독립 handler를 사용한다", () => {
   assert.match(answerLearningSetup, /countLabel: `학습할 카드 \$\{startCandidateCount\}장`/);
@@ -538,6 +566,11 @@ test("답변 익히기 모바일 선택 버튼과 시작 버튼은 터치 크기
   assert.match(css, /\.answer-selection-buttons\s*{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(css, /\.answer-selection-buttons button\s*{[\s\S]*?min-height:\s*44px/);
   assert.match(css, /\.answer-learning-start\s*{[\s\S]*?width:\s*100%[\s\S]*?min-height:\s*52px/);
+});
+test("공통 학습 범위는 데스크톱 2열과 모바일 1열 배치를 사용한다", () => {
+  assert.match(css, /\.study-scope-summary\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\) minmax\(240px,\s*410px\)/);
+  assert.match(css, /\.study-scope-summary-count\s*\{[\s\S]*?font-weight:\s*800/);
+  assert.match(css, /@media \(max-width:\s*700px\)[\s\S]*?\.study-scope-summary\s*\{[\s\S]*?grid-template-columns:\s*1fr/);
 });
 test("복구 navigation intent를 저장한다", () => {
   const storage = new MemoryStorage();

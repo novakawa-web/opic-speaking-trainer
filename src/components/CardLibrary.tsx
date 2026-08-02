@@ -16,6 +16,7 @@ import { TagFilter } from "./TagFilter";
 import type { ArchiveFilter } from "../utils/cardArchiveStorage";
 import type { AnswerLearningStatusFilter } from "../utils/answerLearningSession";
 import { normalizeCardSearchQuery } from "../utils/cardSearch";
+import { StudyScopeSummary } from "./StudyScopeSummary";
 
 type CardLibraryProps = {
   cards: OpicCard[];
@@ -219,38 +220,40 @@ export function CardLibrary({
         onArchiveFilterChange={onArchiveFilterChange}
       />
 
-      <section className="card-library-study-actions" aria-labelledby="card-library-study-actions-title">
-        <div>
-          <p className="eyebrow">STUDY CURRENT RESULTS</p>
-          <h2 id="card-library-study-actions-title">현재 결과로 연습</h2>
-          <p>
-            지금 찾은 {cards.length}장을 첫 문장 연습 또는 답변 익히기 준비로 전달합니다.
+      <StudyScopeSummary
+        className="card-library-study-actions"
+        eyebrow="STUDY SCOPE"
+        title="현재 결과로 연습"
+        titleId="card-library-study-actions-title"
+        description="현재 검색·필터 결과 전체를 학습 범위로 사용합니다."
+        countLabel={`현재 결과 ${cards.length}장`}
+        announceCount={false}
+        note={answerLearningCardCount < cards.length && (
+          <p className="card-library-study-note">
+            보관 카드 {cards.length - answerLearningCardCount}장은 답변 익히기에서 제외됩니다.
           </p>
-          {answerLearningCardCount < cards.length && (
-            <p className="card-library-study-note">
-              보관 카드 {cards.length - answerLearningCardCount}장은 답변 익히기에서 제외됩니다.
-            </p>
-          )}
-        </div>
-        <div className="card-library-study-buttons">
-          <button
-            type="button"
-            className="secondary-button"
-            disabled={cards.length === 0}
-            onClick={onStartFirstLine}
-          >
-            첫 문장 연습 · {cards.length}장
-          </button>
-          <button
-            type="button"
-            className="primary-button"
-            disabled={answerLearningCardCount === 0}
-            onClick={onStartAnswerLearning}
-          >
-            답변 익히기 · {answerLearningCardCount}장
-          </button>
-        </div>
-      </section>
+        )}
+        actions={(
+          <div className="card-library-study-buttons">
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={cards.length === 0}
+              onClick={onStartFirstLine}
+            >
+              첫 문장 연습 · {cards.length}장
+            </button>
+            <button
+              type="button"
+              className="primary-button"
+              disabled={answerLearningCardCount === 0}
+              onClick={onStartAnswerLearning}
+            >
+              답변 익히기 · {answerLearningCardCount}장
+            </button>
+          </div>
+        )}
+      />
 
       <p className="card-library-result-count" aria-live="polite">
         총 {cards.length}장 중 {shownCards.length}장 표시

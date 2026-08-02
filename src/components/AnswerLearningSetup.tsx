@@ -15,6 +15,7 @@ import {
   filterAnswerLearningCards,
   orderAnswerLearningCards,
 } from "../utils/answerLearningSelectors";
+import { StudyScopeSummary } from "./StudyScopeSummary";
 
 type Props = {
   cards: OpicCard[];
@@ -213,33 +214,35 @@ export function AnswerLearningSetup({
         </div>
       </section>
 
-      <section className="answer-learning-selection" aria-labelledby="answer-selection-title">
-        <div className="answer-selection-heading">
-          <h2 id="answer-selection-title">카드 {visibleCards.length}장</h2>
-          <p>현재 필터·정렬 결과에서 학습할 카드를 골라 주세요.</p>
-        </div>
-
-        <div className="answer-selection-controls">
-          <div className="answer-selection-actions">
-            <p className="answer-selection-count" aria-live="polite">{selectionState.countLabel}</p>
-            <div className="answer-selection-buttons">
-              <button type="button" className="secondary-button" disabled={visibleCards.length === 0 || selectionState.allVisibleSelected} onClick={selectAllVisible}>
-                전체 선택
-              </button>
-              <button type="button" className="secondary-button" disabled={selectionState.clearDisabled} onClick={clearSelection}>
-                선택 해제
-              </button>
-            </div>
-          </div>
-          {selectionState.hiddenSelectionMessage && (
+      <section className="answer-learning-selection">
+        <StudyScopeSummary
+          className="answer-learning-scope"
+          eyebrow="STUDY SCOPE"
+          title="학습 범위"
+          titleId="answer-selection-title"
+          description={`현재 필터·정렬 결과 ${visibleCards.length}장 중 학습할 카드를 선택하세요.`}
+          countLabel={selectionState.countLabel}
+          note={selectionState.hiddenSelectionMessage && (
             <p className="answer-selection-hidden-note">
               {selectionState.hiddenSelectionMessage}
             </p>
           )}
-          <button type="button" className="primary-button answer-learning-start" disabled={selectionState.startDisabled} onClick={onStart}>
-            {selectionState.startLabel}
-          </button>
-        </div>
+          actions={(
+            <>
+              <div className="answer-selection-buttons">
+                <button type="button" className="secondary-button" disabled={visibleCards.length === 0 || selectionState.allVisibleSelected} onClick={selectAllVisible}>
+                  전체 선택
+                </button>
+                <button type="button" className="secondary-button" disabled={selectionState.clearDisabled} onClick={clearSelection}>
+                  선택 해제
+                </button>
+              </div>
+              <button type="button" className="primary-button answer-learning-start" disabled={selectionState.startDisabled} onClick={onStart}>
+                {selectionState.startLabel}
+              </button>
+            </>
+          )}
+        />
 
         {visibleCards.length === 0 ? (
           <p className="answer-learning-empty">조건에 맞는 카드가 없어요.</p>

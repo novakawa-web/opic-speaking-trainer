@@ -4,6 +4,7 @@ import type { FirstLineMode, MockQuestionCount } from "../utils/firstLineMockSes
 import type { StudyCardScope, StudyOrder } from "../utils/studyPreferences";
 import { TagFilter } from "./TagFilter";
 import type { ArchiveFilter } from "../utils/cardArchiveStorage";
+import { StudyScopeSummary } from "./StudyScopeSummary";
 
 type Props = {
   cardCount: number;
@@ -103,11 +104,21 @@ export function FirstLineSetup(props: Props) {
             </select>
           </label>
         )}
-        <p className="first-line-setup-count" aria-live="polite">현재 조건 {props.cardCount}장</p>
-        <button type="button" className="primary-button first-line-setup-start" disabled={props.cardCount === 0} onClick={props.onStart}>
-          {props.mode === "mock" ? "모의고사 시작" : "첫 문장 연습 시작"}
-        </button>
-        {props.cardCount === 0 && <p className="disabled-reason">현재 조건에 맞는 카드가 없습니다.</p>}
+        <StudyScopeSummary
+          className="first-line-study-scope"
+          eyebrow="STUDY SCOPE"
+          title="학습 범위"
+          titleId="first-line-study-scope-title"
+          headingLevel="h3"
+          description="현재 조건에 맞는 카드를 모두 사용합니다."
+          countLabel={`현재 조건 ${props.cardCount}장`}
+          note={props.cardCount === 0 && <p className="disabled-reason">현재 조건에 맞는 카드가 없습니다.</p>}
+          actions={(
+            <button type="button" className="primary-button first-line-setup-start" disabled={props.cardCount === 0} onClick={props.onStart}>
+              {props.mode === "mock" ? "모의고사 시작" : "첫 문장 연습 시작"}
+            </button>
+          )}
+        />
       </section>
     </main>
   );
