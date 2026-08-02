@@ -106,6 +106,7 @@ test("compact learning tile 공통 class", () => {
 test("summary chip 공통 class", () => {
   assert.match(dashboard, /summary-chip-row/);
   assert.match(personalMemos, /summary-chip-row/);
+  assert.match(directTextPractice, /summary-chip-row/);
   assert.match(css, /\.summary-chip[\s\S]*?min-height:\s*32px/);
 });
 test("utility action variant", () => {
@@ -129,7 +130,7 @@ test("홈 안내 문구는 현재 제공하는 세 학습 흐름과 실제 이�
   assert.match(quickStart, />지문을 고르거나 작성한 뒤 문장별로 따라 말해요\.<\/span>/);
   assert.match(dashboard, /현재 조건으로 첫 문장 연습하세요\./);
   assert.match(homeManagement, /학습일 · 카드 TSV · 전체 JSON 백업/);
-  assert.match(app, /onOpenShadowing=\{\(\) =>[\s\S]*?getElementById\("direct-practice-title"\)\?\.scrollIntoView/);
+  assert.match(app, /onOpenShadowing=\{\(\) => openSavedPassages\(false\)\}/);
   assert.match(directTextPractice, /<h2 id="direct-practice-title"[^>]*>쉐도잉 지문<\/h2>/);
 });
 test("홈 현재 조건 요약은 답변 익히기 상태를 실제 필터와 같은 문구로 표시한다", () => {

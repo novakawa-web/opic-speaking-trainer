@@ -4,6 +4,7 @@ import { cards } from "../src/data/cards.ts";
 import {
   addSavedPassage,
   clearSavedPassageEditorSession,
+  createEmptySavedPassageEditorSession,
   deleteSavedPassage,
   isValidSavedPassageInput,
   normalizeSavedPassageDataset,
@@ -49,6 +50,15 @@ const dataset = { version: 1, passages: [passage] };
 
 test("빈 저장소", () => {
   assert.deepEqual(normalizeSavedPassageDataset(null), { version: 1, passages: [] });
+});
+test("새 지문 편집 세션 기본값", () => {
+  assert.deepEqual(createEmptySavedPassageEditorSession(), {
+    mode: "new",
+    passageId: null,
+    titleDraft: "",
+    textDraft: "",
+    dirty: false,
+  });
 });
 test("지문 생성과 공백 정리", () => {
   const result = addSavedPassage({ version: 1, passages: [] }, "  Travel  ", "  First.\n\nSecond.  ", now, "travel-001");
@@ -285,6 +295,16 @@ test("저장하지 않고 연습은 편집 초안 보존을 명시", () => {
     directTextPracticeSource,
     /createCustomTextSource[\s\S]*preserveEditorDraft: true/,
   );
+});
+
+test("홈 요약과 독립 지문 라이브러리를 분리", () => {
+  const summarySource = directTextPracticeSource.slice(
+    directTextPracticeSource.indexOf("export function DirectTextPracticeSummary"),
+    directTextPracticeSource.indexOf("export function DirectTextPracticeLibrary"),
+  );
+  assert.match(summarySource, /saved-passage-summary-actions/);
+  assert.doesNotMatch(summarySource, /saved-passage-library-content/);
+  assert.match(directTextPracticeSource, /<main className="saved-passage-library">/);
 });
 
 console.log(`\n저장 지문·문단 반복 검증 ${passed}/${passed} 통과`);

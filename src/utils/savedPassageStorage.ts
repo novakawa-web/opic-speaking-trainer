@@ -32,6 +32,16 @@ export type SavedPassageEditorSession = {
   dirty: boolean;
 };
 
+export function createEmptySavedPassageEditorSession(): SavedPassageEditorSession {
+  return {
+    mode: "new",
+    passageId: null,
+    titleDraft: "",
+    textDraft: "",
+    dirty: false,
+  };
+}
+
 export const EMPTY_SAVED_PASSAGE_DATASET: SavedPassageDataset = {
   version: SAVED_PASSAGE_DATASET_VERSION,
   passages: [],

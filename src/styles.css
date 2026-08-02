@@ -6012,7 +6012,7 @@ input:focus-visible + .toggle-switch {
   line-height: 1.5;
 }
 
-.direct-practice-section {
+.direct-practice-summary {
   margin-top: 22px;
   padding: 22px;
   border: 1px solid var(--line);
@@ -6021,41 +6021,35 @@ input:focus-visible + .toggle-switch {
   box-shadow: var(--shadow);
 }
 
-.direct-practice-section .section-heading-row {
+.direct-practice-summary-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 18px;
 }
 
-.direct-practice-section h2,
-.direct-practice-section p {
+.direct-practice-summary h2,
+.direct-practice-summary p {
   margin: 0;
 }
 
-.direct-practice-section h2 {
+.direct-practice-summary h2 {
   margin-bottom: 6px;
   color: var(--heading);
 }
 
-.direct-practice-section .section-heading-row > div > p:last-child {
+.direct-practice-summary-heading > div > p:last-child {
   color: var(--body-copy);
   line-height: 1.55;
 }
 
-.saved-passage-count {
-  flex: 0 0 auto;
-  padding: 6px 10px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--muted);
-  background: var(--surface-soft);
-  font-size: 0.82rem;
-  font-weight: 750;
-  white-space: nowrap;
+.saved-passage-summary-actions,
+.saved-passage-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
-.saved-passage-primary-actions,
 .saved-passage-editor-actions,
 .saved-passage-item-actions {
   display: flex;
@@ -6063,22 +6057,64 @@ input:focus-visible + .toggle-switch {
   gap: 8px;
 }
 
-.saved-passage-primary-actions {
+.saved-passage-summary-actions {
   margin-top: 16px;
 }
 
-.saved-passage-primary-actions button,
+.saved-passage-summary-actions button,
+.saved-passage-toolbar-actions button,
 .saved-passage-editor-actions button,
 .saved-passage-item-actions button {
   min-height: 44px;
 }
 
+.saved-passage-library {
+  display: grid;
+  gap: 16px;
+  width: min(980px, calc(100% - 32px));
+  margin: 28px auto 56px;
+}
+
+.saved-passage-library-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.saved-passage-library-toolbar h2,
+.saved-passage-library-toolbar p {
+  margin: 0;
+}
+
+.saved-passage-library-toolbar h2 {
+  margin-top: 2px;
+  color: var(--heading);
+  font-size: clamp(1.45rem, 3vw, 2rem);
+}
+
+.saved-passage-library-toolbar p:last-child {
+  margin-top: 8px;
+  color: var(--body-copy);
+  line-height: 1.55;
+}
+
+.saved-passage-result-count {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 750;
+}
+
 .saved-passage-library-content {
   display: grid;
   gap: 16px;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
+  margin-top: 0;
 }
 
 .saved-passage-editor {
@@ -6988,31 +7024,40 @@ input:focus-visible + .toggle-switch {
     width: 100%;
   }
 
-  .direct-practice-section {
+  .direct-practice-summary {
     padding: 18px 15px;
   }
 
-  .direct-practice-section .section-heading-row {
+  .direct-practice-summary-heading,
+  .saved-passage-library-toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
     align-items: flex-start;
     gap: 10px;
   }
 
-  .direct-practice-section .section-heading-row button {
-    flex: 0 0 auto;
-    min-height: 44px;
+  .saved-passage-library {
+    width: min(100% - 24px, 980px);
+    margin-top: 16px;
+  }
+
+  .saved-passage-library-toolbar {
+    padding: 17px 15px;
   }
 
   .direct-practice-form textarea {
     min-height: 200px;
   }
 
-  .saved-passage-primary-actions,
+  .saved-passage-summary-actions,
+  .saved-passage-toolbar-actions,
   .saved-passage-editor-actions {
     display: grid;
     grid-template-columns: 1fr;
   }
 
-  .saved-passage-primary-actions button,
+  .saved-passage-summary-actions button,
+  .saved-passage-toolbar-actions button,
   .saved-passage-editor-actions button {
     width: 100%;
   }
@@ -8326,17 +8371,13 @@ input:focus-visible + .toggle-switch {
 }
 
 .home-learning-materials > .home-card-dashboard,
-.home-learning-materials > .direct-practice-section,
+.home-learning-materials > .direct-practice-summary,
 .home-learning-materials > .personal-memo-summary {
   width: 100%;
   min-width: 0;
   height: 100%;
   margin: 0;
   box-shadow: none;
-}
-
-.home-learning-materials > .direct-practice-section:has(.saved-passage-library-content) {
-  grid-column: 1 / -1;
 }
 
 .home-management {
@@ -8959,7 +9000,7 @@ input:focus-visible + .toggle-switch {
 .home-card-actions,
 .personal-memo-summary-actions,
 .personal-memo-summary-columns,
-.saved-passage-primary-actions,
+.saved-passage-summary-actions,
 .saved-passage-library-content {
   margin-top: var(--space-lg);
 }

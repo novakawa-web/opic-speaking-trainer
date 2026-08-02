@@ -19,7 +19,10 @@ import {
 } from "./components/PersonalMemoManager";
 import { CardDataManager } from "./components/CardDataManager";
 import { CardDetail } from "./components/CardDetail";
-import { DirectTextPractice } from "./components/DirectTextPractice";
+import {
+  DirectTextPracticeLibrary,
+  DirectTextPracticeSummary,
+} from "./components/DirectTextPractice";
 import { FirstLineDrill } from "./components/FirstLineDrill";
 import { FirstLineSetup } from "./components/FirstLineSetup";
 import { FirstLineMockResult } from "./components/FirstLineMockResult";
@@ -132,9 +135,15 @@ import {
 } from "./utils/shadowingPlayer";
 import {
   addSavedPassage,
+  clearSavedPassageEditorSession,
+  createEmptySavedPassageEditorSession,
   deleteSavedPassage,
+  readSavedPassageEditorSession,
   readSavedPassageDataset,
+  readSavedPassageLibraryOpen,
   restoreSavedPassage,
+  saveSavedPassageEditorSession,
+  saveSavedPassageLibraryOpen,
   updateSavedPassage,
   type SavedPassage,
 } from "./utils/savedPassageStorage";
@@ -216,6 +225,7 @@ function toNavigationView(
   if (
     view === "list" ||
     view === "drillSetup" ||
+    view === "savedPassages" ||
     view === "personalMemos" ||
     view === "answerSetup" ||
     view === "answerLearning"
@@ -365,8 +375,12 @@ function App() {
   );
   const [theme, setTheme] = useState(readInitialTheme);
   const [view, setView] = useState<View>(() =>
-    initialNavigation.view === "list" && readPersonalMemoLibrarySession()
-      ? "personalMemos"
+    initialNavigation.view === "list"
+      ? readSavedPassageLibraryOpen()
+        ? "savedPassages"
+        : readPersonalMemoLibrarySession()
+          ? "personalMemos"
+          : initialNavigation.view
       : initialNavigation.view,
   );
   const [drillReturnView, setDrillReturnView] = useState<"list" | "detail">(
@@ -834,6 +848,10 @@ function App() {
       savePersonalMemoLibrarySession(false);
       clearPersonalMemoEditorSession();
     }
+    if (view === "savedPassages" && resolvedTarget !== "savedPassages") {
+      saveSavedPassageLibraryOpen(false);
+      clearSavedPassageEditorSession();
+    }
     if (view === "detail" && resolvedTarget !== "detail") {
       clearCardDetailUiSession();
       setLastUndo(null);
@@ -860,6 +878,7 @@ function App() {
       resolvedTarget === "library" ||
       resolvedTarget === "drillSetup" ||
       resolvedTarget === "answerSetup" ||
+      resolvedTarget === "savedPassages" ||
       resolvedTarget === "personalMemos"
     ) {
       setSelectedCardId(null);
@@ -873,6 +892,9 @@ function App() {
     }
     if (resolvedTarget === "personalMemos") {
       savePersonalMemoLibrarySession(true);
+    }
+    if (resolvedTarget === "savedPassages") {
+      saveSavedPassageLibraryOpen(true);
     }
 
     setView(resolvedTarget);
@@ -1514,6 +1536,26 @@ function App() {
     );
   }
 
+  function openSavedPassages(startNew = false) {
+    if (!canNavigateFromHome()) return;
+    saveSavedPassageLibraryOpen(true);
+    if (startNew && !readSavedPassageEditorSession()) {
+      saveSavedPassageEditorSession(createEmptySavedPassageEditorSession());
+    }
+    setSelectedCardId(null);
+    pushHistoryView("savedPassages");
+    setView("savedPassages");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function closeSavedPassages() {
+    requestAppBack(true);
+  }
+
+  function requestCloseSavedPassages() {
+    requestAppBack();
+  }
+
   function openPersonalMemos(startNew = false) {
     if (!canNavigateFromHome()) return;
     savePersonalMemoLibrarySession(true);
@@ -2108,6 +2150,30 @@ function App() {
     );
   }
 
+  if (view === "savedPassages") {
+    return (
+      <div className="app-shell">
+        <AppHeader
+          theme={theme}
+          studyTitle="쉐도잉 지문"
+          onBack={requestCloseSavedPassages}
+          onHome={navigateHome}
+          onToggleTheme={toggleTheme}
+        />
+        <DirectTextPracticeLibrary
+          passages={savedPassageDataset.passages}
+          onBack={closeSavedPassages}
+          onCreate={createPassage}
+          onUpdate={editPassage}
+          onDelete={removePassage}
+          onRestore={restorePassage}
+          onStart={startDirectShadowing}
+          registerNavigationGuard={registerHomeNavigationGuard}
+        />
+      </div>
+    );
+  }
+
   if (view === "library") {
     return (
       <div className="app-shell">
@@ -2371,9 +2437,7 @@ function App() {
               canStartFirstLine={orderedFilteredCards.length > 0}
               onStartFirstLine={openFirstLineSetup}
               onStartAnswerLearning={openAnswerLearningSetup}
-              onOpenShadowing={() =>
-                document.getElementById("direct-practice-title")?.scrollIntoView({ behavior: "smooth" })
-              }
+              onOpenShadowing={() => openSavedPassages(false)}
             />
 
             <TodayStats stats={todayStats} answerStats={answerLearningTodayStats} />
@@ -2393,14 +2457,10 @@ function App() {
                 onStartDrill={openFirstLineSetup}
               />
 
-              <DirectTextPractice
-                passages={savedPassageDataset.passages}
-                onCreate={createPassage}
-                onUpdate={editPassage}
-                onDelete={removePassage}
-                onRestore={restorePassage}
-                onStart={startDirectShadowing}
-                registerNavigationGuard={registerHomeNavigationGuard}
+              <DirectTextPracticeSummary
+                passageCount={savedPassageDataset.passages.length}
+                onOpenLibrary={() => openSavedPassages(false)}
+                onStartNew={() => openSavedPassages(true)}
               />
 
               <PersonalMemoSummary

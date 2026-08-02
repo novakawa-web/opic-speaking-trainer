@@ -31,7 +31,7 @@ test("홈은 앱 내부 뒤로가기 목표가 없음", () => {
 });
 
 test("홈 직속 화면은 홈으로 복귀", () => {
-  for (const view of ["library", "drillSetup", "answerSetup", "personalMemos"]) {
+  for (const view of ["library", "drillSetup", "answerSetup", "savedPassages", "personalMemos"]) {
     assert.equal(getAppBackView(view, baseContext), "list");
   }
 });
@@ -59,7 +59,7 @@ test("답변 익히기는 준비 또는 카드 상세로 복귀", () => {
 });
 
 test("쉐도잉은 세 가지 진입 출처로 복귀", () => {
-  assert.equal(getAppBackView("shadowing", baseContext), "list");
+  assert.equal(getAppBackView("shadowing", baseContext), "savedPassages");
   assert.equal(
     getAppBackView("shadowing", { ...baseContext, shadowingReturnView: "detail" }),
     "detail",
@@ -142,6 +142,7 @@ test("replace helper는 현재 깊이를 유지", () => {
 
 test("홈 화면 이탈은 편집 초안 가드를 확인", () => {
   assert.equal(shouldCheckHomeNavigationGuard("list"), true);
+  assert.equal(shouldCheckHomeNavigationGuard("savedPassages"), true);
   assert.equal(shouldCheckHomeNavigationGuard("library"), false);
 });
 

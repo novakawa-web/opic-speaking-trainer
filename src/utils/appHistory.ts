@@ -10,6 +10,7 @@ export type AppView =
   | "answerSetup"
   | "answerLearning"
   | "shadowing"
+  | "savedPassages"
   | "personalMemos";
 
 export type AppHistoryEntry = {
@@ -41,6 +42,7 @@ const appViews = new Set<AppView>([
   "answerSetup",
   "answerLearning",
   "shadowing",
+  "savedPassages",
   "personalMemos",
 ]);
 
@@ -112,7 +114,7 @@ export function shouldCheckHomeNavigationGuard(
   view: AppView,
   preserveEditorDraft = false,
 ) {
-  return view === "list" && !preserveEditorDraft;
+  return (view === "list" || view === "savedPassages") && !preserveEditorDraft;
 }
 
 export function getAppBackView(
@@ -125,6 +127,7 @@ export function getAppBackView(
     case "library":
     case "drillSetup":
     case "answerSetup":
+    case "savedPassages":
     case "personalMemos":
       return "list";
     case "createCard":
@@ -138,6 +141,6 @@ export function getAppBackView(
     case "shadowing":
       if (context.shadowingReturnView === "detail") return "detail";
       if (context.shadowingReturnView === "answerLearning") return "answerLearning";
-      return "list";
+      return "savedPassages";
   }
 }

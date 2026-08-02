@@ -8,9 +8,9 @@ import {
   SAVED_PASSAGE_TEXT_MAX_LENGTH,
   SAVED_PASSAGE_TITLE_MAX_LENGTH,
   clearSavedPassageEditorSession,
+  createEmptySavedPassageEditorSession,
   isValidSavedPassageInput,
   readSavedPassageEditorSession,
-  readSavedPassageLibraryOpen,
   resolveSavedPassageInput,
   saveSavedPassageEditorSession,
   saveSavedPassageLibraryOpen,
@@ -27,8 +27,15 @@ import {
 
 type DeletedPassage = { passage: SavedPassage; index: number };
 
-type DirectTextPracticeProps = {
+type DirectTextPracticeSummaryProps = {
+  passageCount: number;
+  onOpenLibrary: () => void;
+  onStartNew: () => void;
+};
+
+type DirectTextPracticeLibraryProps = {
   passages: SavedPassage[];
+  onBack: () => void;
   onCreate: (title: string, text: string) => SavedPassage;
   onUpdate: (passageId: string, title: string, text: string) => SavedPassage;
   onDelete: (passageId: string) => DeletedPassage | null;
@@ -50,30 +57,46 @@ function formatPassageDate(iso: string) {
   }).format(new Date(iso));
 }
 
-function emptyEditor(): SavedPassageEditorSession {
-  return {
-    mode: "new",
-    passageId: null,
-    titleDraft: "",
-    textDraft: "",
-    dirty: false,
-  };
+export function DirectTextPracticeSummary({
+  passageCount,
+  onOpenLibrary,
+  onStartNew,
+}: DirectTextPracticeSummaryProps) {
+  return (
+    <section className="direct-practice-summary home-material-card" aria-labelledby="direct-practice-title">
+      <div className="section-title-row direct-practice-summary-heading">
+        <div>
+          <p className="eyebrow">PASSAGE LIBRARY</p>
+          <h2 id="direct-practice-title" className="home-section-title">쉐도잉 지문</h2>
+          <p className="home-card-description">새 지문을 작성하거나 저장한 지문을 다시 열어 연습하세요.</p>
+        </div>
+      </div>
+      <div className="saved-passage-counts summary-chip-row" aria-label="쉐도잉 지문 요약">
+        <span className="summary-chip">저장 {passageCount}개</span>
+      </div>
+      <div className="saved-passage-summary-actions">
+        <button type="button" className="primary-button" onClick={onStartNew}>
+          새 지문 작성
+        </button>
+        <button type="button" className="secondary-button" onClick={onOpenLibrary}>
+          저장 지문 보기
+        </button>
+      </div>
+    </section>
+  );
 }
 
-export function DirectTextPractice({
+export function DirectTextPracticeLibrary({
   passages,
+  onBack,
   onCreate,
   onUpdate,
   onDelete,
   onRestore,
   onStart,
   registerNavigationGuard,
-}: DirectTextPracticeProps) {
+}: DirectTextPracticeLibraryProps) {
   const restoredEditor = useMemo(readSavedPassageEditorSession, []);
-  const [expanded, setExpanded] = useState(
-    () => Boolean(restoredEditor) || readSavedPassageLibraryOpen(),
-  );
-  const [showAll, setShowAll] = useState(false);
   const [editor, setEditor] = useState<SavedPassageEditorSession | null>(
     restoredEditor,
   );
@@ -88,9 +111,6 @@ export function DirectTextPractice({
     () => sortSavedPassages(passages),
     [passages],
   );
-  const visiblePassages = showAll
-    ? sortedPassages
-    : sortedPassages.slice(0, 5);
   const editorParagraphs = useMemo(
     () => createPassageParagraphs(editor?.textDraft ?? ""),
     [editor?.textDraft],
@@ -114,10 +134,6 @@ export function DirectTextPractice({
     }
     saveSavedPassageEditorSession(editor);
   }, [editor]);
-
-  useEffect(() => {
-    saveSavedPassageLibraryOpen(expanded);
-  }, [expanded]);
 
   useEffect(() => {
     if (deleteTarget) deleteConfirmRef.current?.focus();
@@ -158,8 +174,7 @@ export function DirectTextPractice({
 
   function openNewEditor() {
     if (!canDiscardEditor()) return;
-    setEditor(emptyEditor());
-    setExpanded(true);
+    setEditor(createEmptySavedPassageEditorSession());
     setMessage("");
   }
 
@@ -172,7 +187,6 @@ export function DirectTextPractice({
       textDraft: passage.text,
       dirty: false,
     });
-    setExpanded(true);
     setMessage("");
   }
 
@@ -236,36 +250,26 @@ export function DirectTextPractice({
   }
 
   return (
-    <section className="direct-practice-section home-material-card" aria-labelledby="direct-practice-title">
-      <div className="section-heading-row">
+    <main className="saved-passage-library">
+      <section className="saved-passage-library-toolbar" aria-labelledby="saved-passage-library-title">
         <div>
           <p className="eyebrow">PASSAGE LIBRARY</p>
-          <h2 id="direct-practice-title" className="home-section-title">쉐도잉 지문</h2>
-          <p className="home-card-description">새 지문을 작성하거나 저장한 지문을 다시 열어 연습하세요.</p>
+          <h2 id="saved-passage-library-title">쉐도잉 지문</h2>
+          <p>직접 작성한 지문을 저장하고 원하는 지문으로 쉐도잉을 시작하세요.</p>
         </div>
-        <span className="saved-passage-count summary-chip">저장 {passages.length}개</span>
-      </div>
+        <div className="saved-passage-toolbar-actions">
+          <button type="button" className="secondary-button" onClick={onBack}>홈으로</button>
+          <button type="button" className="primary-button" onClick={openNewEditor}>새 지문</button>
+        </div>
+      </section>
 
-      <div className="saved-passage-primary-actions">
-        <button type="button" className="primary-button" onClick={openNewEditor}>
-          새 지문 작성
-        </button>
-        <button
-          type="button"
-          className="secondary-button"
-          aria-expanded={expanded}
-          aria-controls="saved-passage-library-content"
-          onClick={() => {
-            if (expanded && editor?.dirty && !canDiscardEditor()) return;
-            setExpanded((current) => !current);
-          }}
-        >
-          {expanded ? "저장 지문 접기" : `저장한 지문 ${passages.length}개`}
-        </button>
-      </div>
+      <p className="saved-passage-result-count" aria-live="polite">
+        {editor
+          ? editor.mode === "edit" ? "저장 지문 수정" : "새 지문 작성"
+          : `저장 지문 ${sortedPassages.length}개`}
+      </p>
 
-      {expanded && (
-        <div id="saved-passage-library-content" className="saved-passage-library-content">
+      <div className="saved-passage-library-content">
           {editor && (
             <div className="saved-passage-editor">
               <div className="saved-passage-editor-heading">
@@ -340,17 +344,12 @@ export function DirectTextPractice({
 
           <div className="saved-passage-list-heading">
             <strong>저장한 지문</strong>
-            {sortedPassages.length > 5 && (
-              <button type="button" className="text-button" onClick={() => setShowAll((current) => !current)}>
-                {showAll ? "최근 5개만" : `전체 ${sortedPassages.length}개 보기`}
-              </button>
-            )}
           </div>
-          {visiblePassages.length === 0 ? (
+          {sortedPassages.length === 0 ? (
             <p className="saved-passage-empty">아직 저장한 지문이 없습니다.</p>
           ) : (
             <div className="saved-passage-list">
-              {visiblePassages.map((passage) => {
+              {sortedPassages.map((passage) => {
                 const paragraphs = createPassageParagraphs(passage.text);
                 const sentences = flattenParagraphSentences(paragraphs);
                 return (
@@ -394,8 +393,7 @@ export function DirectTextPractice({
             </div>
           )}
           <p className="data-note">저장 지문은 이 기기에 보관되며 전체 JSON 백업에 포함됩니다. 임시 지문은 포함되지 않습니다.</p>
-        </div>
-      )}
+      </div>
       <p className="saved-passage-message" aria-live="polite">{message}</p>
       {deleteTarget && (
         <div className="saved-passage-dialog-backdrop" role="presentation">
@@ -432,6 +430,6 @@ export function DirectTextPractice({
           </div>
         </div>
       )}
-    </section>
+    </main>
   );
 }

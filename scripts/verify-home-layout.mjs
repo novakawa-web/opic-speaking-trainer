@@ -8,6 +8,10 @@ const appHeader = await readFile(
   "utf8",
 );
 const css = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
+const directTextPractice = await readFile(
+  new URL("../src/components/DirectTextPractice.tsx", import.meta.url),
+  "utf8",
+);
 
 let passed = 0;
 
@@ -207,6 +211,14 @@ test("내 학습 자료는 데스크톱 3열, 태블릿 2열, 모바일 1열이�
   assert.match(css, /\.home-learning-materials\s*{[\s\S]*?repeat\(3,/);
   assert.match(css, /@media \(max-width:\s*960px\)[\s\S]*?\.home-learning-materials\s*{[\s\S]*?repeat\(2,/);
   assert.match(css, /@media \(max-width:\s*700px\)[\s\S]*?\.home-learning-materials\s*{\s*grid-template-columns:\s*1fr/);
+});
+
+test("쉐도잉 지문은 홈 요약 카드와 독립 화면을 사용한다", () => {
+  assert.match(app, /<DirectTextPracticeSummary[\s\S]*?onOpenLibrary=\{\(\) => openSavedPassages\(false\)\}[\s\S]*?onStartNew=\{\(\) => openSavedPassages\(true\)\}/);
+  assert.match(app, /view === "savedPassages"[\s\S]*?<DirectTextPracticeLibrary/);
+  assert.match(directTextPractice, /export function DirectTextPracticeSummary/);
+  assert.match(directTextPractice, /export function DirectTextPracticeLibrary/);
+  assert.doesNotMatch(css, /direct-practice-summary:has/);
 });
 
 console.log(`Home layout verification passed: ${passed} tests`);
