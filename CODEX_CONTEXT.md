@@ -1,8 +1,8 @@
 # OPIc Speaking Trainer - Codex 인수인계
 
-> 마지막 내용 동기화: 2026-08-01 (Asia/Seoul)
+> 마지막 내용 동기화: 2026-08-02 (Asia/Seoul)
 >
-> 문서 내용의 앱 기능 기준 SHA: `47bf2d7685897bcd01e6b1be158ac2cbb9b672ed`
+> 문서 내용의 앱 기능 기준 SHA: `0913b54c7391c43130ae6b3b074b7bceae8c4f38`
 >
 > 이 SHA는 마지막 앱 runtime·동작 변경을 가리킨다. 문서·repository Skill 전용 commit은 이 값을 올리지 않으며, 현재 repository HEAD와 최신 Pages 상태는 live Git·GitHub에서 확인한다.
 
@@ -16,10 +16,10 @@
 - 운영 앱: <https://novakawa-web.github.io/opic-speaking-trainer/>
 - production Vite base는 `/opic-speaking-trainer/`, 개발 base는 `/`다.
 - 기본 카드 소스는 12장이지만 활성 카드 데이터셋은 TSV 사용에 따라 달라진다. 운영 카드 수를 코드 상수처럼 문서화하지 않는다.
-- 2026-08-01 운영 배포 검증에서 운영 URL, `manifest.webmanifest`, `sw.js`, `404.html`과 배포 HTML·JS·manifest·service worker에서 동적으로 확인한 현재 asset 20개는 모두 HTTP 200이었다. main bundle에서 공통 카드·나만의 답변 편집 기능 문구도 확인했으며 hash가 바뀌는 asset 이름은 고정해 기록하지 않는다.
-- 2026-08-01 최신 운영 검증은 commit `47bf2d7685897bcd01e6b1be158ac2cbb9b672ed`의 Actions run `30704058893`에서 build job `91379989430`, deploy job `91380042196`와 Pages deployment `5705430454`가 모두 success였다.
-- 최신 release의 운영 검증은 읽기 전용 HTTP·bundle 검사이며 운영 앱에서 클릭·입력·storage 조회를 하지 않았다. 공통 카드 편집 흐름은 release 전 격리 localhost에서 자동 검증했지만 실제 Galaxy 기능 검증은 이번 release에서 별도로 수행하지 않았다.
-- storage transaction, 카드 삭제 transaction, 공통 브랜드 홈 이동, 쉐도잉 UX, 단일 카드 직접 추가, UX 안정화 1차, 카드 통합 검색, 기본 답변과 나만의 답변의 줄바꿈 정규화, 답변 익히기 카드 선택 조작, 첫 문장 답변 연습 상태 필터, 답변 익히기 상태 통합 필터, 공통 학습 화면 rail과 모바일 헤더 action 정렬, 짧은 가로 화면 쉐도잉·답변 익히기 밀도, 카드 라이브러리 답변 연습 상태 있음·없음 필터, 화면별 학습 제목·홈 문구 정리, 복수 TSV 선택과 최신 선택 미리보기 보호, 앱 내부 history 뒤로가기, 답변 익히기 선택 보존·첫 문장 상태 입력·새 학습 공개 상태 초기화, 세로 모바일 쉐도잉 문장 폭 개선, 카드와 나만의 답변의 공통 편집 transaction이 main과 운영 Pages에 포함되어 있다.
+- 2026-08-02 운영 배포 검증에서 운영 URL, `manifest.webmanifest`, `sw.js`, `404.html`과 배포 HTML·JS·manifest·service worker에서 동적으로 확인한 현재 asset 20개는 모두 HTTP 200이었다. main bundle에서 답변 익히기 음성 재생과 녹음 위치 관련 문구도 확인했으며 hash가 바뀌는 asset 이름은 고정해 기록하지 않는다.
+- 2026-08-02 최신 운영 검증은 commit `0913b54c7391c43130ae6b3b074b7bceae8c4f38`의 Actions run `30725688219`에서 build job `91436832677`, deploy job `91437104516`과 Pages deployment `5709659753`이 모두 success였다.
+- 최신 release의 운영 검증은 읽기 전용 HTTP·bundle 검사이며 운영 앱에서 클릭·입력·storage 조회를 하지 않았다. 답변 익히기 음성 재생·녹음 UI는 release 전 격리 localhost에서 자동·브라우저 검증했지만 격리 브라우저에는 영어 TTS voice가 없어 실제 음성 출력과 마이크 녹음은 확인하지 못했다. 실제 Galaxy TTS·마이크 기능도 이번 release에서 별도로 검증하지 않았다.
+- storage transaction, 카드 삭제 transaction, 공통 브랜드 홈 이동, 쉐도잉 UX, 단일 카드 직접 추가, UX 안정화 1차, 카드 통합 검색, 기본 답변과 나만의 답변의 줄바꿈 정규화, 답변 익히기 카드 선택 조작, 첫 문장 답변 연습 상태 필터, 답변 익히기 상태 통합 필터, 공통 학습 화면 rail과 모바일 헤더 action 정렬, 짧은 가로 화면 쉐도잉·답변 익히기 밀도, 카드 라이브러리 답변 연습 상태 있음·없음 필터, 화면별 학습 제목·홈 문구 정리, 복수 TSV 선택과 최신 선택 미리보기 보호, 앱 내부 history 뒤로가기, 답변 익히기 선택 보존·첫 문장 상태 입력·새 학습 공개 상태 초기화, 세로 모바일 쉐도잉 문장 폭 개선, 카드와 나만의 답변의 공통 편집 transaction, 답변 익히기 문장별·연속 TTS와 녹음 위치 정리가 main과 운영 Pages에 포함되어 있다.
 
 ## 2. 구현된 사용자 흐름
 
@@ -75,8 +75,13 @@
 - 모든 영어 TTS는 재생 직전에 현재 `speechSynthesis.getVoices()`에서 voice를 다시 선택한다.
 - 선택 순서는 영어 Ava, `en-US`, `en-GB`, 그 밖의 `en*`다. 한국어 voice fallback은 금지한다.
 - 목록이 일시적으로 비면 `voiceschanged`와 지연 재시도를 사용한다.
+- 답변 익히기 TTS는 `idle | loading | playing | paused | completed | error` 상태와 `single | continuous` 재생 mode를 분리한다. 전체 답변 듣기는 첫 문장부터 끝까지 연속 재생하고, 정지·완료 상태의 문장 터치는 선택 문장만 재생한다. 연속 재생 중 문장 터치는 해당 문장부터 끝까지 이어진다.
+- 일시정지는 현재 문장을 기억하며 이어 듣기는 그 문장 처음부터 다시 재생한다. 현재 문장은 시각적으로 강조하고 문장별 button과 전체 재생 button의 접근성 이름에 재생 상태를 반영한다.
+- 답변 익히기는 기존 `opic-tts-rate` 공통 속도를 사용한다. 재생 요청마다 최신 영어 voice를 선택하고 request ID로 이전 요청의 지연 callback이 최신 재생 상태를 덮지 못하게 하며, 문서가 숨겨지면 재생을 일시정지한다.
 - 녹음은 MediaRecorder로 최대 3분이며 TTS와 동시에 재생하지 않는다.
-- 녹음 Blob, Object URL, 진행 상태는 현재 컴포넌트 메모리에만 존재한다. 저장소, JSON, Firebase, 다운로드 파일에 넣지 않는다.
+- 답변 익히기 녹음 UI는 평가 영역 아래와 이전·다음 카드 조작 위에 `SPEAK & CHECK`·`말한 답변 바로 확인하기`로 표시한다. 카드 상세의 중복 녹음 UI는 제거했고 쉐도잉 녹음은 유지한다.
+- 답변 익히기에서 TTS를 시작하면 녹음을 정리하고, 녹음을 시작하면 TTS를 정지한다. 카드·답변 source·화면·편집·쉐도잉 전환에서도 현재 녹음을 정리한다.
+- 녹음 Blob, Object URL, 진행 상태는 현재 컴포넌트 메모리에만 존재한다. localStorage·sessionStorage·AppBackupV1·TSV·Firebase·다운로드 파일에 넣지 않는다.
 
 ## 3. 카드와 ID 정책
 
@@ -221,8 +226,8 @@ mutation은 `opic-my-answers`와 `opic-card-dataset` 순서로 하나의 `runSto
 - 공통 학습 화면 레이아웃: `src/components/AppHeader.tsx`, `src/components/ShadowingPlayer.tsx`, `src/styles.css`
 - 쉐도잉: `src/components/ShadowingPlayer.tsx`, `src/hooks/useShadowingPlayer.ts`, `src/utils/shadowingPlayer.ts`, `shadowingSettings.ts`
 - 답변 개행·문장·문단: `src/utils/answerText.ts`, `sentenceSegmenter.ts`, `passageParagraphs.ts`
-- TTS: `src/hooks/useSpeechSynthesis.ts`, `src/utils/englishVoice.ts`
-- 녹음: `src/components/AudioRecorder.tsx`, `src/hooks/useAudioRecorder.ts`, `src/utils/audioRecorder.ts`
+- TTS: `src/hooks/useSpeechSynthesis.ts`, `src/hooks/useAnswerLearningSpeech.ts`, `src/utils/englishVoice.ts`, `src/utils/answerLearningPlayback.ts`
+- 녹음: `src/components/AudioRecorder.tsx`, `src/components/AnswerLearning.tsx`, `src/components/ShadowingPlayer.tsx`, `src/hooks/useAudioRecorder.ts`, `src/utils/audioRecorder.ts`
 - 메모·지문: `src/components/CardMemoSection.tsx`, `MemoSearch.tsx`, `PersonalMemoManager.tsx`, `DirectTextPractice.tsx`
 - TSV: `src/components/CardDataManager.tsx`, `src/utils/cardTsv.ts`, `cardTsvBatch.ts`, `cardStorage.ts`
 - JSON 백업: `src/components/BackupManager.tsx`, `src/utils/appBackup.ts`
@@ -236,7 +241,7 @@ mutation은 `opic-my-answers`와 `opic-card-dataset` 순서로 하나의 `runSto
 
 쉐도잉 session은 마지막 유효한 미완료 재생 1건만 보존한다. 카드 또는 저장 지문 식별자, 답변 문장 지문, 현재 반복 설정과 진행 범위가 모두 일치할 때만 `이어 듣기`로 복원한다. 완료됨, 손상됨, 다른 소스, 답변 변경, 범위 이탈 또는 설정 불일치는 처음부터 상태로 정규화한다. 홈·뒤로 이동은 떠나기 직전 현재 진행을 한 번 저장하며 이후 TTS 정리가 그 값을 덮어쓰지 않는다.
 
-`package.json`의 `test:all`은 다음 24개 스크립트를 순서대로 실행한다. 현재 main의 최신 검증 기준은 996/996이다.
+`package.json`의 `test:all`은 다음 24개 스크립트를 순서대로 실행한다. 현재 main의 최신 검증 기준은 1,012/1,012다.
 
 | 명령 | 개수 |
 | --- | ---: |
@@ -253,25 +258,25 @@ mutation은 `opic-my-answers`와 `opic-card-dataset` 순서로 하나의 `runSto
 | `test:memos` | 28 |
 | `test:personal-memos` | 47 |
 | `test:passages` | 41 |
-| `test:recorder` | 66 |
+| `test:recorder` | 68 |
 | `test:shadowing` | 123 |
 | `test:ui-session` | 20 |
 | `test:navigation` | 13 |
 | `test:tsv` | 44 |
-| `test:answer-learning` | 76 |
+| `test:answer-learning` | 86 |
 | `test:first-line-mock` | 28 |
 | `test:card-management` | 34 |
 | `test:cloud-backup` | 82 |
 | `test:home-layout` | 19 |
-| `test:ui-system` | 42 |
+| `test:ui-system` | 46 |
 
 `test:cloud-rules` 22개는 실행 중인 Firestore·Storage Emulator가 필요한 별도 Security Rules 검증이다. `test:pwa`도 build 후 별도로 실행한다.
 
-commit `451b4844f22e6dd762b96e114668b44867e233f6`의 기준은 880/880이었다. 답변 익히기 상태 통합 필터 commit `022084a7c22b5e2aad7ea3f7adedc0b9dbe0fbc9`에서 892/892로, 공통 학습 화면 rail commit `03c5082fc0a3fabbe81ba6c6e0b6759650c94ff9`에서 899/899로, 모바일 헤더 action 정렬 commit `abbc66464d50785276e373320ccb3fbc059cf90d`에서 909/909로 증가했다. 짧은 가로 화면 쉐도잉 밀도 commit `650859cb8556f764b7a03515d17b75ee13218a3a`에서 912/912로, 답변 익히기 세로 밀도 commit `498fe3c648fd12e88bd70587402afb44f66aea13`에서 913/913으로 증가했다. 이후 카드 라이브러리 답변 상태 presence 필터 `911fab4`, 짧은 가로 쉐도잉 controller `402bb2d`, 화면별 헤더·홈 문구 `5eacf01`, 복수 TSV 선택 `3eef744`, 최신 TSV 선택 보호 `7e43a88`이 반영되어 934/934가 되었다. 앱 내부 history와 답변 익히기 선택 보존 `f59838c`, 답변 익히기 첫 문장 상태 `a5d84ac`, 새 학습 공개 상태 초기화 `713873a`, 세로 모바일 쉐도잉 문장 폭 `b2f8388`이 이어져 960/960이 되었다. 공통 카드·나만의 답변 편집 transaction commit `47bf2d7685897bcd01e6b1be158ac2cbb9b672ed`에서 전용 33개, 카드 관리 2개와 UI system 1개가 추가되어 현재 기준은 996/996이다. 현재 main과 `47bf2d7685897bcd01e6b1be158ac2cbb9b672ed`의 CI 기준 TypeScript, production build와 PWA/Pages 검증도 통과했다.
+commit `451b4844f22e6dd762b96e114668b44867e233f6`의 기준은 880/880이었다. 답변 익히기 상태 통합 필터 commit `022084a7c22b5e2aad7ea3f7adedc0b9dbe0fbc9`에서 892/892로, 공통 학습 화면 rail commit `03c5082fc0a3fabbe81ba6c6e0b6759650c94ff9`에서 899/899로, 모바일 헤더 action 정렬 commit `abbc66464d50785276e373320ccb3fbc059cf90d`에서 909/909로 증가했다. 짧은 가로 화면 쉐도잉 밀도 commit `650859cb8556f764b7a03515d17b75ee13218a3a`에서 912/912로, 답변 익히기 세로 밀도 commit `498fe3c648fd12e88bd70587402afb44f66aea13`에서 913/913으로 증가했다. 이후 카드 라이브러리 답변 상태 presence 필터 `911fab4`, 짧은 가로 쉐도잉 controller `402bb2d`, 화면별 헤더·홈 문구 `5eacf01`, 복수 TSV 선택 `3eef744`, 최신 TSV 선택 보호 `7e43a88`이 반영되어 934/934가 되었다. 앱 내부 history와 답변 익히기 선택 보존 `f59838c`, 답변 익히기 첫 문장 상태 `a5d84ac`, 새 학습 공개 상태 초기화 `713873a`, 세로 모바일 쉐도잉 문장 폭 `b2f8388`이 이어져 960/960이 되었다. 공통 카드·나만의 답변 편집 transaction commit `47bf2d7685897bcd01e6b1be158ac2cbb9b672ed`에서 전용 33개, 카드 관리 2개와 UI system 1개가 추가되어 996/996이 되었다. 답변 익히기 문장별·연속 TTS와 녹음 위치 정리 commit `0913b54c7391c43130ae6b3b074b7bceae8c4f38`에서 recorder 2개, answer-learning 10개와 UI system 4개가 추가되어 현재 기준은 1,012/1,012다. 현재 main과 `0913b54c7391c43130ae6b3b074b7bceae8c4f38`의 CI 기준 TypeScript, production build와 PWA/Pages 검증도 통과했다.
 
 ### dependency audit 기준
 
-- 2026-08-01 release 검증 기준 승인 `npm audit` baseline은 exit 1, **high 1건**이다. audit 통과 또는 취약점 0건으로 기록하지 않는다.
+- 2026-08-02 release 검증 기준 승인 `npm audit` baseline은 exit 1, **high 1건**이다. audit 통과 또는 취약점 0건으로 기록하지 않는다.
 - Pages CI workflow에는 별도 `npm audit` 단계가 없으므로 Actions success를 audit 통과로 해석하지 않는다.
 - 직접 devDependency `vite-plugin-pwa@1.3.0`에서 `workbox-build@7.4.1`로 이어지는 build-time 전이 경로에 `brace-expansion` DoS advisory `GHSA-mh99-v99m-4gvg`가 존재한다. lockfile에는 `brace-expansion@5.0.7`과 `filelist` 아래의 `brace-expansion@2.1.2`가 있다.
 - 확인된 경로는 `vite-plugin-pwa → workbox-build → @trickfilm400/rollup-plugin-off-main-thread → ejs → jake → filelist → minimatch → brace-expansion`이다.
@@ -329,14 +334,12 @@ git diff --check
 
 ### UX backlog
 
-- 후속 기능의 현재 추천 순서는 답변 익히기 녹음 위치와 TTS 정책 → 카드 라이브러리 필터 결과의 학습 화면 전달이다.
+- 후속 기능의 현재 추천 작업은 카드 라이브러리 필터 결과의 학습 화면 전달이다.
 - 카드 라이브러리의 현재 필터 결과를 첫 문장 연습과 답변 익히기로 직접 전달하는 흐름은 상태 통합 필터와 분리해 설계한다.
-- 녹음 UI를 답변 익히기 화면 아래로 이동하고 답변 익히기 맥락에 맞게 문구와 디자인을 조정한다.
 - 첫 문장 연습·답변 익히기·카드 라이브러리의 카드 선택 UI를 공통 패턴으로 정리한다.
 - 카드 선택 필터에 `type`·`topic`·`week` 다중 선택을 지원하고 필터 순서를 재검토한다.
 - 카드 목록 2열 전환 breakpoint를 실제 모바일·태블릿 사용성 기준으로 다시 결정한다.
 - 첫 문장 훈련에 전체 답변 보기와 첫 문장 공개 시 자동 음성 재생을 검토한다.
 - 첫 문장 훈련의 다시 도전 버튼 디자인을 다른 학습 조작과 일관되게 정리한다.
-- 답변 익히기 전체 답변 영역의 3중 테두리를 단순화하고 녹음 위치를 쉐도잉과 함께 재검토한다.
-- 답변 익히기 TTS에는 속도 선택과 다음 상태 정책을 적용한다: 정지 상태 문장 터치는 선택 문장만 재생 후 정지, 전체 답변 듣기는 처음부터 끝까지 연속 재생, 일시정지는 현재 문장을 기억, 이어 듣기는 멈춘 문장 처음부터 끝까지, 연속 재생 중 문장 터치는 누른 문장부터 끝까지, 전체 완료 후 문장 터치는 선택 문장만 재생 후 정지.
+- 답변 익히기 전체 답변 영역의 3중 테두리를 단순화한다.
 - 쉐도잉 하단 5버튼 controller의 더 넓은 재설계는 완료된 공통 rail 정렬·짧은 가로 40px 한 행 compact 처리와 별도 티켓으로 유지한다.
