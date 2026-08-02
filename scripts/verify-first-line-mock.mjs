@@ -168,9 +168,13 @@ test("첫 문장 필터 UI와 초기화·후보 wiring 계약", () => {
   assert.ok(firstLineResetBlock.includes("setFirstLineAnswerStatusOnly(false)"));
   assert.equal(firstLineResetBlock.includes("setCardSearchQuery"), false);
   assert.ok(appSource.includes("onReset={resetVisibleStudyFilters}"));
-  assert.ok(appSource.includes("cardCount={orderedFirstLineCards.length}"));
-  assert.ok(appSource.includes("createDrillCardIds(orderedFirstLineCards)"));
-  assert.ok(appSource.includes("orderedFirstLineCards.map((card) => card.id)"));
+  assert.ok(appSource.includes("cardCount={firstLineSetupCards.length}"));
+  assert.ok(appSource.includes("createDrillCardIds(firstLineSetupCards)"));
+  assert.ok(appSource.includes("firstLineSetupCards.map((card) => card.id)"));
+  assert.match(
+    appSource,
+    /libraryStudyHandoff\?\.target === "firstLine"[\s\S]*?: orderedFirstLineCards/,
+  );
   assert.equal(firstLineCandidateBlock.includes("cardSearchQuery"), false);
   assert.ok(setupSource.includes("disabled={props.cardCount === 0}"));
 

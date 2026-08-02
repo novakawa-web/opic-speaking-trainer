@@ -564,6 +564,55 @@ input:focus-visible + .toggle-switch {
   font-weight: 750;
 }
 
+.card-library-study-actions,
+.study-handoff-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--blue) 34%, var(--line));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--blue-soft) 48%, var(--surface));
+}
+
+.card-library-study-actions h2,
+.card-library-study-actions p,
+.study-handoff-notice h2,
+.study-handoff-notice p {
+  margin: 0;
+}
+
+.card-library-study-actions h2,
+.study-handoff-notice h2 {
+  color: var(--heading);
+  font-size: 1.12rem;
+}
+
+.card-library-study-actions > div > p:not(.eyebrow),
+.study-handoff-notice > div > p:not(.eyebrow) {
+  margin-top: 6px;
+  color: var(--body-copy);
+  line-height: 1.5;
+}
+
+.card-library-study-actions .card-library-study-note {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.card-library-study-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: min(100%, 410px);
+}
+
+.card-library-study-buttons button,
+.study-handoff-notice > button {
+  min-height: 48px;
+}
+
 .card-library-page .card-list-section {
   margin-top: 0;
 }
@@ -5191,6 +5240,23 @@ input:focus-visible + .toggle-switch {
     width: 100%;
   }
 
+  .card-library-study-actions,
+  .study-handoff-notice {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .card-library-study-buttons {
+    grid-template-columns: 1fr;
+    min-width: 0;
+  }
+
+  .study-handoff-notice > button {
+    width: 100%;
+  }
+
   .home-filter-summary {
     display: flex;
   }
@@ -8299,6 +8365,7 @@ input:focus-visible + .toggle-switch {
 
 /* Learning-centered home and answer-learning mode */
 .answer-learning-setup-intro,
+.answer-learning-setup > .study-handoff-notice,
 .answer-learning-filter,
 .answer-learning-selection,
 .answer-learning-question,
@@ -8309,6 +8376,11 @@ input:focus-visible + .toggle-switch {
     calc(100% - var(--app-inline-padding) - var(--app-inline-padding))
   );
   margin: 24px auto;
+}
+
+.first-line-setup > .study-handoff-notice {
+  width: 100%;
+  margin: 0 0 18px;
 }
 
 .home-content-rail > * {
@@ -8802,6 +8874,7 @@ input:focus-visible + .toggle-switch {
   .hero-panel p { display: -webkit-box; margin: 0; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .hero-rule { padding: 10px 12px; }
   .answer-learning-setup-intro,
+  .answer-learning-setup > .study-handoff-notice,
   .answer-learning-filter,
   .answer-learning-selection,
   .answer-learning-question,

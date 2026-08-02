@@ -54,6 +54,7 @@ import {
   saveAnswerLearningStatuses,
 } from "./utils/answerLearningStorage";
 import {
+  DEFAULT_ANSWER_LEARNING_FILTERS,
   createStartedAnswerLearningSession,
   readAnswerLearningSession,
   returnToAnswerLearningSetup,
@@ -62,6 +63,12 @@ import {
   type AnswerLearningStatusFilter,
   type AnswerLearningSession,
 } from "./utils/answerLearningSession";
+import {
+  createLibraryStudyHandoff,
+  mergeLibraryStudySelection,
+  resolveLibraryStudyCards,
+  type LibraryStudyHandoff,
+} from "./utils/libraryStudyHandoff";
 import {
   calculateAttemptCounts,
   calculateDailyStats,
@@ -386,6 +393,11 @@ function App() {
   const [drillReturnView, setDrillReturnView] = useState<"list" | "detail">(
     initialNavigation.drillReturnView,
   );
+  const [studySetupReturnView, setStudySetupReturnView] = useState<"list" | "library">(
+    "list",
+  );
+  const [libraryStudyHandoff, setLibraryStudyHandoff] =
+    useState<LibraryStudyHandoff | null>(null);
   const [detailReturnView, setDetailReturnView] = useState<"home" | "library">(
     initialNavigation.detailReturnView,
   );
@@ -659,6 +671,24 @@ function App() {
       )
       .map(({ card }) => card);
   }, [attemptCounts, firstLineFilteredCards, studyOrder]);
+  const firstLineSetupCards = useMemo(
+    () =>
+      libraryStudyHandoff?.target === "firstLine"
+        ? resolveLibraryStudyCards(cardCatalog, libraryStudyHandoff, "firstLine")
+        : orderedFirstLineCards,
+    [cardCatalog, libraryStudyHandoff, orderedFirstLineCards],
+  );
+  const answerLearningSetupCards = useMemo(
+    () =>
+      libraryStudyHandoff?.target === "answerLearning"
+        ? resolveLibraryStudyCards(activeCatalog, libraryStudyHandoff, "answerLearning")
+        : activeCatalog,
+    [activeCatalog, libraryStudyHandoff],
+  );
+  const libraryAnswerLearningCardCount = useMemo(() => {
+    const activeIds = new Set(activeCatalog.map((card) => card.id));
+    return orderedFilteredCards.filter((card) => activeIds.has(card.id)).length;
+  }, [activeCatalog, orderedFilteredCards]);
   const filterSignature = JSON.stringify([
     selectedDeck,
     selectedTag,
@@ -733,7 +763,7 @@ function App() {
   useEffect(() => {
     if (view !== "drill" || drillCards.length > 0) return;
 
-    const recoveredIds = createDrillCardIds(orderedFilteredCards);
+    const recoveredIds = createDrillCardIds(firstLineSetupCards);
     if (recoveredIds.length === 0) {
       navigateHome();
       return;
@@ -743,7 +773,7 @@ function App() {
     if (!selectedCardId || !recoveredIds.includes(selectedCardId)) {
       setSelectedCardId(recoveredIds[0]);
     }
-  }, [drillCards.length, orderedFilteredCards, selectedCardId, studyOrder, view]);
+  }, [drillCards.length, firstLineSetupCards, selectedCardId, studyOrder, view]);
 
   useEffect(() => {
     if (
@@ -796,6 +826,7 @@ function App() {
     return getAppBackView(view, {
       detailReturnView,
       drillReturnView,
+      studySetupReturnView,
       answerLearningReturnView,
       shadowingReturnView,
     });
@@ -871,6 +902,20 @@ function App() {
     }
     if (view === "shadowing" && resolvedTarget !== "shadowing") {
       setShadowingSource(null);
+    }
+    if (
+      libraryStudyHandoff?.target === "firstLine" &&
+      resolvedTarget !== "drillSetup" &&
+      resolvedTarget !== "drill"
+    ) {
+      setLibraryStudyHandoff(null);
+    }
+    if (
+      libraryStudyHandoff?.target === "answerLearning" &&
+      resolvedTarget !== "answerSetup" &&
+      resolvedTarget !== "answerLearning"
+    ) {
+      setLibraryStudyHandoff(null);
     }
 
     if (
@@ -964,9 +1009,11 @@ function App() {
     cardCreationDirty,
     detailReturnView,
     drillReturnView,
+    libraryStudyHandoff,
     selectedCard,
     shadowingReturnView,
     shadowingSource,
+    studySetupReturnView,
     view,
   ]);
 
@@ -1107,7 +1154,7 @@ function App() {
   }
 
   function startFilteredDrill() {
-    const nextDrillCardIds = createDrillCardIds(orderedFirstLineCards);
+    const nextDrillCardIds = createDrillCardIds(firstLineSetupCards);
     const firstCardId = nextDrillCardIds[0];
     if (!firstCardId) return;
 
@@ -1127,8 +1174,25 @@ function App() {
 
   function openFirstLineSetup() {
     if (!canNavigateFromHome()) return;
+    setLibraryStudyHandoff(null);
+    setStudySetupReturnView("list");
     // The answer-learning status filter is not shown in this setup screen.
     setAnswerLearningStatusFilter("all");
+    setSelectedCardId(null);
+    pushHistoryView("drillSetup");
+    setView("drillSetup");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function openFirstLineSetupFromLibrary() {
+    if (orderedFilteredCards.length === 0) return;
+    setLibraryStudyHandoff(
+      createLibraryStudyHandoff(
+        "firstLine",
+        orderedFilteredCards.map((card) => card.id),
+      ),
+    );
+    setStudySetupReturnView("library");
     setSelectedCardId(null);
     pushHistoryView("drillSetup");
     setView("drillSetup");
@@ -1141,7 +1205,7 @@ function App() {
       return;
     }
     const session = createFirstLineMockSession(
-      orderedFirstLineCards.map((card) => card.id),
+      firstLineSetupCards.map((card) => card.id),
       mockQuestionCount,
     );
     const firstCardId = session.cardOrder[0];
@@ -1179,6 +1243,8 @@ function App() {
 
   function openAnswerLearningSetup() {
     if (!canNavigateFromHome()) return;
+    setLibraryStudyHandoff(null);
+    setStudySetupReturnView("list");
     setAnswerLearningUndo(null);
     setAnswerLearningFeedback(null);
     updateAnswerSession(returnToAnswerLearningSetup(answerSession));
@@ -1189,10 +1255,37 @@ function App() {
     window.scrollTo({ top: 0, behavior: "auto" });
   }
 
+  function openAnswerLearningSetupFromLibrary() {
+    const activeIds = new Set(activeCatalog.map((card) => card.id));
+    const cardIds = orderedFilteredCards
+      .map((card) => card.id)
+      .filter((cardId) => activeIds.has(cardId));
+    if (cardIds.length === 0) return;
+
+    const handoff = createLibraryStudyHandoff("answerLearning", cardIds);
+    setLibraryStudyHandoff(handoff);
+    setStudySetupReturnView("library");
+    setAnswerLearningUndo(null);
+    setAnswerLearningFeedback(null);
+    updateAnswerSession({
+      ...returnToAnswerLearningSetup(answerSession),
+      selectedCardIds: mergeLibraryStudySelection(
+        answerSession.selectedCardIds,
+        handoff.cardIds,
+      ),
+      filters: { ...DEFAULT_ANSWER_LEARNING_FILTERS },
+    });
+    setSelectedCardId(null);
+    setAnswerLearningReturnView("setup");
+    pushHistoryView("answerSetup");
+    setView("answerSetup");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
   function startAnswerLearning() {
     const filtered = orderAnswerLearningCards(
       filterAnswerLearningCards(
-        activeCatalog,
+        answerLearningSetupCards,
         answerSession.filters,
         answerLearningStatuses,
         myAnswers,
@@ -1228,6 +1321,8 @@ function App() {
   }
 
   function startSingleCardAnswerLearning(card: OpicCard) {
+    setLibraryStudyHandoff(null);
+    setStudySetupReturnView("list");
     const nextSession = createStartedAnswerLearningSession(
       answerSession,
       [card.id],
@@ -1990,7 +2085,7 @@ function App() {
       <div className="app-shell">
         <AppHeader theme={theme} studyTitle="첫 문장 연습 준비" onBack={() => requestAppBack(true)} onHome={navigateHome} onToggleTheme={toggleTheme} />
         <FirstLineSetup
-          cardCount={orderedFirstLineCards.length}
+          cardCount={firstLineSetupCards.length}
           decks={decks}
           tags={tags}
           selectedDeck={selectedDeck}
@@ -2016,6 +2111,13 @@ function App() {
           onReset={resetVisibleStudyFilters}
           onStart={startFirstLineFromSetup}
           onBack={() => requestAppBack(true)}
+          backLabel={studySetupReturnView === "library" ? "카드 라이브러리로" : "홈으로"}
+          handoffCount={
+            libraryStudyHandoff?.target === "firstLine"
+              ? firstLineSetupCards.length
+              : null
+          }
+          onClearHandoff={() => setLibraryStudyHandoff(null)}
           archiveFilter={archiveFilter}
           onArchiveFilterChange={setArchiveFilter}
         />
@@ -2034,7 +2136,7 @@ function App() {
           onToggleTheme={toggleTheme}
         />
         <AnswerLearningSetup
-          cards={activeCatalog}
+          cards={answerLearningSetupCards}
           decks={decks}
           tags={tags}
           statuses={answerLearningStatuses}
@@ -2045,6 +2147,13 @@ function App() {
           onSessionChange={updateAnswerSession}
           onStart={startAnswerLearning}
           onBack={closeAnswerLearning}
+          backLabel={studySetupReturnView === "library" ? "카드 라이브러리로" : "홈으로"}
+          handoffCount={
+            libraryStudyHandoff?.target === "answerLearning"
+              ? answerLearningSetupCards.length
+              : null
+          }
+          onClearHandoff={() => setLibraryStudyHandoff(null)}
         />
       </div>
     );
@@ -2211,6 +2320,9 @@ function App() {
           onReset={resetFilters}
           onSelect={(card) => openCard(card, "library")}
           onCreate={openCardCreation}
+          answerLearningCardCount={libraryAnswerLearningCardCount}
+          onStartFirstLine={openFirstLineSetupFromLibrary}
+          onStartAnswerLearning={openAnswerLearningSetupFromLibrary}
           answerLearningStatusFilter={answerLearningStatusFilter}
           onAnswerLearningStatusFilterChange={setAnswerLearningStatusFilter}
           answerContentFilter={answerContentFilter}

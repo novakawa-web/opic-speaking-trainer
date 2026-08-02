@@ -22,6 +22,7 @@ function test(name, run) {
 const baseContext = {
   detailReturnView: "home",
   drillReturnView: "list",
+  studySetupReturnView: "list",
   answerLearningReturnView: "setup",
   shadowingReturnView: "direct",
 };
@@ -31,8 +32,18 @@ test("홈은 앱 내부 뒤로가기 목표가 없음", () => {
 });
 
 test("홈 직속 화면은 홈으로 복귀", () => {
-  for (const view of ["library", "drillSetup", "answerSetup", "savedPassages", "personalMemos"]) {
+  for (const view of ["library", "savedPassages", "personalMemos"]) {
     assert.equal(getAppBackView(view, baseContext), "list");
+  }
+});
+
+test("학습 준비 화면은 진입한 홈 또는 카드 라이브러리로 복귀", () => {
+  for (const view of ["drillSetup", "answerSetup"]) {
+    assert.equal(getAppBackView(view, baseContext), "list");
+    assert.equal(
+      getAppBackView(view, { ...baseContext, studySetupReturnView: "library" }),
+      "library",
+    );
   }
 });
 
@@ -47,6 +58,10 @@ test("카드 상세는 진입 출처로 복귀", () => {
 
 test("첫 문장 훈련은 진입 출처로 복귀", () => {
   assert.equal(getAppBackView("drill", baseContext), "list");
+  assert.equal(
+    getAppBackView("drill", { ...baseContext, studySetupReturnView: "library" }),
+    "library",
+  );
   assert.equal(getAppBackView("drill", { ...baseContext, drillReturnView: "detail" }), "detail");
 });
 

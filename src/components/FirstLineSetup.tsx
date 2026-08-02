@@ -32,6 +32,9 @@ type Props = {
   onReset: () => void;
   onStart: () => void;
   onBack: () => void;
+  backLabel: string;
+  handoffCount: number | null;
+  onClearHandoff: () => void;
   archiveFilter: ArchiveFilter;
   onArchiveFilterChange: (value: ArchiveFilter) => void;
 };
@@ -40,35 +43,48 @@ export function FirstLineSetup(props: Props) {
   return (
     <main className="first-line-setup">
       <section className="first-line-setup-intro">
-        <button type="button" className="answer-learning-inline-back" onClick={props.onBack}>← 홈으로</button>
+        <button type="button" className="answer-learning-inline-back" onClick={props.onBack}>← {props.backLabel}</button>
         <p className="eyebrow">SPEAK FIRST</p>
         <h1>첫 문장 연습 준비</h1>
         <p>현재 조건에서 연습하거나, 무작위 모의고사로 실전처럼 확인하세요.</p>
       </section>
 
-      <TagFilter
-        decks={props.decks}
-        tags={props.tags}
-        selectedDeck={props.selectedDeck}
-        selectedTag={props.selectedTag}
-        finalOnly={props.finalOnly}
-        hardOnly={props.hardOnly}
-        cardScope={props.cardScope}
-        studyOrder={props.studyOrder}
-        answerContentFilter={props.answerContentFilter}
-        answerStatusOnly={props.answerStatusOnly}
-        onDeckChange={props.onDeckChange}
-        onTagChange={props.onTagChange}
-        onFinalOnlyChange={props.onFinalOnlyChange}
-        onHardOnlyChange={props.onHardOnlyChange}
-        onCardScopeChange={props.onCardScopeChange}
-        onStudyOrderChange={props.onStudyOrderChange}
-        onAnswerContentFilterChange={props.onAnswerContentFilterChange}
-        onAnswerStatusOnlyChange={props.onAnswerStatusOnlyChange}
-        onReset={props.onReset}
-        archiveFilter={props.archiveFilter}
-        onArchiveFilterChange={props.onArchiveFilterChange}
-      />
+      {props.handoffCount === null ? (
+        <TagFilter
+          decks={props.decks}
+          tags={props.tags}
+          selectedDeck={props.selectedDeck}
+          selectedTag={props.selectedTag}
+          finalOnly={props.finalOnly}
+          hardOnly={props.hardOnly}
+          cardScope={props.cardScope}
+          studyOrder={props.studyOrder}
+          answerContentFilter={props.answerContentFilter}
+          answerStatusOnly={props.answerStatusOnly}
+          onDeckChange={props.onDeckChange}
+          onTagChange={props.onTagChange}
+          onFinalOnlyChange={props.onFinalOnlyChange}
+          onHardOnlyChange={props.onHardOnlyChange}
+          onCardScopeChange={props.onCardScopeChange}
+          onStudyOrderChange={props.onStudyOrderChange}
+          onAnswerContentFilterChange={props.onAnswerContentFilterChange}
+          onAnswerStatusOnlyChange={props.onAnswerStatusOnlyChange}
+          onReset={props.onReset}
+          archiveFilter={props.archiveFilter}
+          onArchiveFilterChange={props.onArchiveFilterChange}
+        />
+      ) : (
+        <section className="study-handoff-notice" aria-labelledby="first-line-handoff-title">
+          <div>
+            <p className="eyebrow">FROM CARD LIBRARY</p>
+            <h2 id="first-line-handoff-title">카드 라이브러리 결과 {props.handoffCount}장</h2>
+            <p>검색과 필터 결과를 그대로 사용합니다.</p>
+          </div>
+          <button type="button" className="secondary-button" onClick={props.onClearHandoff}>
+            준비 화면에서 다시 고르기
+          </button>
+        </section>
+      )}
 
       <section className="first-line-mode-panel" aria-labelledby="first-line-mode-title">
         <div>

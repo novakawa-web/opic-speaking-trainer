@@ -22,6 +22,7 @@ export type AppHistoryEntry = {
 export type AppBackContext = {
   detailReturnView: "home" | "library";
   drillReturnView: "list" | "detail";
+  studySetupReturnView: "list" | "library";
   answerLearningReturnView: "setup" | "detail";
   shadowingReturnView: "detail" | "direct" | "answerLearning";
 };
@@ -125,17 +126,20 @@ export function getAppBackView(
     case "list":
       return null;
     case "library":
-    case "drillSetup":
-    case "answerSetup":
     case "savedPassages":
     case "personalMemos":
       return "list";
+    case "drillSetup":
+    case "answerSetup":
+      return context.studySetupReturnView;
     case "createCard":
       return "library";
     case "detail":
       return context.detailReturnView === "library" ? "library" : "list";
     case "drill":
-      return context.drillReturnView === "detail" ? "detail" : "list";
+      return context.drillReturnView === "detail"
+        ? "detail"
+        : context.studySetupReturnView;
     case "answerLearning":
       return context.answerLearningReturnView === "detail" ? "detail" : "answerSetup";
     case "shadowing":

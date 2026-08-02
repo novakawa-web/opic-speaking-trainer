@@ -28,6 +28,9 @@ type Props = {
   onSessionChange: (session: AnswerLearningSession) => void;
   onStart: () => void;
   onBack: () => void;
+  backLabel: string;
+  handoffCount: number | null;
+  onClearHandoff: () => void;
 };
 
 const statusLabels = {
@@ -71,6 +74,9 @@ export function AnswerLearningSetup({
   onSessionChange,
   onStart,
   onBack,
+  backLabel,
+  handoffCount,
+  onClearHandoff,
 }: Props) {
   const visibleCards = useMemo(
     () =>
@@ -112,11 +118,24 @@ export function AnswerLearningSetup({
   return (
     <main className="answer-learning-setup">
       <section className="answer-learning-setup-intro">
-        <button type="button" className="answer-learning-inline-back" onClick={onBack}>← 홈으로</button>
+        <button type="button" className="answer-learning-inline-back" onClick={onBack}>← {backLabel}</button>
         <p className="eyebrow">ANSWER LEARNING</p>
         <h1>답변 익히기 준비</h1>
         <p>힌트와 답변을 단계적으로 확인하며, 전체 내용을 끝까지 말할 수 있는지 익혀 보세요.</p>
       </section>
+
+      {handoffCount !== null && (
+        <section className="study-handoff-notice" aria-labelledby="answer-learning-handoff-title">
+          <div>
+            <p className="eyebrow">FROM CARD LIBRARY</p>
+            <h2 id="answer-learning-handoff-title">카드 라이브러리 결과 {handoffCount}장</h2>
+            <p>이 범위 안에서 답변 익히기 카드를 선택합니다.</p>
+          </div>
+          <button type="button" className="secondary-button" onClick={onClearHandoff}>
+            전체 카드 조건으로 전환
+          </button>
+        </section>
+      )}
 
       <section className="answer-learning-filter" aria-labelledby="answer-filter-title">
         <div className="section-title-row">
