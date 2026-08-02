@@ -8,6 +8,7 @@ import {
   pushAppHistoryView,
   readAppHistoryEntry,
   replaceAppHistoryView,
+  shouldCheckHomeNavigationGuard,
 } from "../src/utils/appHistory.ts";
 
 let passed = 0;
@@ -137,6 +138,15 @@ test("replace helper는 현재 깊이를 유지", () => {
     view: "drill",
     depth: 3,
   });
+});
+
+test("홈 화면 이탈은 편집 초안 가드를 확인", () => {
+  assert.equal(shouldCheckHomeNavigationGuard("list"), true);
+  assert.equal(shouldCheckHomeNavigationGuard("library"), false);
+});
+
+test("저장하지 않고 연습은 편집 초안을 보존", () => {
+  assert.equal(shouldCheckHomeNavigationGuard("list", true), false);
 });
 
 console.log(`App history verification passed: ${passed}/${passed}`);

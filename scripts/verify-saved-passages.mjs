@@ -1,13 +1,17 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { cards } from "../src/data/cards.ts";
 import {
   addSavedPassage,
+  clearSavedPassageEditorSession,
   deleteSavedPassage,
   isValidSavedPassageInput,
   normalizeSavedPassageDataset,
   parseSavedPassageEditorSession,
+  readSavedPassageEditorSession,
   resolveSavedPassageInput,
   restoreSavedPassage,
+  saveSavedPassageEditorSession,
   sortSavedPassages,
   updateSavedPassage,
 } from "../src/utils/savedPassageStorage.ts";
@@ -127,6 +131,44 @@ test("위험 id 초안 차단", () => {
   assert.equal(parseSavedPassageEditorSession(raw), null);
 });
 
+test("편집 완료는 sessionStorage 초안을 즉시 삭제", () => {
+  const originalSessionStorage = Object.getOwnPropertyDescriptor(
+    globalThis,
+    "sessionStorage",
+  );
+  const values = new Map();
+  Object.defineProperty(globalThis, "sessionStorage", {
+    configurable: true,
+    value: {
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => values.set(key, String(value)),
+      removeItem: (key) => values.delete(key),
+    },
+  });
+  try {
+    saveSavedPassageEditorSession({
+      mode: "new",
+      passageId: null,
+      titleDraft: "Draft",
+      textDraft: "First sentence.",
+      dirty: true,
+    });
+    assert.equal(readSavedPassageEditorSession()?.dirty, true);
+    clearSavedPassageEditorSession();
+    assert.equal(readSavedPassageEditorSession(), null);
+  } finally {
+    if (originalSessionStorage) {
+      Object.defineProperty(
+        globalThis,
+        "sessionStorage",
+        originalSessionStorage,
+      );
+    } else {
+      delete globalThis.sessionStorage;
+    }
+  }
+});
+
 test("빈 줄로 문단 분리", () => {
   assert.deepEqual(splitParagraphTexts("First line.\n\nSecond line."), ["First line.", "Second line."]);
 });
@@ -219,6 +261,30 @@ test("기존 카드 데이터 무변경", () => {
   createModelAnswerSource(cards[0]);
   createPassageParagraphs(cards[0].back);
   assert.equal(JSON.stringify(cards), before);
+});
+
+const directTextPracticeSource = await readFile(
+  new URL("../src/components/DirectTextPractice.tsx", import.meta.url),
+  "utf8",
+);
+
+test("저장 후 연습은 화면 전환 전에 편집 세션을 완료", () => {
+  const saveEditorSource = directTextPracticeSource.slice(
+    directTextPracticeSource.indexOf("function saveEditor"),
+    directTextPracticeSource.indexOf("function handleEditorKeyDown"),
+  );
+  assert.ok(saveEditorSource.indexOf("finishEditor();") >= 0);
+  assert.ok(
+    saveEditorSource.indexOf("finishEditor();") <
+      saveEditorSource.indexOf("onStart(createSavedPassageSource(passage));"),
+  );
+});
+
+test("저장하지 않고 연습은 편집 초안 보존을 명시", () => {
+  assert.match(
+    directTextPracticeSource,
+    /createCustomTextSource[\s\S]*preserveEditorDraft: true/,
+  );
 });
 
 console.log(`\n저장 지문·문단 반복 검증 ${passed}/${passed} 통과`);

@@ -33,7 +33,11 @@ type DirectTextPracticeProps = {
   onUpdate: (passageId: string, title: string, text: string) => SavedPassage;
   onDelete: (passageId: string) => DeletedPassage | null;
   onRestore: (deleted: DeletedPassage) => void;
-  onStart: (source: ShadowingSource) => void;
+  onStart: (
+    source: ShadowingSource,
+    options?: { preserveEditorDraft?: boolean },
+  ) => void;
+  registerNavigationGuard: (guard: () => boolean) => () => void;
 };
 
 function formatPassageDate(iso: string) {
@@ -63,6 +67,7 @@ export function DirectTextPractice({
   onDelete,
   onRestore,
   onStart,
+  registerNavigationGuard,
 }: DirectTextPracticeProps) {
   const restoredEditor = useMemo(readSavedPassageEditorSession, []);
   const [expanded, setExpanded] = useState(
@@ -75,6 +80,8 @@ export function DirectTextPractice({
   const [message, setMessage] = useState("");
   const [lastDeleted, setLastDeleted] = useState<DeletedPassage | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SavedPassage | null>(null);
+  const editorRef = useRef(editor);
+  editorRef.current = editor;
   const deleteConfirmRef = useRef<HTMLButtonElement>(null);
   const deleteTriggerRef = useRef<HTMLButtonElement | null>(null);
   const sortedPassages = useMemo(
@@ -126,8 +133,27 @@ export function DirectTextPractice({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [editor?.dirty]);
 
+  useEffect(
+    () =>
+      registerNavigationGuard(() => {
+        if (!editorRef.current?.dirty) return true;
+        if (!window.confirm("저장하지 않은 지문 변경 내용을 버릴까요?")) {
+          return false;
+        }
+        finishEditor();
+        return true;
+      }),
+    [registerNavigationGuard],
+  );
+
   function canDiscardEditor() {
-    return !editor?.dirty || window.confirm("저장하지 않은 지문 변경 내용을 버릴까요?");
+    return !editorRef.current?.dirty || window.confirm("저장하지 않은 지문 변경 내용을 버릴까요?");
+  }
+
+  function finishEditor() {
+    editorRef.current = null;
+    clearSavedPassageEditorSession();
+    setEditor(null);
   }
 
   function openNewEditor() {
@@ -152,7 +178,7 @@ export function DirectTextPractice({
 
   function closeEditor() {
     if (!canDiscardEditor()) return;
-    setEditor(null);
+    finishEditor();
   }
 
   function saveEditor(startAfterSave: boolean) {
@@ -161,7 +187,7 @@ export function DirectTextPractice({
       editor.mode === "edit" && editor.passageId
         ? onUpdate(editor.passageId, editor.titleDraft, editor.textDraft)
         : onCreate(editor.titleDraft, editor.textDraft);
-    setEditor(null);
+    finishEditor();
     setLastDeleted(null);
     setMessage(`‘${passage.title}’ 지문을 저장했습니다.`);
     if (startAfterSave) {
@@ -295,7 +321,10 @@ export function DirectTextPractice({
                   className="secondary-button"
                   disabled={!canPracticeWithoutSaving}
                   onClick={() =>
-                    onStart(createCustomTextSource(editor.titleDraft, editor.textDraft))
+                    onStart(
+                      createCustomTextSource(editor.titleDraft, editor.textDraft),
+                      { preserveEditorDraft: true },
+                    )
                   }
                 >
                   저장하지 않고 연습

@@ -108,6 +108,13 @@ export function isCurrentAppHistoryView(state: unknown, view: AppView) {
   return readAppHistoryEntry(state)?.view === view;
 }
 
+export function shouldCheckHomeNavigationGuard(
+  view: AppView,
+  preserveEditorDraft = false,
+) {
+  return view === "list" && !preserveEditorDraft;
+}
+
 export function getAppBackView(
   view: AppView,
   context: AppBackContext,

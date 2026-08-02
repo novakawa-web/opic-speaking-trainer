@@ -81,6 +81,7 @@ import {
   pushAppHistoryView,
   readAppHistoryEntry,
   replaceAppHistoryView,
+  shouldCheckHomeNavigationGuard,
   type AppView,
 } from "./utils/appHistory";
 import { consumePostRestoreNavigation } from "./utils/postRestoreNavigation";
@@ -806,6 +807,13 @@ function App() {
     return !homeNavigationGuardRef.current || homeNavigationGuardRef.current();
   }
 
+  function canNavigateFromHome(preserveEditorDraft = false) {
+    return (
+      !shouldCheckHomeNavigationGuard(view, preserveEditorDraft) ||
+      canLeaveCurrentView()
+    );
+  }
+
   function performHistoryTransition(target: View) {
     let resolvedTarget = target;
     if (resolvedTarget === "detail" && !selectedCard) resolvedTarget = "list";
@@ -941,6 +949,7 @@ function App() {
   ]);
 
   function openCard(card: OpicCard, source: "home" | "library" = "library") {
+    if (!canNavigateFromHome()) return;
     clearCardDetailUiSession();
     setLastUndo(null);
     setFeedbackMessage(null);
@@ -955,6 +964,7 @@ function App() {
   }
 
   function openCardLibrary() {
+    if (!canNavigateFromHome()) return;
     setSelectedCardId(null);
     pushHistoryView("library");
     setView("library");
@@ -1018,7 +1028,11 @@ function App() {
     window.scrollTo({ top: 0, behavior: "auto" });
   }
 
-  function startDirectShadowing(source: ShadowingSource) {
+  function startDirectShadowing(
+    source: ShadowingSource,
+    options?: { preserveEditorDraft?: boolean },
+  ) {
+    if (!canNavigateFromHome(options?.preserveEditorDraft)) return;
     clearShadowingPlayerSession();
     pushHistoryView("shadowing");
     setShadowingSource(source);
@@ -1090,6 +1104,7 @@ function App() {
   }
 
   function openFirstLineSetup() {
+    if (!canNavigateFromHome()) return;
     // The answer-learning status filter is not shown in this setup screen.
     setAnswerLearningStatusFilter("all");
     setSelectedCardId(null);
@@ -1141,6 +1156,7 @@ function App() {
   }
 
   function openAnswerLearningSetup() {
+    if (!canNavigateFromHome()) return;
     setAnswerLearningUndo(null);
     setAnswerLearningFeedback(null);
     updateAnswerSession(returnToAnswerLearningSetup(answerSession));
@@ -1499,6 +1515,7 @@ function App() {
   }
 
   function openPersonalMemos(startNew = false) {
+    if (!canNavigateFromHome()) return;
     savePersonalMemoLibrarySession(true);
     if (startNew) {
       savePersonalMemoEditorSession(createEmptyPersonalMemoEditorSession());
@@ -2383,6 +2400,7 @@ function App() {
                 onDelete={removePassage}
                 onRestore={restorePassage}
                 onStart={startDirectShadowing}
+                registerNavigationGuard={registerHomeNavigationGuard}
               />
 
               <PersonalMemoSummary
