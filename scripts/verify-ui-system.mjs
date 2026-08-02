@@ -23,6 +23,7 @@ const answerLearningSetup = await readFile(new URL("../src/components/AnswerLear
 const cardLibrary = await readFile(new URL("../src/components/CardLibrary.tsx", import.meta.url), "utf8");
 const studyScopeSummary = await readFile(new URL("../src/components/StudyScopeSummary.tsx", import.meta.url), "utf8");
 const tagFilter = await readFile(new URL("../src/components/TagFilter.tsx", import.meta.url), "utf8");
+const cardTagDimensionFilters = await readFile(new URL("../src/components/CardTagDimensionFilters.tsx", import.meta.url), "utf8");
 const appHeader = await readFile(new URL("../src/components/AppHeader.tsx", import.meta.url), "utf8");
 const backupManager = await readFile(new URL("../src/components/BackupManager.tsx", import.meta.url), "utf8");
 const cardDataManager = await readFile(new URL("../src/components/CardDataManager.tsx", import.meta.url), "utf8");
@@ -388,7 +389,47 @@ test("답변 익히기 상태 select는 없음 있음과 기존 상세 상태를
   assert.match(answerLearningSetup, /<option value="hard">어려움<\/option>/);
   assert.match(answerLearningSetup, /<option value="learning">익히는 중<\/option>/);
   assert.match(answerLearningSetup, /<option value="speakable">말할 수 있음<\/option>/);
-  assert.match(answerLearningSetup, /status:\s*"all"/);
+  assert.match(answerLearningSetup, /filters:\s*\{\s*\.\.\.DEFAULT_ANSWER_LEARNING_FILTERS\s*\}/);
+});
+test("세 카드 선택 화면은 공통 다중 차원 필터와 동일한 상대 순서를 사용한다", () => {
+  assert.match(firstLineSetup, /selectedWeeks=\{props\.selectedWeeks\}[\s\S]*?onTagDimensionsChange=\{props\.onTagDimensionsChange\}/);
+  assert.match(cardLibrary, /selectedWeeks=\{selectedWeeks\}[\s\S]*?onTagDimensionsChange=\{onTagDimensionsChange\}/);
+  assert.match(answerLearningSetup, /<span>덱<\/span>[\s\S]*?<CardTagDimensionFilters[\s\S]*?<span>기타 태그<\/span>[\s\S]*?<span>나만의 답변<\/span>/);
+  assert.match(tagFilter, /<span>덱<\/span>[\s\S]*?<CardTagDimensionFilterFields[\s\S]*?<span>기타 태그<\/span>[\s\S]*?answerContentFilter/);
+  assert.match(cardTagDimensionFilters, /label: "주차"[\s\S]*?label: "주제"[\s\S]*?label: "질문 유형"/);
+});
+test("다중 차원 필터는 disclosure checkbox와 선택 요약을 제공한다", () => {
+  assert.match(cardTagDimensionFilters, /<details>/);
+  assert.match(cardTagDimensionFilters, /aria-label=\{`\$\{label\}: \$\{selectionSummary\}`\}/);
+  assert.match(cardTagDimensionFilters, /aria-describedby=\{`\$\{id\}-label`\}/);
+  assert.match(cardTagDimensionFilters, /role="group" aria-labelledby=/);
+  assert.match(cardTagDimensionFilters, /type="checkbox"/);
+  assert.match(cardTagDimensionFilters, /formatCardTagSelectionSummary/);
+  assert.match(css, /\.card-tag-dimension-filter summary\s*\{[\s\S]*?min-height:\s*46px/);
+  assert.match(css, /\.card-tag-dimension-options label,[\s\S]*?min-height:\s*44px/);
+  assert.match(css, /@media \(max-width:\s*960px\)[\s\S]*?\.card-tag-dimension-options\s*\{[\s\S]*?position:\s*static/);
+});
+test("차원 필터는 pagination signature와 홈 조건 요약에 포함된다", () => {
+  assert.match(app, /const filterSignature = JSON\.stringify\(\[[\s\S]*?selectedWeeks,[\s\S]*?selectedTopics,[\s\S]*?selectedTypes,/);
+  assert.match(app, /formatHomeFilterSummary\(\{[\s\S]*?selectedWeeks,[\s\S]*?selectedTopics,[\s\S]*?selectedTypes,/);
+  assert.equal(
+    formatHomeFilterSummary({
+      selectedDeck: "all",
+      selectedTag: "all",
+      selectedWeeks: ["week6", "week8"],
+      selectedTopics: ["topic_home"],
+      selectedTypes: ["type_description"],
+      finalOnly: false,
+      hardOnly: false,
+      cardScope: "all",
+      studyOrder: "default",
+      answerLearningStatusFilter: "all",
+      answerContentFilter: "all",
+      archiveFilter: "active",
+      cardSearchQuery: "",
+    }),
+    "주차 2개 · home · description",
+  );
 });
 test("카드 라이브러리 답변 상태 select는 presence와 상세 상태 계약을 재사용한다", () => {
   assert.match(tagFilter, /<option value="all">전체<\/option>/);

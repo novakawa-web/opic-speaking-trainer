@@ -1,5 +1,11 @@
 import type { AnswerLearningAnswerSource } from "../types.ts";
 import type { StudyOrder } from "./studyPreferences.ts";
+import {
+  EMPTY_CARD_TAG_DIMENSION_FILTERS,
+  migrateLegacyCardTagFilter,
+  normalizeCardTagDimensionFilters,
+  resolveCardTagDimensionFilters,
+} from "./cardTagFilters.ts";
 
 export const ANSWER_LEARNING_SESSION_KEY = "opic-answer-learning-session";
 
@@ -20,6 +26,9 @@ export type AnswerLearningRevealState = {
 export type AnswerLearningFilters = {
   deck: string;
   tag: string;
+  selectedWeeks: string[];
+  selectedTopics: string[];
+  selectedTypes: string[];
   finalOnly: boolean;
   answerPresence: AnswerPresenceFilter;
   status: AnswerLearningStatusFilter;
@@ -51,6 +60,7 @@ const validPresence = new Set<AnswerPresenceFilter>(["all", "with", "without"]);
 export const DEFAULT_ANSWER_LEARNING_FILTERS: AnswerLearningFilters = {
   deck: "all",
   tag: "all",
+  ...EMPTY_CARD_TAG_DIMENSION_FILTERS,
   finalOnly: false,
   answerPresence: "all",
   status: "all",
@@ -82,6 +92,7 @@ function safeIds(value: unknown, validIds: Set<string>) {
 export function normalizeAnswerLearningSession(
   value: unknown,
   availableCardIds: string[],
+  availableTags?: readonly string[],
 ): AnswerLearningSession {
   const fallback = createEmptyAnswerLearningSession();
   if (!isRecord(value) || value.version !== 1) return fallback;
@@ -89,10 +100,20 @@ export function normalizeAnswerLearningSession(
   const selectedCardIds = safeIds(value.selectedCardIds, validIds);
   const cardOrder = safeIds(value.cardOrder, validIds);
   const filtersValue = isRecord(value.filters) ? value.filters : {};
+  const dimensions = normalizeCardTagDimensionFilters(filtersValue);
+  const legacyTag = migrateLegacyCardTagFilter(
+    filtersValue.tag,
+    dimensions,
+    filtersValue.finalOnly === true,
+  );
+  const resolvedDimensions = availableTags
+    ? resolveCardTagDimensionFilters(legacyTag.dimensions, availableTags)
+    : legacyTag.dimensions;
   const filters: AnswerLearningFilters = {
     deck: typeof filtersValue.deck === "string" ? filtersValue.deck : "all",
-    tag: typeof filtersValue.tag === "string" ? filtersValue.tag : "all",
-    finalOnly: filtersValue.finalOnly === true,
+    tag: legacyTag.selectedTag,
+    ...resolvedDimensions,
+    finalOnly: legacyTag.finalOnly,
     answerPresence: validPresence.has(filtersValue.answerPresence as AnswerPresenceFilter)
       ? (filtersValue.answerPresence as AnswerPresenceFilter)
       : "all",
@@ -140,10 +161,17 @@ export function normalizeAnswerLearningSession(
   };
 }
 
-export function readAnswerLearningSession(availableCardIds: string[]) {
+export function readAnswerLearningSession(
+  availableCardIds: string[],
+  availableTags?: readonly string[],
+) {
   try {
     const raw = sessionStorage.getItem(ANSWER_LEARNING_SESSION_KEY);
-    return normalizeAnswerLearningSession(raw ? JSON.parse(raw) : null, availableCardIds);
+    return normalizeAnswerLearningSession(
+      raw ? JSON.parse(raw) : null,
+      availableCardIds,
+      availableTags,
+    );
   } catch {
     return createEmptyAnswerLearningSession();
   }

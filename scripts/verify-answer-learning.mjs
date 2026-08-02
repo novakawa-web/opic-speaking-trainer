@@ -415,13 +415,67 @@ test("새 with-status 상태 필터 세션 복원", () => {
   }, cards.map((card) => card.id));
   assert.equal(session.filters.status, "with-status");
 });
+test("구형 답변 익히기 차원 태그는 version 1 안에서 승격", () => {
+  const week = normalizeAnswerLearningSession({
+    ...createEmptyAnswerLearningSession(),
+    filters: { ...createEmptyAnswerLearningSession().filters, tag: "week7" },
+  }, cards.map((card) => card.id));
+  const topic = normalizeAnswerLearningSession({
+    ...createEmptyAnswerLearningSession(),
+    filters: { ...createEmptyAnswerLearningSession().filters, tag: "topic_home" },
+  }, cards.map((card) => card.id));
+  assert.equal(week.version, 1);
+  assert.equal(week.filters.tag, "all");
+  assert.deepEqual(week.filters.selectedWeeks, ["week7"]);
+  assert.deepEqual(topic.filters.selectedTopics, ["topic_home"]);
+});
+test("답변 익히기 차원 선택은 malformed 제거와 canonical 정렬", () => {
+  const session = normalizeAnswerLearningSession({
+    ...createEmptyAnswerLearningSession(),
+    filters: {
+      ...createEmptyAnswerLearningSession().filters,
+      selectedWeeks: ["week10", "week6", "week6", null],
+      selectedTopics: "topic_home",
+      selectedTypes: ["type_description"],
+    },
+  }, cards.map((card) => card.id));
+  assert.deepEqual(session.filters.selectedWeeks, ["week6", "week10"]);
+  assert.deepEqual(session.filters.selectedTopics, []);
+  assert.deepEqual(session.filters.selectedTypes, ["type_description"]);
+});
+test("답변 익히기 복원은 선택 ID를 보존하고 사라진 차원 필터만 제거", () => {
+  const session = normalizeAnswerLearningSession({
+    ...createEmptyAnswerLearningSession(),
+    selectedCardIds: [cardB.id, cardA.id],
+    cardOrder: [cardA.id, cardB.id],
+    filters: {
+      ...createEmptyAnswerLearningSession().filters,
+      selectedWeeks: ["week6", "week99"],
+      selectedTopics: ["topic_missing"],
+      selectedTypes: ["type_description"],
+    },
+  }, cards.map((card) => card.id), ["week6", "type_description"]);
+  assert.deepEqual(session.selectedCardIds, [cardB.id, cardA.id]);
+  assert.deepEqual(session.cardOrder, [cardA.id, cardB.id]);
+  assert.deepEqual(session.filters.selectedWeeks, ["week6"]);
+  assert.deepEqual(session.filters.selectedTopics, []);
+  assert.deepEqual(session.filters.selectedTypes, ["type_description"]);
+});
+test("구형 final_rep 태그는 기존 final toggle로 승격", () => {
+  const session = normalizeAnswerLearningSession({
+    ...createEmptyAnswerLearningSession(),
+    filters: { ...createEmptyAnswerLearningSession().filters, tag: "final_rep" },
+  }, cards.map((card) => card.id));
+  assert.equal(session.filters.tag, "all");
+  assert.equal(session.filters.finalOnly, true);
+});
 test("랜덤은 원본 불변", () => {
   const ids = ["a", "b", "c"];
   shuffleAnswerLearningIds(ids, () => 0);
   assert.deepEqual(ids, ["a", "b", "c"]);
 });
 
-const filters = { deck: "all", tag: "all", finalOnly: false, answerPresence: "all", status: "all", order: "default" };
+const filters = { ...createEmptyAnswerLearningSession().filters };
 test("미학습 필터", () => assert.ok(filterAnswerLearningCards(cards, { ...filters, status: "unlearned" }, { [cardA.id]: "hard" }, {}).every((card) => card.id !== cardA.id)));
 test("상태 있음 필터", () => assert.deepEqual(
   filterAnswerLearningCards(
@@ -444,6 +498,38 @@ test("연습 적은 순 안정 정렬", () => {
 test("기본 순서 유지", () => assert.deepEqual(orderAnswerLearningCards([cardA, cardB], "default", {}).map((card) => card.id), [cardA.id, cardB.id]));
 test("덱 필터", () => assert.ok(filterAnswerLearningCards(cards, { ...filters, deck: cardA.deck }, {}, {}).every((card) => card.deck === cardA.deck)));
 test("태그 필터", () => assert.ok(filterAnswerLearningCards(cards, { ...filters, tag: cardA.tags[0] }, {}, {}).every((card) => card.tags.includes(cardA.tags[0]))));
+test("차원 내 OR와 차원 간 AND", () => {
+  const dimensionCards = [
+    { ...cardA, id: "dimension-a", tags: ["week6", "topic_home", "type_description"] },
+    { ...cardB, id: "dimension-b", tags: ["week7", "topic_cafe", "type_description"] },
+    { ...cardB, id: "dimension-c", tags: ["week8", "topic_home", "type_experience"] },
+  ];
+  const result = filterAnswerLearningCards(
+    dimensionCards,
+    {
+      ...filters,
+      selectedWeeks: ["week6", "week8"],
+      selectedTopics: ["topic_home"],
+      selectedTypes: ["type_description", "type_experience"],
+    },
+    {},
+    {},
+  );
+  assert.deepEqual(result.map((card) => card.id), ["dimension-a", "dimension-c"]);
+});
+test("일반 태그는 차원 필터와 AND", () => {
+  const dimensionCards = [
+    { ...cardA, id: "dimension-a", tags: ["week6", "topic_home", "core"] },
+    { ...cardB, id: "dimension-b", tags: ["week6", "topic_home", "extra"] },
+  ];
+  const result = filterAnswerLearningCards(
+    dimensionCards,
+    { ...filters, tag: "core", selectedWeeks: ["week6"], selectedTopics: ["topic_home"] },
+    {},
+    {},
+  );
+  assert.deepEqual(result.map((card) => card.id), ["dimension-a"]);
+});
 test("상태 있음 필터는 다른 필터와 AND", () => {
   const deckACard = { ...cardA, id: "deck-a-card", deck: "deck-a" };
   const deckBCard = { ...cardB, id: "deck-b-card", deck: "deck-b" };

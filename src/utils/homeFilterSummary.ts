@@ -3,10 +3,14 @@ import type { ArchiveFilter } from "./cardArchiveStorage.ts";
 import type { AnswerContentFilter } from "./cardContent.ts";
 import { normalizeCardSearchQuery } from "./cardSearch.ts";
 import type { StudyCardScope, StudyOrder } from "./studyPreferences.ts";
+import { formatCardTagOption } from "./cardTagFilters.ts";
 
 export type HomeFilterSummaryInput = {
   selectedDeck: string;
   selectedTag: string;
+  selectedWeeks: string[];
+  selectedTopics: string[];
+  selectedTypes: string[];
   finalOnly: boolean;
   hardOnly: boolean;
   cardScope: StudyCardScope;
@@ -28,9 +32,17 @@ const answerLearningStatusLabels: Record<
   speakable: "답변 말할 수 있음",
 };
 
+function formatDimensionSummary(label: string, values: readonly string[]) {
+  if (values.length === 0) return null;
+  return values.length === 1 ? formatCardTagOption(values[0]) : `${label} ${values.length}개`;
+}
+
 export function formatHomeFilterSummary({
   selectedDeck,
   selectedTag,
+  selectedWeeks = [],
+  selectedTopics = [],
+  selectedTypes = [],
   finalOnly,
   hardOnly,
   cardScope,
@@ -42,6 +54,12 @@ export function formatHomeFilterSummary({
 }: HomeFilterSummaryInput) {
   const parts: string[] = [];
   if (selectedDeck !== "all") parts.push(selectedDeck);
+  const weekSummary = formatDimensionSummary("주차", selectedWeeks);
+  const topicSummary = formatDimensionSummary("주제", selectedTopics);
+  const typeSummary = formatDimensionSummary("유형", selectedTypes);
+  if (weekSummary) parts.push(weekSummary);
+  if (topicSummary) parts.push(topicSummary);
+  if (typeSummary) parts.push(typeSummary);
   if (selectedTag !== "all") parts.push(`#${selectedTag}`);
   if (finalOnly) parts.push("final_rep");
   if (hardOnly) parts.push("첫 문장 어려움");

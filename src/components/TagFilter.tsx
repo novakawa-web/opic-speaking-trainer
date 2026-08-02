@@ -6,12 +6,20 @@ import type {
 import type { AnswerContentFilter } from "../utils/cardContent";
 import type { ArchiveFilter } from "../utils/cardArchiveStorage";
 import type { AnswerLearningStatusFilter } from "../utils/answerLearningSession";
+import {
+  getCardTagFilterOptions,
+  type CardTagDimensionFilters,
+} from "../utils/cardTagFilters";
+import { CardTagDimensionFilters as CardTagDimensionFilterFields } from "./CardTagDimensionFilters";
 
 type TagFilterProps = {
   decks: DeckName[];
   tags: string[];
   selectedDeck: DeckName | "all";
   selectedTag: string;
+  selectedWeeks: string[];
+  selectedTopics: string[];
+  selectedTypes: string[];
   searchQuery?: string;
   onSearchQueryChange?: (query: string) => void;
   finalOnly: boolean;
@@ -20,6 +28,7 @@ type TagFilterProps = {
   studyOrder: StudyOrder;
   onDeckChange: (deck: DeckName | "all") => void;
   onTagChange: (tag: string) => void;
+  onTagDimensionsChange: (next: CardTagDimensionFilters) => void;
   onFinalOnlyChange: (checked: boolean) => void;
   onHardOnlyChange: (checked: boolean) => void;
   onCardScopeChange: (scope: StudyCardScope) => void;
@@ -42,6 +51,9 @@ export function TagFilter({
   tags,
   selectedDeck,
   selectedTag,
+  selectedWeeks,
+  selectedTopics,
+  selectedTypes,
   searchQuery,
   onSearchQueryChange,
   finalOnly,
@@ -50,6 +62,7 @@ export function TagFilter({
   studyOrder,
   onDeckChange,
   onTagChange,
+  onTagDimensionsChange,
   onFinalOnlyChange,
   onHardOnlyChange,
   onCardScopeChange,
@@ -64,6 +77,8 @@ export function TagFilter({
   archiveFilter,
   onArchiveFilterChange,
 }: TagFilterProps) {
+  const { otherTags } = getCardTagFilterOptions(tags);
+
   return (
     <section className="filter-panel" aria-labelledby="filter-title">
       <div className="filter-heading">
@@ -122,6 +137,31 @@ export function TagFilter({
           </select>
         </label>
 
+        <CardTagDimensionFilterFields
+          tags={tags}
+          selectedWeeks={selectedWeeks}
+          selectedTopics={selectedTopics}
+          selectedTypes={selectedTypes}
+          onChange={onTagDimensionsChange}
+        />
+
+        {otherTags.length > 0 && (
+          <label className="field-label">
+            <span>기타 태그</span>
+            <select
+              value={selectedTag}
+              onChange={(event) => onTagChange(event.target.value)}
+            >
+              <option value="all">전체 기타 태그</option>
+              {otherTags.map((tag) => (
+                <option key={tag} value={tag}>
+                  {tag}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
         {answerContentFilter && onAnswerContentFilterChange && (
           <label className="field-label">
             <span>답변 구성</span>
@@ -153,21 +193,6 @@ export function TagFilter({
             </select>
           </label>
         )}
-
-        <label className="field-label">
-          <span>태그</span>
-          <select
-            value={selectedTag}
-            onChange={(event) => onTagChange(event.target.value)}
-          >
-            <option value="all">전체 태그</option>
-            {tags.map((tag) => (
-              <option key={tag} value={tag}>
-                {tag}
-              </option>
-            ))}
-          </select>
-        </label>
 
         <label className="field-label">
           <span>학습 대상</span>

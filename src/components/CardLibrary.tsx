@@ -17,6 +17,7 @@ import type { ArchiveFilter } from "../utils/cardArchiveStorage";
 import type { AnswerLearningStatusFilter } from "../utils/answerLearningSession";
 import { normalizeCardSearchQuery } from "../utils/cardSearch";
 import { StudyScopeSummary } from "./StudyScopeSummary";
+import type { CardTagDimensionFilters } from "../utils/cardTagFilters";
 
 type CardLibraryProps = {
   cards: OpicCard[];
@@ -29,6 +30,9 @@ type CardLibraryProps = {
   tags: string[];
   selectedDeck: DeckName | "all";
   selectedTag: string;
+  selectedWeeks: string[];
+  selectedTopics: string[];
+  selectedTypes: string[];
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
   finalOnly: boolean;
@@ -38,6 +42,7 @@ type CardLibraryProps = {
   filterSignature: string;
   onDeckChange: (deck: DeckName | "all") => void;
   onTagChange: (tag: string) => void;
+  onTagDimensionsChange: (next: CardTagDimensionFilters) => void;
   onFinalOnlyChange: (checked: boolean) => void;
   onHardOnlyChange: (checked: boolean) => void;
   onCardScopeChange: (scope: StudyCardScope) => void;
@@ -68,6 +73,9 @@ export function CardLibrary({
   tags,
   selectedDeck,
   selectedTag,
+  selectedWeeks,
+  selectedTopics,
+  selectedTypes,
   searchQuery,
   onSearchQueryChange,
   finalOnly,
@@ -77,6 +85,7 @@ export function CardLibrary({
   filterSignature,
   onDeckChange,
   onTagChange,
+  onTagDimensionsChange,
   onFinalOnlyChange,
   onHardOnlyChange,
   onCardScopeChange,
@@ -199,6 +208,9 @@ export function CardLibrary({
         tags={tags}
         selectedDeck={selectedDeck}
         selectedTag={selectedTag}
+        selectedWeeks={selectedWeeks}
+        selectedTopics={selectedTopics}
+        selectedTypes={selectedTypes}
         searchQuery={searchQuery}
         onSearchQueryChange={onSearchQueryChange}
         finalOnly={finalOnly}
@@ -207,6 +219,7 @@ export function CardLibrary({
         studyOrder={studyOrder}
         onDeckChange={onDeckChange}
         onTagChange={onTagChange}
+        onTagDimensionsChange={onTagDimensionsChange}
         onFinalOnlyChange={onFinalOnlyChange}
         onHardOnlyChange={onHardOnlyChange}
         onCardScopeChange={onCardScopeChange}

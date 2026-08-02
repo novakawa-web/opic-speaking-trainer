@@ -5,6 +5,7 @@ import type { StudyCardScope, StudyOrder } from "../utils/studyPreferences";
 import { TagFilter } from "./TagFilter";
 import type { ArchiveFilter } from "../utils/cardArchiveStorage";
 import { StudyScopeSummary } from "./StudyScopeSummary";
+import type { CardTagDimensionFilters } from "../utils/cardTagFilters";
 
 type Props = {
   cardCount: number;
@@ -12,6 +13,9 @@ type Props = {
   tags: string[];
   selectedDeck: DeckName | "all";
   selectedTag: string;
+  selectedWeeks: string[];
+  selectedTopics: string[];
+  selectedTypes: string[];
   finalOnly: boolean;
   hardOnly: boolean;
   cardScope: StudyCardScope;
@@ -22,6 +26,7 @@ type Props = {
   questionCount: MockQuestionCount;
   onDeckChange: (value: DeckName | "all") => void;
   onTagChange: (value: string) => void;
+  onTagDimensionsChange: (next: CardTagDimensionFilters) => void;
   onFinalOnlyChange: (value: boolean) => void;
   onHardOnlyChange: (value: boolean) => void;
   onCardScopeChange: (value: StudyCardScope) => void;
@@ -56,6 +61,9 @@ export function FirstLineSetup(props: Props) {
           tags={props.tags}
           selectedDeck={props.selectedDeck}
           selectedTag={props.selectedTag}
+          selectedWeeks={props.selectedWeeks}
+          selectedTopics={props.selectedTopics}
+          selectedTypes={props.selectedTypes}
           finalOnly={props.finalOnly}
           hardOnly={props.hardOnly}
           cardScope={props.cardScope}
@@ -64,6 +72,7 @@ export function FirstLineSetup(props: Props) {
           answerStatusOnly={props.answerStatusOnly}
           onDeckChange={props.onDeckChange}
           onTagChange={props.onTagChange}
+          onTagDimensionsChange={props.onTagDimensionsChange}
           onFinalOnlyChange={props.onFinalOnlyChange}
           onHardOnlyChange={props.onHardOnlyChange}
           onCardScopeChange={props.onCardScopeChange}

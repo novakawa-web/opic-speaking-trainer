@@ -56,6 +56,10 @@ import {
   type NavigationSession,
 } from "./navigationSession.ts";
 import {
+  normalizeCardTagDimensionFilters,
+  resolveCardTagDimensionFilters,
+} from "./cardTagFilters.ts";
+import {
   FIRST_LINE_STATUSES_STORAGE_KEY,
   normalizeStatuses,
 } from "./statusStorage.ts";
@@ -230,7 +234,10 @@ function isStudyAttempts(value: StudyAttemptsByDate): boolean {
   );
 }
 
-function assertNavigationSession(session: NavigationSession): void {
+function assertNavigationSession(
+  session: NavigationSession,
+  availableTags: readonly string[],
+): void {
   const views = new Set(["home", "library", "detail", "drill"]);
   const drillSources = new Set(["list", "detail"]);
   const detailSources = new Set(["home", "library"]);
@@ -245,12 +252,30 @@ function assertNavigationSession(session: NavigationSession): void {
     typeof session.filters !== "object" ||
     typeof session.filters.selectedDeck !== "string" ||
     typeof session.filters.selectedTag !== "string" ||
+    !Array.isArray(session.filters.selectedWeeks) ||
+    !session.filters.selectedWeeks.every((tag) => typeof tag === "string") ||
+    !Array.isArray(session.filters.selectedTopics) ||
+    !session.filters.selectedTopics.every((tag) => typeof tag === "string") ||
+    !Array.isArray(session.filters.selectedTypes) ||
+    !session.filters.selectedTypes.every((tag) => typeof tag === "string") ||
     typeof session.filters.finalOnly !== "boolean" ||
     typeof session.filters.hardOnly !== "boolean" ||
     !["all", "new"].includes(session.filters.cardScope) ||
     !["default", "random", "least-practiced"].includes(
       session.filters.studyOrder,
     )
+  ) {
+    throw new CardDeletionPlanError("invalid-state", { dataKind: "navigation-session" });
+  }
+  const normalizedDimensions = normalizeCardTagDimensionFilters(session.filters);
+  const resolvedDimensions = resolveCardTagDimensionFilters(
+    normalizedDimensions,
+    availableTags,
+  );
+  if (
+    !sameJson(resolvedDimensions.selectedWeeks, session.filters.selectedWeeks) ||
+    !sameJson(resolvedDimensions.selectedTopics, session.filters.selectedTopics) ||
+    !sameJson(resolvedDimensions.selectedTypes, session.filters.selectedTypes)
   ) {
     throw new CardDeletionPlanError("invalid-state", { dataKind: "navigation-session" });
   }
@@ -262,6 +287,7 @@ function assertValidCurrentState(state: CardDeletionState): void {
     throw new CardDeletionPlanError("invalid-state", { dataKind: "cards" });
   }
   const cardIds = state.cards.map((card) => card.id);
+  const availableTags = state.cards.flatMap((card) => card.tags);
   if (cardIds.some((id) => !isSafeId(id)) || new Set(cardIds).size !== cardIds.length) {
     throw new CardDeletionPlanError("invalid-state", { dataKind: "cards" });
   }
@@ -298,6 +324,7 @@ function assertValidCurrentState(state: CardDeletionState): void {
   const normalizedAnswerSession = normalizeAnswerLearningSession(
     state.answerLearningSession,
     cardIds,
+    availableTags,
   );
   if (!sameJson(normalizedAnswerSession, state.answerLearningSession)) {
     throw new CardDeletionPlanError("session-normalization-failed", {
@@ -341,7 +368,7 @@ function assertValidCurrentState(state: CardDeletionState): void {
       });
     }
   }
-  assertNavigationSession(state.navigationSession);
+  assertNavigationSession(state.navigationSession, availableTags);
   if (
     (state.navigationSession.selectedCardId !== null &&
       !cardIds.includes(state.navigationSession.selectedCardId)) ||
@@ -392,15 +419,20 @@ function countSessionReferences(state: CardDeletionState, cardId: string): numbe
 function normalizeNavigationAfterDeletion(
   session: NavigationSession,
   cardId: string,
+  availableTags: readonly string[],
 ): NavigationSession {
   const selectedWasDeleted = session.selectedCardId === cardId;
+  const dimensions = resolveCardTagDimensionFilters(
+    normalizeCardTagDimensionFilters(session.filters),
+    availableTags,
+  );
   return {
     ...session,
     currentView: selectedWasDeleted ? "library" : session.currentView,
     selectedCardId: selectedWasDeleted ? null : session.selectedCardId,
     detailSource: selectedWasDeleted ? "library" : session.detailSource,
     drillCardIds: session.drillCardIds.filter((id) => id !== cardId),
-    filters: { ...session.filters },
+    filters: { ...session.filters, ...dimensions },
   };
 }
 
@@ -409,8 +441,14 @@ function createNextState(
   cardId: string,
 ): CardDeletionState {
   const nextMock = removeCardFromMockSession(current.firstLineMockSession, cardId);
+  const nextCards = current.cards.filter((card) => card.id !== cardId);
+  const availableTags = nextCards.flatMap((card) => card.tags);
+  const nextAnswerSession = removeCardFromAnswerLearningSession(
+    current.answerLearningSession,
+    cardId,
+  );
   return {
-    cards: current.cards.filter((card) => card.id !== cardId),
+    cards: nextCards,
     firstLineStatuses: removeCardFromRecord(current.firstLineStatuses, cardId),
     firstLineAttemptsByDate: removeCardFromAttempts(
       current.firstLineAttemptsByDate,
@@ -428,10 +466,16 @@ function createNextState(
     cardMemos: removeCardFromRecord(current.cardMemos, cardId),
     archivedCardIds: current.archivedCardIds.filter((id) => id !== cardId),
     firstLineMockSession: nextMock,
-    answerLearningSession: removeCardFromAnswerLearningSession(
-      current.answerLearningSession,
-      cardId,
-    ),
+    answerLearningSession: {
+      ...nextAnswerSession,
+      filters: {
+        ...nextAnswerSession.filters,
+        ...resolveCardTagDimensionFilters(
+          normalizeCardTagDimensionFilters(nextAnswerSession.filters),
+          availableTags,
+        ),
+      },
+    },
     cardDetailSession:
       current.cardDetailSession?.cardId === cardId
         ? null
@@ -444,6 +488,7 @@ function createNextState(
     navigationSession: normalizeNavigationAfterDeletion(
       current.navigationSession,
       cardId,
+      availableTags,
     ),
   };
 }
@@ -721,6 +766,7 @@ export function validateCardDeletionPlan(plan: CardDeletionPlan): void {
   const answerSession = normalizeAnswerLearningSession(
     parseRaw(mutationFor(plan, ANSWER_LEARNING_SESSION_KEY), "answer-session"),
     validCardIds,
+    plan.nextState.cards.flatMap((card) => card.tags),
   );
   if (!sameJson(answerSession, plan.nextState.answerLearningSession)) {
     throw new CardDeletionPlanError("validation-failed", { dataKind: "answer-learning-session" });

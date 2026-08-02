@@ -11,11 +11,14 @@ import type {
   AnswerLearningFilters,
   AnswerLearningSession,
 } from "../utils/answerLearningSession";
+import { DEFAULT_ANSWER_LEARNING_FILTERS } from "../utils/answerLearningSession";
 import {
   filterAnswerLearningCards,
   orderAnswerLearningCards,
 } from "../utils/answerLearningSelectors";
 import { StudyScopeSummary } from "./StudyScopeSummary";
+import { CardTagDimensionFilters } from "./CardTagDimensionFilters";
+import { getCardTagFilterOptions } from "../utils/cardTagFilters";
 
 type Props = {
   cards: OpicCard[];
@@ -90,6 +93,7 @@ export function AnswerLearningSetup({
   );
   const selected = new Set(session.selectedCardIds);
   const selectionState = getAnswerLearningSelectionState(visibleCards, session.selectedCardIds);
+  const { otherTags } = getCardTagFilterOptions(tags);
 
   function updateFilters(updates: Partial<AnswerLearningFilters>) {
     onSessionChange({
@@ -150,14 +154,7 @@ export function AnswerLearningSetup({
             onClick={() =>
               onSessionChange({
                 ...session,
-                filters: {
-                  deck: "all",
-                  tag: "all",
-                  finalOnly: false,
-                  answerPresence: "all",
-                  status: "all",
-                  order: "default",
-                },
+                filters: { ...DEFAULT_ANSWER_LEARNING_FILTERS },
                 screen: "setup",
               })
             }
@@ -173,13 +170,22 @@ export function AnswerLearningSetup({
               {decks.map((deck) => <option key={deck} value={deck}>{deck}</option>)}
             </select>
           </label>
-          <label>
-            <span>태그</span>
-            <select value={session.filters.tag} onChange={(event) => updateFilters({ tag: event.target.value })}>
-              <option value="all">전체 태그</option>
-              {tags.map((tag) => <option key={tag} value={tag}>{tag}</option>)}
-            </select>
-          </label>
+          <CardTagDimensionFilters
+            tags={tags}
+            selectedWeeks={session.filters.selectedWeeks}
+            selectedTopics={session.filters.selectedTopics}
+            selectedTypes={session.filters.selectedTypes}
+            onChange={(next) => updateFilters(next)}
+          />
+          {otherTags.length > 0 && (
+            <label>
+              <span>기타 태그</span>
+              <select value={session.filters.tag} onChange={(event) => updateFilters({ tag: event.target.value })}>
+                <option value="all">전체 기타 태그</option>
+                {otherTags.map((tag) => <option key={tag} value={tag}>{tag}</option>)}
+              </select>
+            </label>
+          )}
           <label>
             <span>나만의 답변</span>
             <select value={session.filters.answerPresence} onChange={(event) => updateFilters({ answerPresence: event.target.value as AnswerLearningFilters["answerPresence"] })}>

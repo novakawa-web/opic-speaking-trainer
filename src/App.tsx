@@ -30,6 +30,12 @@ import { HomeCardDashboard } from "./components/HomeCardDashboard";
 import { HomeManagement } from "./components/HomeManagement";
 import { HomeQuickStart } from "./components/HomeQuickStart";
 import { formatHomeFilterSummary } from "./utils/homeFilterSummary";
+import {
+  matchesCardTagDimensionFilters,
+  normalizeCardTagDimensionFilters,
+  resolveCardTagDimensionFilters,
+  type CardTagDimensionFilters,
+} from "./utils/cardTagFilters";
 import { ShadowingPlayer } from "./components/ShadowingPlayer";
 import { StudyDaySettings } from "./components/StudyDaySettings";
 import { TodayStats } from "./components/TodayStats";
@@ -299,6 +305,7 @@ function readInitialNavigationState(availableCards: OpicCard[]) {
   const storedMyAnswers = playerCard ? readMyAnswers() : {};
   const answerSession = readAnswerLearningSession(
     availableCards.map((card) => card.id),
+    availableCards.flatMap((card) => card.tags),
   );
   const restoredShadowingSource = playerPassage
     ? createSavedPassageSource(playerPassage)
@@ -328,6 +335,9 @@ function readInitialNavigationState(availableCards: OpicCard[]) {
     detailReturnView: stored.detailSource,
     selectedDeck: stored.filters.selectedDeck,
     selectedTag: stored.filters.selectedTag,
+    selectedWeeks: stored.filters.selectedWeeks,
+    selectedTopics: stored.filters.selectedTopics,
+    selectedTypes: stored.filters.selectedTypes,
     finalOnly: stored.filters.finalOnly,
     hardOnly: stored.filters.hardOnly,
     cardScope: stored.filters.cardScope,
@@ -408,6 +418,9 @@ function App() {
     initialNavigation.selectedDeck,
   );
   const [selectedTag, setSelectedTag] = useState(initialNavigation.selectedTag);
+  const [selectedWeeks, setSelectedWeeks] = useState(initialNavigation.selectedWeeks);
+  const [selectedTopics, setSelectedTopics] = useState(initialNavigation.selectedTopics);
+  const [selectedTypes, setSelectedTypes] = useState(initialNavigation.selectedTypes);
   const [cardSearchQuery, setCardSearchQuery] = useState("");
   const [finalOnly, setFinalOnly] = useState(initialNavigation.finalOnly);
   const [hardOnly, setHardOnly] = useState(initialNavigation.hardOnly);
@@ -538,6 +551,10 @@ function App() {
     () => [...new Set(cardCatalog.flatMap((card) => card.tags))].sort(),
     [cardCatalog],
   );
+  const tagDimensionFilters = useMemo<CardTagDimensionFilters>(
+    () => ({ selectedWeeks, selectedTopics, selectedTypes }),
+    [selectedTopics, selectedTypes, selectedWeeks],
+  );
   const todayStats = useMemo(
     () => calculateDailyStats(studyAttempts, studyDayStartTime),
     [studyAttempts, studyDayStartTime],
@@ -561,6 +578,7 @@ function App() {
         const matchesArchive = matchesArchiveFilter(card, archivedCardIds, archiveFilter);
         const matchesDeck = selectedDeck === "all" || card.deck === selectedDeck;
         const matchesTag = selectedTag === "all" || card.tags.includes(selectedTag);
+        const matchesTagDimensions = matchesCardTagDimensionFilters(card, tagDimensionFilters);
         const matchesFinal = !finalOnly || card.tags.includes("final_rep");
         const matchesHard = !hardOnly || statuses[card.id] === "hard";
         const matchesScope = cardScope === "all" || statuses[card.id] == null;
@@ -579,6 +597,7 @@ function App() {
           matchesArchive &&
           matchesDeck &&
           matchesTag &&
+          matchesTagDimensions &&
           matchesFinal &&
           matchesHard &&
           matchesScope &&
@@ -602,6 +621,7 @@ function App() {
       hardOnly,
       selectedDeck,
       selectedTag,
+      tagDimensionFilters,
       statuses,
     ],
   );
@@ -623,6 +643,7 @@ function App() {
       const matchesArchive = matchesArchiveFilter(card, archivedCardIds, archiveFilter);
       const matchesDeck = selectedDeck === "all" || card.deck === selectedDeck;
       const matchesTag = selectedTag === "all" || card.tags.includes(selectedTag);
+      const matchesTagDimensions = matchesCardTagDimensionFilters(card, tagDimensionFilters);
       const matchesFinal = !finalOnly || card.tags.includes("final_rep");
       const matchesHard = !hardOnly || statuses[card.id] === "hard";
       const matchesScope = cardScope === "all" || statuses[card.id] == null;
@@ -632,6 +653,7 @@ function App() {
         matchesArchive &&
         matchesDeck &&
         matchesTag &&
+        matchesTagDimensions &&
         matchesFinal &&
         matchesHard &&
         matchesScope &&
@@ -656,6 +678,7 @@ function App() {
     hardOnly,
     selectedDeck,
     selectedTag,
+    tagDimensionFilters,
     statuses,
   ]);
   const orderedFirstLineCards = useMemo(() => {
@@ -692,6 +715,9 @@ function App() {
   const filterSignature = JSON.stringify([
     selectedDeck,
     selectedTag,
+    selectedWeeks,
+    selectedTopics,
+    selectedTypes,
     finalOnly,
     hardOnly,
     cardScope,
@@ -704,6 +730,9 @@ function App() {
     return formatHomeFilterSummary({
       selectedDeck,
       selectedTag,
+      selectedWeeks,
+      selectedTopics,
+      selectedTypes,
       finalOnly,
       hardOnly,
       cardScope,
@@ -713,7 +742,7 @@ function App() {
       archiveFilter,
       cardSearchQuery,
     });
-  }, [answerContentFilter, answerLearningStatusFilter, archiveFilter, cardScope, cardSearchQuery, finalOnly, hardOnly, selectedDeck, selectedTag, studyOrder]);
+  }, [answerContentFilter, answerLearningStatusFilter, archiveFilter, cardScope, cardSearchQuery, finalOnly, hardOnly, selectedDeck, selectedTag, selectedTopics, selectedTypes, selectedWeeks, studyOrder]);
   const drillCards = useMemo(() => {
     const byId = new Map(cardCatalog.map((card) => [card.id, card]));
     return drillCardIds.flatMap((cardId) => {
@@ -801,6 +830,9 @@ function App() {
       filters: {
         selectedDeck,
         selectedTag,
+        selectedWeeks,
+        selectedTopics,
+        selectedTypes,
         finalOnly,
         hardOnly,
         cardScope,
@@ -817,6 +849,9 @@ function App() {
     selectedCardId,
     selectedDeck,
     selectedTag,
+    selectedTopics,
+    selectedTypes,
+    selectedWeeks,
     studyOrder,
     shadowingReturnView,
     view,
@@ -1736,6 +1771,9 @@ function App() {
   function resetVisibleStudyFilters() {
     setSelectedDeck("all");
     setSelectedTag("all");
+    setSelectedWeeks([]);
+    setSelectedTopics([]);
+    setSelectedTypes([]);
     setFinalOnly(false);
     setHardOnly(false);
     setFirstLineAnswerStatusOnly(false);
@@ -1751,6 +1789,12 @@ function App() {
     setAnswerLearningStatusFilter("all");
   }
 
+  function updateTagDimensions(next: CardTagDimensionFilters) {
+    setSelectedWeeks(next.selectedWeeks);
+    setSelectedTopics(next.selectedTopics);
+    setSelectedTypes(next.selectedTypes);
+  }
+
   function handleCardsChange(nextCards: OpicCard[]) {
     const nextIds = new Set(nextCards.map((card) => card.id));
     const nextDrillIds = drillCardIds.filter((cardId) => nextIds.has(cardId));
@@ -1758,6 +1802,15 @@ function App() {
     const nextAnswerOrder = answerSession.cardOrder.filter((cardId) => nextIds.has(cardId));
     const selectedCardStillExists =
       selectedCardId === null || nextIds.has(selectedCardId);
+    const nextAvailableTags = nextCards.flatMap((card) => card.tags);
+    const nextDimensions = resolveCardTagDimensionFilters(
+      tagDimensionFilters,
+      nextAvailableTags,
+    );
+    const nextAnswerDimensions = resolveCardTagDimensionFilters(
+      normalizeCardTagDimensionFilters(answerSession.filters),
+      nextAvailableTags,
+    );
 
     setCardCatalog(nextCards);
     setCardStorageWarning(false);
@@ -1770,7 +1823,9 @@ function App() {
       cardOrder: nextAnswerOrder,
       currentIndex: Math.min(answerSession.currentIndex, Math.max(nextAnswerOrder.length - 1, 0)),
       screen: answerSession.screen === "learning" && nextAnswerOrder.length === 0 ? "setup" : answerSession.screen,
+      filters: { ...answerSession.filters, ...nextAnswerDimensions },
     });
+    updateTagDimensions(nextDimensions);
 
     if (
       selectedDeck !== "all" &&
@@ -1945,6 +2000,9 @@ function App() {
       filters: {
         selectedDeck,
         selectedTag,
+        selectedWeeks,
+        selectedTopics,
+        selectedTypes,
         finalOnly,
         hardOnly,
         cardScope,
@@ -1970,6 +2028,9 @@ function App() {
     setDetailReturnView(state.navigationSession.detailSource);
     setSelectedDeck(state.navigationSession.filters.selectedDeck);
     setSelectedTag(state.navigationSession.filters.selectedTag);
+    setSelectedWeeks(state.navigationSession.filters.selectedWeeks);
+    setSelectedTopics(state.navigationSession.filters.selectedTopics);
+    setSelectedTypes(state.navigationSession.filters.selectedTypes);
     setFinalOnly(state.navigationSession.filters.finalOnly);
     setHardOnly(state.navigationSession.filters.hardOnly);
     setCardScope(state.navigationSession.filters.cardScope);
@@ -2090,6 +2151,9 @@ function App() {
           tags={tags}
           selectedDeck={selectedDeck}
           selectedTag={selectedTag}
+          selectedWeeks={selectedWeeks}
+          selectedTopics={selectedTopics}
+          selectedTypes={selectedTypes}
           finalOnly={finalOnly}
           hardOnly={hardOnly}
           cardScope={cardScope}
@@ -2100,6 +2164,7 @@ function App() {
           questionCount={mockQuestionCount}
           onDeckChange={setSelectedDeck}
           onTagChange={setSelectedTag}
+          onTagDimensionsChange={updateTagDimensions}
           onFinalOnlyChange={setFinalOnly}
           onHardOnlyChange={setHardOnly}
           onCardScopeChange={setCardScope}
@@ -2306,6 +2371,9 @@ function App() {
           tags={tags}
           selectedDeck={selectedDeck}
           selectedTag={selectedTag}
+          selectedWeeks={selectedWeeks}
+          selectedTopics={selectedTopics}
+          selectedTypes={selectedTypes}
           finalOnly={finalOnly}
           hardOnly={hardOnly}
           cardScope={cardScope}
@@ -2313,6 +2381,7 @@ function App() {
           filterSignature={filterSignature}
           onDeckChange={setSelectedDeck}
           onTagChange={setSelectedTag}
+          onTagDimensionsChange={updateTagDimensions}
           onFinalOnlyChange={setFinalOnly}
           onHardOnlyChange={setHardOnly}
           onCardScopeChange={setCardScope}

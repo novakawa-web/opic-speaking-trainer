@@ -1,5 +1,11 @@
 import type { DeckName, OpicCard } from "../types.ts";
 import {
+  EMPTY_CARD_TAG_DIMENSION_FILTERS,
+  migrateLegacyCardTagFilter,
+  normalizeCardTagDimensionFilters,
+  resolveCardTagDimensionFilters,
+} from "./cardTagFilters.ts";
+import {
   isStudyCardScope,
   isStudyOrder,
   readStudyCardScope,
@@ -23,6 +29,9 @@ export type NavigationSession = {
   filters: {
     selectedDeck: DeckName | "all";
     selectedTag: string;
+    selectedWeeks: string[];
+    selectedTopics: string[];
+    selectedTypes: string[];
     finalOnly: boolean;
     hardOnly: boolean;
     cardScope: StudyCardScope;
@@ -39,6 +48,7 @@ export const DEFAULT_NAVIGATION_SESSION: NavigationSession = {
   filters: {
     selectedDeck: "all",
     selectedTag: "all",
+    ...EMPTY_CARD_TAG_DIMENSION_FILTERS,
     finalOnly: false,
     hardOnly: false,
     cardScope: "all",
@@ -81,6 +91,13 @@ export function readNavigationSession(): NavigationSession {
       ? (parsed.detailSource as DetailSource)
       : "home";
 
+    const dimensions = normalizeCardTagDimensionFilters(filters);
+    const legacyTag = migrateLegacyCardTagFilter(
+      filters.selectedTag,
+      dimensions,
+      typeof filters.finalOnly === "boolean" ? filters.finalOnly : false,
+    );
+
     return {
       currentView,
       selectedCardId:
@@ -99,10 +116,9 @@ export function readNavigationSession(): NavigationSession {
           typeof filters.selectedDeck === "string"
             ? (filters.selectedDeck as DeckName | "all")
             : "all",
-        selectedTag:
-          typeof filters.selectedTag === "string" ? filters.selectedTag : "all",
-        finalOnly:
-          typeof filters.finalOnly === "boolean" ? filters.finalOnly : false,
+        selectedTag: legacyTag.selectedTag,
+        ...legacyTag.dimensions,
+        finalOnly: legacyTag.finalOnly,
         hardOnly:
           typeof filters.hardOnly === "boolean" ? filters.hardOnly : false,
         cardScope: isStudyCardScope(filters.cardScope)
@@ -146,6 +162,11 @@ export function resolveNavigationSession(
     availableCards.some((card) => card.tags.includes(session.filters.selectedTag))
       ? session.filters.selectedTag
       : "all";
+  const availableTags = availableCards.flatMap((card) => card.tags);
+  const dimensions = resolveCardTagDimensionFilters(
+    normalizeCardTagDimensionFilters(session.filters),
+    availableTags,
+  );
   const availableIds = new Set(availableCards.map((card) => card.id));
   const drillCardIds = session.drillCardIds.filter(
     (cardId, index, allIds) =>
@@ -160,6 +181,6 @@ export function resolveNavigationSession(
         : "home",
     selectedCardId: cardExists ? session.selectedCardId : null,
     drillCardIds,
-    filters: { ...session.filters, selectedDeck, selectedTag },
+    filters: { ...session.filters, selectedDeck, selectedTag, ...dimensions },
   };
 }

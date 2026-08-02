@@ -325,6 +325,21 @@ test("16. answer-learning current index is clamped", () => {
   assert.equal(plan.nextState.answerLearningSession.currentIndex, 0);
 });
 
+test("card tag dimension filters retain available values and remove vanished values", () => {
+  const state = createState();
+  state.cards[0].tags.push("topic_unique", "type_unique");
+  state.cards[1].tags.push("topic_shared", "type_shared");
+  state.navigationSession.filters.selectedWeeks = ["week6"];
+  state.navigationSession.filters.selectedTopics = ["topic_shared", "topic_unique"];
+  state.answerLearningSession.filters.selectedTypes = ["type_shared", "type_unique"];
+  const { plan } = makePlan(state);
+  assert.deepEqual(plan.nextState.navigationSession.filters.selectedWeeks, ["week6"]);
+  assert.deepEqual(plan.nextState.navigationSession.filters.selectedTopics, ["topic_shared"]);
+  assert.deepEqual(plan.nextState.answerLearningSession.filters.selectedTypes, ["type_shared"]);
+  assert.deepEqual(plan.nextState.answerLearningSession.selectedCardIds, [other.id]);
+  assert.deepEqual(plan.nextState.answerLearningSession.cardOrder, [other.id]);
+});
+
 test("17. target card-detail session is removed", () => {
   const { plan } = makePlan();
   assert.equal(plan.nextState.cardDetailSession, null);
@@ -390,6 +405,9 @@ test("24. damaged state is rejected", () => {
   const damagedSession = createState();
   damagedSession.navigationSession.drillCardIds.push("missing-card");
   assertPlanError(() => makePlan(damagedSession), "session-normalization-failed");
+  const damagedFilters = createState();
+  damagedFilters.navigationSession.filters.selectedWeeks = "week6";
+  assertPlanError(() => makePlan(damagedFilters), "invalid-state");
 });
 
 test("25. every non-null mutation is parseable JSON", () => {
@@ -543,6 +561,19 @@ test("40. identical input and now produce an identical semantic plan", () => {
     first.mutations.map(({ area, key, value }) => ({ area, key, value })),
     second.mutations.map(({ area, key, value }) => ({ area, key, value })),
   );
+});
+
+test("41. navigation dimension filters must be canonical", () => {
+  for (const selectedWeeks of [
+    ["week7", "week6"],
+    ["week6", "week6"],
+    ["topic_home"],
+    ["week6", "x".repeat(201)],
+  ]) {
+    const state = createState();
+    state.navigationSession.filters.selectedWeeks = selectedWeeks;
+    assertPlanError(() => makePlan(state), "invalid-state");
+  }
 });
 
 let passed = 0;

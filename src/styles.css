@@ -1088,6 +1088,104 @@ input:focus-visible + .toggle-switch {
   cursor: pointer;
 }
 
+.card-tag-dimension-filter {
+  min-width: 0;
+}
+
+.answer-learning-filter-grid .card-tag-dimension-filter {
+  display: grid;
+  gap: 7px;
+  color: var(--body-copy);
+  font-weight: 700;
+}
+
+.card-tag-dimension-filter details {
+  position: relative;
+  min-width: 0;
+}
+
+.card-tag-dimension-filter summary {
+  display: flex;
+  width: 100%;
+  min-height: 46px;
+  padding: 0 12px 0 14px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--input-bg);
+  cursor: pointer;
+  list-style: none;
+}
+
+.card-tag-dimension-filter summary::-webkit-details-marker {
+  display: none;
+}
+
+.card-tag-dimension-filter summary:focus-visible {
+  outline: 3px solid var(--header-focus-ring, var(--blue));
+  outline-offset: 2px;
+}
+
+.card-tag-dimension-filter details[open] > summary {
+  border-color: color-mix(in srgb, var(--blue) 62%, var(--line));
+}
+
+.card-tag-dimension-chevron {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  transition: transform 160ms ease;
+}
+
+.card-tag-dimension-filter details[open] .card-tag-dimension-chevron {
+  transform: rotate(180deg);
+}
+
+.card-tag-dimension-options {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  display: grid;
+  width: 100%;
+  max-height: 264px;
+  padding: 6px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.card-tag-dimension-options label,
+.answer-learning-filter-grid .card-tag-dimension-options label {
+  display: flex;
+  min-height: 44px;
+  padding: 8px 9px;
+  align-items: center;
+  gap: 10px;
+  border-radius: 8px;
+  color: var(--body-copy);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.card-tag-dimension-options label:hover {
+  background: var(--surface-soft);
+}
+
+.card-tag-dimension-options input {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  accent-color: var(--blue);
+}
+
 .filter-scope-help {
   grid-column: 1 / -1;
   margin: -6px 0 0;
@@ -4044,6 +4142,12 @@ input:focus-visible + .toggle-switch {
 
   .filter-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .card-tag-dimension-options {
+    position: static;
+    margin-top: 7px;
+    box-shadow: none;
   }
 
   .toggle-group {

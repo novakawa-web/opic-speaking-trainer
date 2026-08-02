@@ -5,6 +5,7 @@ import type {
   AnswerLearningFilters,
   AnswerLearningStatusFilter,
 } from "./answerLearningSession.ts";
+import { matchesCardTagDimensionFilters } from "./cardTagFilters.ts";
 
 const dangerousCardIds = new Set(["__proto__", "constructor", "prototype"]);
 
@@ -55,6 +56,7 @@ export function filterAnswerLearningCards(
     return (
       (filters.deck === "all" || card.deck === filters.deck) &&
       (filters.tag === "all" || card.tags.includes(filters.tag)) &&
+      matchesCardTagDimensionFilters(card, filters) &&
       (!filters.finalOnly || card.tags.includes("final_rep")) &&
       (filters.answerPresence === "all" ||
         (filters.answerPresence === "with" ? hasMyAnswer : !hasMyAnswer)) &&

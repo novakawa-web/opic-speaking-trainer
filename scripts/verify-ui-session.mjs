@@ -9,6 +9,8 @@ import {
 } from "../src/utils/cardLibrarySession.ts";
 import {
   DEFAULT_NAVIGATION_SESSION,
+  NAVIGATION_SESSION_STORAGE_KEY,
+  readNavigationSession,
   resolveNavigationSession,
 } from "../src/utils/navigationSession.ts";
 import { cards } from "../src/data/cards.ts";
@@ -58,6 +60,39 @@ test("카드 라이브러리 내비게이션 세션 복원", () => {
   );
   assert.equal(resolved.currentView, "library");
   assert.equal(resolved.detailSource, "library");
+});
+
+test("구형 navigation 단일 차원 태그는 새 배열로 승격", () => {
+  const storage = new MemoryStorage();
+  storage.setItem(NAVIGATION_SESSION_STORAGE_KEY, JSON.stringify({
+    ...DEFAULT_NAVIGATION_SESSION,
+    filters: { ...DEFAULT_NAVIGATION_SESSION.filters, selectedTag: "week7" },
+  }));
+  const previous = globalThis.sessionStorage;
+  globalThis.sessionStorage = storage;
+  try {
+    const restored = readNavigationSession();
+    assert.equal(restored.filters.selectedTag, "all");
+    assert.deepEqual(restored.filters.selectedWeeks, ["week7"]);
+  } finally {
+    if (previous === undefined) delete globalThis.sessionStorage;
+    else globalThis.sessionStorage = previous;
+  }
+});
+
+test("navigation 차원 선택은 canonical 정렬하고 dataset에서 사라진 값 제거", () => {
+  const resolved = resolveNavigationSession({
+    ...DEFAULT_NAVIGATION_SESSION,
+    filters: {
+      ...DEFAULT_NAVIGATION_SESSION.filters,
+      selectedWeeks: ["week10", "week6", "week6"],
+      selectedTopics: ["topic_missing"],
+      selectedTypes: ["type_missing"],
+    },
+  }, cards);
+  assert.deepEqual(resolved.filters.selectedWeeks, ["week6"]);
+  assert.deepEqual(resolved.filters.selectedTopics, []);
+  assert.deepEqual(resolved.filters.selectedTypes, []);
 });
 
 test("홈은 전체 CardList 대신 compact 카드 대시보드 사용", () => {
