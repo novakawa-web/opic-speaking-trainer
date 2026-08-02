@@ -303,6 +303,10 @@ export function sortPersonalMemos(memos: PersonalMemo[]) {
   );
 }
 
+export function selectPersonalMemoSummaryMemos(memos: PersonalMemo[]) {
+  return sortPersonalMemos(memos).slice(0, 3);
+}
+
 export function searchPersonalMemos(memos: PersonalMemo[], query: string) {
   const normalizedQuery = query.trim().toLocaleLowerCase();
   return sortPersonalMemos(memos).filter((memo) => {

@@ -13,7 +13,7 @@ import {
   resolvePersonalMemoInput,
   savePersonalMemoEditorSession,
   searchPersonalMemos,
-  sortPersonalMemos,
+  selectPersonalMemoSummaryMemos,
   type PersonalMemo,
   type PersonalMemoDataset,
   type PersonalMemoEditorSession,
@@ -30,11 +30,10 @@ export function PersonalMemoSummary({
   onOpenLibrary,
   onStartNew,
 }: PersonalMemoSummaryProps) {
-  const ordered = useMemo(() => sortPersonalMemos(dataset.memos), [dataset]);
-  const pinned = ordered.filter((memo) => memo.pinned).slice(0, 3);
-  const recent = [...dataset.memos]
-    .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))
-    .slice(0, 3);
+  const previewMemos = useMemo(
+    () => selectPersonalMemoSummaryMemos(dataset.memos),
+    [dataset.memos],
+  );
 
   return (
     <section className="personal-memo-summary home-material-card" aria-labelledby="personal-memo-summary-title">
@@ -63,35 +62,23 @@ export function PersonalMemoSummary({
       {dataset.memos.length === 0 ? (
         <p className="personal-memo-summary-empty">아직 저장한 개인 메모가 없어요.</p>
       ) : (
-        <div className="personal-memo-summary-columns">
-          {pinned.length > 0 && (
-            <div>
-              <h3>고정 메모</h3>
-              <ul>
-                {pinned.map((memo) => (
-                  <li key={memo.id}>
-                    <button type="button" onClick={onOpenLibrary}>
-                      <strong>📌 {memo.title}</strong>
-                      <span>{simpleMarkdownToPlainText(memo.content)}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          <div>
-            <h3>최근 메모</h3>
-            <ul>
-              {recent.map((memo) => (
-                <li key={memo.id}>
-                  <button type="button" onClick={onOpenLibrary}>
-                    <strong>{memo.title}</strong>
+        <div className="personal-memo-summary-preview">
+          <h3>메모 미리보기</h3>
+          <ul>
+            {previewMemos.map((memo) => (
+              <li key={memo.id}>
+                <button type="button" onClick={onOpenLibrary}>
+                  <span className="personal-memo-summary-title-row">
+                    <strong>{memo.pinned ? `📌 ${memo.title}` : memo.title}</strong>
                     <time dateTime={memo.updatedAt}>{formatMemoDate(memo.updatedAt)}</time>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+                  </span>
+                  <span className="personal-memo-summary-excerpt">
+                    {simpleMarkdownToPlainText(memo.content)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </section>

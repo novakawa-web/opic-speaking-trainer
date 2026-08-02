@@ -12,6 +12,10 @@ const directTextPractice = await readFile(
   new URL("../src/components/DirectTextPractice.tsx", import.meta.url),
   "utf8",
 );
+const personalMemoManager = await readFile(
+  new URL("../src/components/PersonalMemoManager.tsx", import.meta.url),
+  "utf8",
+);
 
 let passed = 0;
 
@@ -219,6 +223,16 @@ test("쉐도잉 지문은 홈 요약 카드와 독립 화면을 사용한다", (
   assert.match(directTextPractice, /export function DirectTextPracticeSummary/);
   assert.match(directTextPractice, /export function DirectTextPracticeLibrary/);
   assert.doesNotMatch(css, /direct-practice-summary:has/);
+});
+
+test("개인 학습 메모 홈 미리보기는 고정 포함 3개를 한 열로 표시한다", () => {
+  assert.match(personalMemoManager, /selectPersonalMemoSummaryMemos\(dataset\.memos\)/);
+  assert.match(personalMemoManager, /className="personal-memo-summary-preview"/);
+  assert.doesNotMatch(personalMemoManager, /className="personal-memo-summary-columns"/);
+  assert.match(css, /\.personal-memo-summary-preview\s*{[\s\S]*?padding:\s*14px/);
+  assert.match(css, /\.personal-memo-summary-preview ul\s*{[\s\S]*?display:\s*grid/);
+  assert.doesNotMatch(css, /\.personal-memo-summary-preview\s*{[^}]*grid-template-columns:\s*repeat\(2,/);
+  assert.match(css, /\.personal-memo-summary-excerpt\s*{[\s\S]*?-webkit-line-clamp:\s*2/);
 });
 
 console.log(`Home layout verification passed: ${passed} tests`);

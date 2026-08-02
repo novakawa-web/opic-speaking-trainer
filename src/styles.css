@@ -5293,28 +5293,21 @@ input:focus-visible + .toggle-switch {
   background: var(--surface-soft);
 }
 
-.personal-memo-summary-columns {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+.personal-memo-summary-preview {
   margin-top: 18px;
-}
-
-.personal-memo-summary-columns > div {
-  min-width: 0;
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--surface-soft);
 }
 
-.personal-memo-summary-columns h3 {
+.personal-memo-summary-preview h3 {
   margin: 0 0 9px;
   color: var(--heading);
   font-size: 0.9rem;
 }
 
-.personal-memo-summary-columns ul {
+.personal-memo-summary-preview ul {
   display: grid;
   gap: 6px;
   margin: 0;
@@ -5322,8 +5315,9 @@ input:focus-visible + .toggle-switch {
   list-style: none;
 }
 
-.personal-memo-summary-columns button {
+.personal-memo-summary-preview button {
   display: grid;
+  gap: 5px;
   width: 100%;
   min-width: 0;
   min-height: 44px;
@@ -5336,24 +5330,39 @@ input:focus-visible + .toggle-switch {
   cursor: pointer;
 }
 
-.personal-memo-summary-columns button:hover {
+.personal-memo-summary-preview button:hover {
   background: var(--surface);
 }
 
-.personal-memo-summary-columns strong,
-.personal-memo-summary-columns span,
-.personal-memo-summary-columns time {
+.personal-memo-summary-title-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.personal-memo-summary-title-row strong,
+.personal-memo-summary-title-row time {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.personal-memo-summary-columns span,
-.personal-memo-summary-columns time {
-  margin-top: 3px;
+.personal-memo-summary-title-row time,
+.personal-memo-summary-excerpt {
   color: var(--muted);
   font-size: 0.78rem;
+}
+
+.personal-memo-summary-excerpt {
+  display: -webkit-box;
+  overflow: hidden;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .personal-memo-library {
@@ -5768,10 +5777,6 @@ input:focus-visible + .toggle-switch {
   .personal-memo-toolbar-actions button,
   .personal-memo-editor-actions button {
     width: 100%;
-  }
-
-  .personal-memo-summary-columns {
-    grid-template-columns: 1fr;
   }
 
   .personal-memo-library {
@@ -8999,7 +9004,7 @@ input:focus-visible + .toggle-switch {
 
 .home-card-actions,
 .personal-memo-summary-actions,
-.personal-memo-summary-columns,
+.personal-memo-summary-preview,
 .saved-passage-summary-actions,
 .saved-passage-library-content {
   margin-top: var(--space-lg);

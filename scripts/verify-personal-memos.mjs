@@ -27,6 +27,7 @@ import {
   restorePersonalMemo,
   savePersonalMemoEditorSession,
   searchPersonalMemos,
+  selectPersonalMemoSummaryMemos,
   sortPersonalMemos,
   togglePersonalMemoPinned,
   updatePersonalMemo,
@@ -58,6 +59,17 @@ function seedDataset() {
     now: new Date("2026-07-17T11:00:00.000Z"),
   }).dataset;
   return dataset;
+}
+
+function summaryMemo(id, updatedAt, pinned = false) {
+  return {
+    id,
+    title: id,
+    content: `${id} content`,
+    pinned,
+    createdAt: updatedAt,
+    updatedAt,
+  };
 }
 
 test("빈 저장소", () => {
@@ -264,6 +276,47 @@ test("pinned 우선 정렬", () => {
 
 test("updatedAt 최신순", () => {
   assert.equal(sortPersonalMemos(seedDataset().memos)[0].id, "personal-002");
+});
+
+test("홈 요약은 고정 메모를 포함해 총 3개만 선택", () => {
+  const selected = selectPersonalMemoSummaryMemos([
+    summaryMemo("recent-new", "2026-07-17T14:00:00.000Z"),
+    summaryMemo("pinned", "2026-07-17T10:00:00.000Z", true),
+    summaryMemo("recent-middle", "2026-07-17T13:00:00.000Z"),
+    summaryMemo("recent-old", "2026-07-17T12:00:00.000Z"),
+  ]);
+  assert.deepEqual(selected.map((memo) => memo.id), [
+    "pinned",
+    "recent-new",
+    "recent-middle",
+  ]);
+  assert.equal(new Set(selected.map((memo) => memo.id)).size, 3);
+});
+
+test("고정 메모가 3개보다 많으면 최신 고정 메모 3개만 선택", () => {
+  const selected = selectPersonalMemoSummaryMemos([
+    summaryMemo("recent-newer", "2026-07-17T15:00:00.000Z"),
+    summaryMemo("pinned-1", "2026-07-17T11:00:00.000Z", true),
+    summaryMemo("pinned-3", "2026-07-17T13:00:00.000Z", true),
+    summaryMemo("pinned-2", "2026-07-17T12:00:00.000Z", true),
+    summaryMemo("pinned-4", "2026-07-17T14:00:00.000Z", true),
+  ]);
+  assert.deepEqual(selected.map((memo) => memo.id), [
+    "pinned-4",
+    "pinned-3",
+    "pinned-2",
+  ]);
+});
+
+test("홈 요약은 메모가 3개보다 적으면 있는 메모만 한 번씩 선택", () => {
+  const selected = selectPersonalMemoSummaryMemos([
+    summaryMemo("only-pinned", "2026-07-17T10:00:00.000Z", true),
+    summaryMemo("only-recent", "2026-07-17T11:00:00.000Z"),
+  ]);
+  assert.deepEqual(selected.map((memo) => memo.id), [
+    "only-pinned",
+    "only-recent",
+  ]);
 });
 
 test("제목 검색", () => {
