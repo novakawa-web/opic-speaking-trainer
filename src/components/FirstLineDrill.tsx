@@ -460,7 +460,9 @@ export function FirstLineDrill({
           <div className="first-line-stage">
             <div className="first-line-actions">
               <button
-                className="reveal-button"
+                className={`first-line-reveal-action ${
+                  showFirstLine ? "secondary-button" : "primary-button"
+                }`}
                 type="button"
                 aria-expanded={showFirstLine}
                 aria-keyshortcuts="Space"

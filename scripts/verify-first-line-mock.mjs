@@ -54,6 +54,22 @@ function readPixelDeclaration(ruleBody, property) {
   return match ? Number(match[1]) : null;
 }
 
+function readCssBlock(source, marker, fromIndex = 0) {
+  const markerIndex = source.indexOf(marker, fromIndex);
+  assert.notEqual(markerIndex, -1, `${marker} CSS block missing`);
+  const openBraceIndex = source.indexOf("{", markerIndex);
+  assert.notEqual(openBraceIndex, -1, `${marker} opening brace missing`);
+
+  let depth = 1;
+  for (let index = openBraceIndex + 1; index < source.length; index += 1) {
+    if (source[index] === "{") depth += 1;
+    if (source[index] === "}") depth -= 1;
+    if (depth === 0) return source.slice(openBraceIndex + 1, index);
+  }
+
+  assert.fail(`${marker} closing brace missing`);
+}
+
 test("첫 문장 공개 상태는 숨김에서 첫 문장으로 전환", () => {
   const stage = toggleFirstLineReveal("hidden");
   assert.equal(stage, "first-line");
@@ -63,6 +79,56 @@ test("첫 문장 공개 상태는 숨김에서 첫 문장으로 전환", () => {
 test("다시 도전은 첫 문장과 전체 답변 공개를 모두 닫음", () => {
   assert.equal(toggleFirstLineReveal("first-line"), "hidden");
   assert.equal(toggleFirstLineReveal("full-answer"), "hidden");
+});
+test("다시 도전은 공개 전 기본 동작과 구분되는 보조 버튼을 사용", () => {
+  const source = readFileSync(
+    new URL("../src/components/FirstLineDrill.tsx", import.meta.url),
+    "utf8",
+  );
+  const styles = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+
+  assert.ok(source.includes('className={`first-line-reveal-action ${'));
+  assert.ok(source.includes('showFirstLine ? "secondary-button" : "primary-button"'));
+  assert.equal(source.includes('className="reveal-button"'), false);
+
+  const actionStart = source.indexOf('className={`first-line-reveal-action ${');
+  const actionEnd = source.indexOf("</button>", actionStart);
+  const actionMarkup = source.slice(actionStart, actionEnd);
+  assert.ok(actionMarkup.includes('type="button"'));
+  assert.ok(actionMarkup.includes("aria-expanded={showFirstLine}"));
+  assert.ok(actionMarkup.includes('aria-keyshortcuts="Space"'));
+
+  const revealActionRules = cssRuleBodies(styles, ".first-line-reveal-action");
+  assert.equal(revealActionRules.length, 1);
+  assert.equal(readPixelDeclaration(revealActionRules[0], "min-width"), 155);
+
+  const mobileActionSelectorIndex = styles.indexOf(
+    ".first-line-actions .first-line-reveal-action",
+  );
+  const mobileMediaIndex = styles.lastIndexOf(
+    "@media (max-width: 700px)",
+    mobileActionSelectorIndex,
+  );
+  assert.notEqual(mobileMediaIndex, -1);
+  const mobileStyles = readCssBlock(
+    styles,
+    "@media (max-width: 700px)",
+    mobileMediaIndex,
+  );
+  const mobileActionRows = cssRuleBodies(mobileStyles, ".first-line-actions");
+  assert.equal(mobileActionRows.length, 1);
+  assert.match(
+    mobileActionRows[0],
+    /grid-template-columns\s*:\s*repeat\(2, minmax\(0, 1fr\)\)\s*;/,
+  );
+  const mobileActionRule = mobileStyles.match(
+    /\.first-line-actions \.first-line-reveal-action,\s*\.first-line-speech-button\s*\{([^}]*)\}/,
+  );
+  assert.ok(mobileActionRule);
+  assert.match(mobileActionRule[1], /min-width\s*:\s*0\s*;/);
+  assert.match(mobileActionRule[1], /width\s*:\s*100%\s*;/);
+  assert.equal(readPixelDeclaration(mobileActionRule[1], "min-height"), 48);
+  assert.equal(styles.includes(".reveal-button"), false);
 });
 test("전체 답변은 첫 문장 공개 뒤에만 열고 닫음", () => {
   assert.equal(toggleFullAnswerReveal("hidden", true), "hidden");

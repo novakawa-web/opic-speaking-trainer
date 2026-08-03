@@ -3250,8 +3250,7 @@ input:focus-visible + .toggle-switch {
 }
 
 .primary-button,
-.secondary-button,
-.reveal-button {
+.secondary-button {
   min-height: 48px;
   padding: 0 21px;
   border-radius: 12px;
@@ -3264,16 +3263,14 @@ input:focus-visible + .toggle-switch {
     color 0.2s ease;
 }
 
-.primary-button,
-.reveal-button {
+.primary-button {
   color: white;
   border: 1px solid var(--primary-action);
   background: var(--primary-action);
   box-shadow: 0 9px 22px rgba(23, 44, 81, 0.18);
 }
 
-.primary-button:hover,
-.reveal-button:hover {
+.primary-button:hover {
   background: var(--primary-action-hover);
 }
 
@@ -3794,7 +3791,7 @@ input:focus-visible + .toggle-switch {
   font-size: 14px;
 }
 
-.reveal-button {
+.first-line-reveal-action {
   min-width: 155px;
 }
 
@@ -4907,7 +4904,7 @@ input:focus-visible + .toggle-switch {
     gap: 8px;
   }
 
-  .first-line-actions .reveal-button,
+  .first-line-actions .first-line-reveal-action,
   .first-line-speech-button {
     min-width: 0;
     width: 100%;
