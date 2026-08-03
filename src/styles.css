@@ -2730,6 +2730,12 @@ input:focus-visible + .toggle-switch {
   margin-top: 18px;
 }
 
+@media (min-width: 701px) and (max-width: 1080px) {
+  .card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .study-card {
   position: relative;
   min-height: 330px;
@@ -4174,10 +4180,6 @@ input:focus-visible + .toggle-switch {
 
   .drill-start-button {
     width: 100%;
-  }
-
-  .card-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .preview-stats {

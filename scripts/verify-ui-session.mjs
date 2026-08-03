@@ -137,6 +137,23 @@ test("카드 라이브러리는 렌더링 목록 자체를 slice로 제한", () 
   assert.ok(source.includes("카드 더 보기"));
 });
 
+test("카드 라이브러리 grid는 카드 전용 breakpoint에서 3열 2열 1열로 전환", () => {
+  const styles = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+  assert.equal(styles.match(/^\s*\.card-grid\s*\{/gm)?.length, 3);
+  assert.match(
+    styles,
+    /\.card-grid\s*\{\s*display:\s*grid;\s*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/,
+  );
+  assert.match(
+    styles,
+    /@media \(min-width:\s*701px\) and \(max-width:\s*1080px\)\s*\{\s*\.card-grid\s*\{\s*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
+  );
+  assert.match(
+    styles,
+    /@media \(max-width:\s*700px\)[\s\S]*?\.card-grid\s*\{\s*grid-template-columns:\s*1fr/,
+  );
+});
+
 test("개인 메모 모바일 액션은 360px에서 4열", () => {
   const styles = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
   assert.ok(styles.includes("grid-template-columns: repeat(4, minmax(0, 1fr))"));
