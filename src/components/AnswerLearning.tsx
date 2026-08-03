@@ -260,7 +260,8 @@ export function AnswerLearning({
         <h1>{card.front}</h1>
         <div className="answer-learning-question-actions">
           <button type="button" className={activeTarget === "question" ? "is-playing" : ""} disabled={!isSupported || recorderBusy} onClick={() => toggleSpeech(stripQuestionPrefix(card.front), "question")}>
-            {activeTarget === "question" ? "문제 듣기 중지" : "문제 듣기"}
+            <span aria-hidden="true">{activeTarget === "question" ? "■" : "🔊"}</span>
+            <span>{activeTarget === "question" ? "문제 중지" : "문제 듣기"}</span>
           </button>
           <button type="button" aria-expanded={reveal.frontKo} onClick={() => toggle("frontKo")}>
             {reveal.frontKo ? "한국어 뜻 숨기기" : "한국어 뜻 보기"}
@@ -271,7 +272,7 @@ export function AnswerLearning({
             disabled={cardEditingBlocked}
             onClick={openCardEditor}
           >
-            카드와 답변 수정
+            카드 수정
           </button>
         </div>
         {reveal.frontKo && <p className="answer-learning-front-ko">{card.frontKo || "등록된 한국어 뜻이 없습니다."}</p>}
@@ -338,10 +339,6 @@ export function AnswerLearning({
         )}
         {reveal.answer && (
           <div className="answer-learning-answer">
-            <div className="answer-learning-tabs" role="tablist" aria-label="답변 종류">
-              <button type="button" role="tab" aria-selected={resolvedSource === "default"} onClick={() => changeAnswerSource("default")}>기본 답변</button>
-              <button type="button" role="tab" aria-selected={resolvedSource === "my-answer"} disabled={!myAnswer} onClick={() => changeAnswerSource("my-answer")}>나만의 답변</button>
-            </div>
             <div className="answer-learning-answer-actions">
               <button
                 type="button"
@@ -349,12 +346,22 @@ export function AnswerLearning({
                 disabled={!answerSpeech.isSupported || recorderBusy}
                 onClick={toggleAnswerPlayback}
               >
-                {answerSpeech.playback.status === "paused"
-                  ? "이어 듣기"
-                  : answerSpeech.playback.status === "loading" ||
-                      answerSpeech.playback.status === "playing"
-                    ? "일시정지"
-                    : "전체 답변 듣기"}
+                <span aria-hidden="true">
+                  {answerSpeech.playback.status === "paused"
+                    ? "▶"
+                    : answerSpeech.playback.status === "loading" ||
+                        answerSpeech.playback.status === "playing"
+                      ? "⏸"
+                      : "🔊"}
+                </span>
+                <span>
+                  {answerSpeech.playback.status === "paused"
+                    ? "이어 듣기"
+                    : answerSpeech.playback.status === "loading" ||
+                        answerSpeech.playback.status === "playing"
+                      ? "일시정지"
+                      : "전체 답변 듣기"}
+                </span>
               </button>
               {answerSpeech.isActive && (
                 <button type="button" onClick={answerSpeech.stop}>정지</button>
@@ -373,6 +380,10 @@ export function AnswerLearning({
                 </select>
               </label>
             </div>
+            <div className="answer-learning-tabs" role="tablist" aria-label="답변 종류">
+              <button type="button" role="tab" aria-selected={resolvedSource === "default"} onClick={() => changeAnswerSource("default")}>기본 답변</button>
+              <button type="button" role="tab" aria-selected={resolvedSource === "my-answer"} disabled={!myAnswer} onClick={() => changeAnswerSource("my-answer")}>나만의 답변</button>
+            </div>
             <p className="answer-learning-playback-status" aria-live="polite">
               {answerPlaybackLabel || "정지 상태에서는 문장을 누르면 선택한 문장만 재생합니다."}
             </p>
@@ -385,25 +396,23 @@ export function AnswerLearning({
                   {paragraph.sentences.map((sentence, sentenceOffset) => {
                     const sentenceIndex =
                       paragraph.startSentenceIndex + sentenceOffset;
+                    const isCurrentSentence =
+                      answerSpeech.isActive &&
+                      answerSpeech.playback.currentIndex === sentenceIndex;
+                    const stopsCurrentSentence =
+                      isCurrentSentence &&
+                      answerSpeech.playback.mode === "single";
                     return (
                       <button
                         key={`${card.id}-${sentenceIndex}`}
                         type="button"
-                        className={
-                          answerSpeech.isActive &&
-                          answerSpeech.playback.currentIndex === sentenceIndex
-                            ? "is-current"
-                            : ""
-                        }
-                        aria-current={
-                          answerSpeech.isActive &&
-                          answerSpeech.playback.currentIndex === sentenceIndex
-                            ? "true"
-                            : undefined
-                        }
+                        className={isCurrentSentence ? "is-current" : ""}
+                        aria-current={isCurrentSentence ? "true" : undefined}
                         aria-label={`${sentenceIndex + 1}번 문장${
-                          answerSpeech.isActive &&
-                          answerSpeech.playback.mode === "continuous"
+                          stopsCurrentSentence
+                            ? " 재생 중지"
+                            : answerSpeech.isActive &&
+                                answerSpeech.playback.mode === "continuous"
                             ? "부터 끝까지 재생"
                             : "만 재생"
                         }`}

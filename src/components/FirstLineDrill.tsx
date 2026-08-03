@@ -354,6 +354,10 @@ export function FirstLineDrill({
       ? `${undoTarget.cardTitle} · ${undoTarget.statusLabel}`
       : `이전 카드에 ‘${undoTarget.statusLabel}’로 저장했습니다.`
     : "취소할 최근 선택이 없습니다.";
+  const statusBarMessage =
+    autoAdvanceMessage ??
+    feedbackMessage ??
+    (status ? "상태가 저장되었습니다." : undoSummary);
   const undoAriaLabel = undoTarget
     ? `${undoTarget.cardTitle}의 ${undoTarget.statusLabel} 선택 실행 취소`
     : "실행 취소할 최근 선택 없음";
@@ -396,6 +400,12 @@ export function FirstLineDrill({
             </button>
           </div>
 
+          {showFrontKo ? (
+            <div className="question-translation" role="region" aria-label="문제 한국어 뜻">
+              {card.frontKo || "등록된 한국어 뜻이 없습니다"}
+            </div>
+          ) : null}
+
           <div className="question-tools" aria-label="문제 학습 도구">
             <button
               className="speech-button"
@@ -418,12 +428,6 @@ export function FirstLineDrill({
               {showFrontKo ? "한국어 뜻 숨기기" : "한국어 뜻 보기"}
             </button>
           </div>
-
-          {showFrontKo ? (
-            <div className="question-translation" role="region" aria-label="문제 한국어 뜻">
-              {card.frontKo || "등록된 한국어 뜻이 없습니다"}
-            </div>
-          ) : null}
 
           <div className="self-check rating-first">
             <div className="status-buttons">
@@ -485,6 +489,16 @@ export function FirstLineDrill({
                   : "첫 문장 듣기"}
               </button>
             </div>
+            {showFirstLine ? (
+              <div
+                className="first-line-box"
+                role="region"
+                aria-label="첫 문장 정답"
+              >
+                <span>FIRST LINE</span>
+                <p>{card.firstLine}</p>
+              </div>
+            ) : null}
             <nav
               className="mobile-drill-navigation"
               aria-label="모바일 학습 카드 이동"
@@ -508,16 +522,6 @@ export function FirstLineDrill({
                 다음 <span aria-hidden="true">›</span>
               </button>
             </nav>
-            {showFirstLine ? (
-              <div
-                className="first-line-box"
-                role="region"
-                aria-label="첫 문장 정답"
-              >
-                <span>FIRST LINE</span>
-                <p>{card.firstLine}</p>
-              </div>
-            ) : null}
             {showFirstLine && !firstLineOnly ? (
               <div className="first-line-answer-review">
                 <button
@@ -632,9 +636,13 @@ export function FirstLineDrill({
           <div className="self-check">
             <div
               className={`recent-rating-bar ${undoTarget ? "has-target" : ""}`}
-              aria-live="polite"
             >
-              <p title={undoTarget?.cardTitle}>{undoSummary}</p>
+              <p
+                role="status"
+                title={undoTarget ? `${undoTarget.cardTitle} · ${undoTarget.statusLabel}` : undefined}
+              >
+                {statusBarMessage}
+              </p>
               <button
                 className="undo-button"
                 type="button"
@@ -658,29 +666,6 @@ export function FirstLineDrill({
                 현재 카드 상태 초기화
               </button>
               <p>현재 상태만 지우며 학습 기록은 유지됩니다.</p>
-            </div>
-
-            <div className="feedback-section">
-              <div className="saved-message-slot" aria-live="polite">
-                {autoAdvanceMessage ? (
-                  <p className="status-feedback-message" role="status">
-                    {autoAdvanceMessage}
-                  </p>
-                ) : feedbackMessage ? (
-                  <p className="status-feedback-message" role="status">
-                    {feedbackMessage}
-                  </p>
-                ) : status ? (
-                  <p className="saved-message" role="status">
-                    저장되었습니다. 새로고침해도 이 상태가 유지돼요.
-                  </p>
-                ) : null}
-              </div>
-
-              <div className="self-check-guidance">
-                <h2>어땠나요?</h2>
-                <p>생각보다 결과가 아닌, 오늘의 느낌대로 기록하면 됩니다.</p>
-              </div>
             </div>
 
             <StudyNavigation

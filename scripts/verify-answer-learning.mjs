@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { cards } from "../src/data/cards.ts";
 import {
   calculateAnswerLearningAttemptCounts,
@@ -40,6 +41,7 @@ import {
   isAnswerLearningPlaybackActive,
   pauseAnswerLearningPlayback,
   resumeAnswerLearningPlayback,
+  shouldStopAnswerLearningSentencePlayback,
   startAnswerLearningSentencePlayback,
   startFullAnswerPlayback,
 } from "../src/utils/answerLearningPlayback.ts";
@@ -104,6 +106,41 @@ test("정지 상태 문장 선택은 선택 문장만 재생", () => {
     startAnswerLearningSentencePlayback(createAnswerLearningPlaybackState(), 1, 3),
     { status: "loading", mode: "single", currentIndex: 1 },
   );
+});
+test("단일 문장 재생 중 현재 문장 재선택은 정지 요청", () => {
+  assert.equal(
+    shouldStopAnswerLearningSentencePlayback(
+      { status: "playing", mode: "single", currentIndex: 1 },
+      1,
+    ),
+    true,
+  );
+  assert.equal(
+    shouldStopAnswerLearningSentencePlayback(
+      { status: "loading", mode: "single", currentIndex: 1 },
+      1,
+    ),
+    true,
+  );
+  assert.equal(
+    shouldStopAnswerLearningSentencePlayback(
+      { status: "playing", mode: "single", currentIndex: 1 },
+      2,
+    ),
+    false,
+  );
+  assert.equal(
+    shouldStopAnswerLearningSentencePlayback(
+      { status: "playing", mode: "continuous", currentIndex: 1 },
+      1,
+    ),
+    false,
+  );
+});
+test("재생 중인 단일 문장 버튼은 정지 동작을 접근 가능한 이름으로 알림", () => {
+  const source = readFileSync(new URL("../src/components/AnswerLearning.tsx", import.meta.url), "utf8");
+  assert.ok(source.includes("const stopsCurrentSentence ="));
+  assert.ok(source.includes('? " 재생 중지"'));
 });
 test("연속 재생 중 문장 선택은 해당 문장부터 연속 재생", () => {
   assert.deepEqual(

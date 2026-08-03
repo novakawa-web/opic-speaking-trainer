@@ -356,7 +356,8 @@ test("답변 익히기 첫 문장 상태는 작은 화면에서도 한 줄 44px 
 });
 test("답변 익히기는 현재 학습 위치 안에서 공통 CardEditor를 연다", () => {
   assert.match(answerLearning, /import \{ CardEditor \} from "\.\/CardEditor"/);
-  assert.match(answerLearning, /카드와 답변 수정/);
+  assert.match(answerLearning, />\s*카드 수정\s*</);
+  assert.doesNotMatch(answerLearning, /카드와 답변 수정/);
   assert.match(answerLearning, /<CardEditor[\s\S]*?includeMyAnswer[\s\S]*?returnLabel="답변 익히기로 돌아가기"/);
   assert.match(answerLearning, /registerHomeNavigationGuard\(confirmNavigation\)/);
   assert.doesNotMatch(app, /pushHistoryView\("cardEdit"\)/);
@@ -372,6 +373,11 @@ test("답변 익히기 전체 답변 TTS는 연속 재생 상태와 공통 속�
   assert.match(answerLearning, /이어 듣기/);
   assert.match(answerLearning, /answerSpeech\.playFromSentence\(sentenceIndex\)/);
   assert.match(answerLearning, /aria-current=/);
+  assert.ok(
+    answerLearning.indexOf('className="answer-learning-answer-actions"')
+      < answerLearning.indexOf('className="answer-learning-tabs"'),
+  );
+  assert.match(answerLearning, /<span aria-hidden="true">[\s\S]*?🔊/);
 });
 test("답변 익히기 TTS hook은 최신 영어 voice와 request id로 stale 재생을 차단한다", () => {
   assert.match(answerLearningSpeech, /requestEnglishVoice\(window\.speechSynthesis\)/);
@@ -400,6 +406,10 @@ test("답변 익히기 오디오 조작은 모바일 터치와 현재 문장 표
     "@media (max-width: 700px)",
   ).filter((block) => block.includes(".answer-learning-page"));
   assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-answer-actions\s*\{[^}]*grid-template-columns:\s*repeat\(2/);
+  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-question-actions\s*\{[^}]*gap:\s*5px/);
+  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-answer-actions > button:nth-of-type\(2\) ~ \.answer-learning-tts-rate\s*\{[^}]*grid-column:\s*1 \/ -1/);
+  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-page \.answer-learning-sentences button\s*\{[^}]*grid-template-columns:\s*20px minmax\(0, 1fr\)[^}]*gap:\s*6px[^}]*padding:\s*12px 10px/);
+  assert.match(answerLearningSpeech, /shouldStopAnswerLearningSentencePlayback\(playbackRef\.current, index\)[\s\S]*?stop\(\)/);
 });
 test("공통 AppHeader는 내부 rail에서 기존 표시 요소를 유지한다", () => {
   assert.match(appHeader, /<header[\s\S]*?<div className="app-header-rail">[\s\S]*?study-header-back[\s\S]*?brand-home[\s\S]*?compact-header-title[\s\S]*?compact-header-position[\s\S]*?theme-toggle[\s\S]*?mobile-header-progress/);

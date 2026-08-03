@@ -408,12 +408,33 @@ test("모바일 카드 이동은 기존 이전 다음 handler를 재사용", () 
   assert.ok(source.includes("activateButton(event, goNext)"));
   assert.ok(source.includes('aria-label="이전 카드"'));
   assert.ok(source.includes('aria-label="다음 카드"'));
+  assert.ok(
+    source.indexOf('className="first-line-box"')
+      < source.indexOf('className="mobile-drill-navigation"'),
+  );
 });
 test("모바일 이동 행은 700px 이하에서만 2열로 표시", () => {
   const styles = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
   assert.match(styles, /\.mobile-drill-navigation \{\r?\n  display: none;/);
   assert.match(styles, /@media \(max-width: 700px\)[\s\S]*\.mobile-drill-navigation \{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.mobile-drill-navigation \.navigation-button \{[\s\S]*min-height: 42px;[\s\S]*font-size: 0\.92rem;/);
+});
+test("첫 문장 모바일 정보와 상태 피드백을 간결하게 배치", () => {
+  const source = readFileSync(new URL("../src/components/FirstLineDrill.tsx", import.meta.url), "utf8");
+  const styles = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+  const translationIndex = source.indexOf('className="question-translation"');
+  const toolsIndex = source.indexOf('className="question-tools"');
+  assert.ok(translationIndex >= 0 && translationIndex < toolsIndex);
+  assert.match(source, /status \? "상태가 저장되었습니다\." : undoSummary/);
+  assert.equal((source.match(/role="status"/g) ?? []).length, 1);
+  assert.doesNotMatch(source, /recent-rating-bar[^>]*aria-live/);
+  assert.doesNotMatch(source, /새로고침해도 이 상태가 유지돼요/);
+  assert.doesNotMatch(source, /self-check-guidance|어땠나요\?/);
+  const translationRules = cssRuleBodies(styles, ".question-translation");
+  assert.doesNotMatch(translationRules[0], /border|background|padding/);
+  const mobileStyles = styles.slice(styles.indexOf("@media (max-width: 700px)"));
+  assert.match(mobileStyles, /\.status-button\s*\{[\s\S]*?font-size:\s*clamp\(0\.82rem, 3\.5vw, 0\.94rem\)/);
+  assert.match(mobileStyles, /\.status-button-content\s*\{[\s\S]*?gap:\s*3px;[\s\S]*?transform:\s*none/);
 });
 
 let passed = 0;

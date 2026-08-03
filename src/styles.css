@@ -3610,11 +3610,7 @@ input:focus-visible + .toggle-switch {
 .question-translation {
   max-width: 700px;
   margin: 11px auto 0;
-  padding: 13px 16px;
   color: var(--body-copy);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface-soft);
   font-size: 14px;
   line-height: 1.65;
   text-align: center;
@@ -3906,23 +3902,6 @@ input:focus-visible + .toggle-switch {
   margin-top: 10px;
 }
 
-.self-check-guidance {
-  margin-top: 12px;
-}
-
-.self-check-guidance h2 {
-  margin: 0;
-  color: var(--body-copy);
-  font-size: 17px;
-}
-
-.self-check-guidance p {
-  margin: 5px 0 0;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.55;
-}
-
 .status-buttons {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -4148,28 +4127,6 @@ input:focus-visible + .toggle-switch {
   color: var(--muted);
   font-size: 10px;
   line-height: 1.45;
-}
-
-.feedback-section {
-  margin-top: 18px;
-}
-
-.saved-message {
-  margin: 8px 0 0;
-  color: var(--saved-message) !important;
-  font-weight: 600;
-}
-
-.status-feedback-message {
-  margin: 8px 0 0;
-  color: var(--body-copy);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.5;
-}
-
-.saved-message-slot {
-  min-height: 26px;
 }
 
 .self-check > .shortcut-help {
@@ -4831,7 +4788,6 @@ input:focus-visible + .toggle-switch {
   .question-translation {
     max-width: 33rem;
     margin-top: 8px;
-    padding: 11px 13px;
     font-size: 13px;
     line-height: 1.6;
   }
@@ -4969,21 +4925,21 @@ input:focus-visible + .toggle-switch {
   .status-button {
     min-width: 0;
     min-height: 56px;
-    padding: 0 2px;
-    font-size: clamp(1.05rem, 1rem + 0.2vw, 1.2rem);
+    padding: 0 1px;
+    font-size: clamp(0.82rem, 3.5vw, 0.94rem);
     font-weight: 700;
     white-space: nowrap;
   }
 
   .status-button-content {
-    gap: 6px;
-    transform: translateX(-6px);
+    gap: 3px;
+    transform: none;
   }
 
   .status-button-icon {
-    width: 0.9em;
-    flex-basis: 0.9em;
-    font-size: 0.92em;
+    width: 0.82em;
+    flex-basis: 0.82em;
+    font-size: 0.88em;
   }
 
   .study-navigation.is-bottom {
@@ -4993,15 +4949,6 @@ input:focus-visible + .toggle-switch {
   .study-navigation.is-bottom .navigation-button {
     min-height: 48px;
     padding: 0 8px;
-  }
-
-  .saved-message-slot {
-    min-height: 23px;
-  }
-
-  .saved-message {
-    margin-top: 6px;
-    font-size: 11px;
   }
 
   .recent-rating-bar {
@@ -5020,27 +4967,6 @@ input:focus-visible + .toggle-switch {
     min-height: 44px;
     padding: 0 9px;
     font-size: 12px;
-  }
-
-  .status-feedback-message {
-    margin-top: 6px;
-    font-size: 11px;
-  }
-
-  .feedback-section {
-    margin-top: 20px;
-  }
-
-  .self-check-guidance {
-    margin-top: 8px;
-  }
-
-  .self-check-guidance h2 {
-    font-size: 15px;
-  }
-
-  .self-check-guidance p {
-    font-size: 11px;
   }
 
   .self-check > .shortcut-help {
@@ -8820,6 +8746,12 @@ input:focus-visible + .toggle-switch {
   justify-content: center;
   gap: 9px;
 }
+.answer-learning-question-actions {
+  width: min(100%, 720px);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0 auto;
+}
 .answer-learning-question-actions button,
 .answer-learning-reveal-buttons button,
 .answer-learning-answer-actions button,
@@ -8834,6 +8766,16 @@ input:focus-visible + .toggle-switch {
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+}
+.answer-learning-question-actions button,
+.answer-learning-answer-actions > button {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  white-space: nowrap;
 }
 .answer-learning-question-actions button.is-playing { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
 .answer-learning-answer-actions button.is-playing { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
@@ -8852,7 +8794,7 @@ input:focus-visible + .toggle-switch {
 .answer-learning-first-line-status { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .answer-learning-first-line-status .status-button { min-width: 0; min-height: 44px; padding: 7px 8px; font-size: .94rem; }
 .answer-learning-first-line-status .status-button-content { gap: 5px; transform: none; }
-.answer-learning-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.answer-learning-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 14px; }
 .answer-learning-tabs button { min-height: 44px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--surface); font-weight: 700; }
 .answer-learning-tabs button[aria-selected="true"] { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
 .answer-learning-tts-rate {
@@ -9120,6 +9062,13 @@ input:focus-visible + .toggle-switch {
     line-height: 1.5;
   }
   .answer-learning-first-line-content { align-items: stretch; flex-direction: column; }
+  .answer-learning-question-actions {
+    gap: 5px;
+  }
+  .answer-learning-question-actions button {
+    padding: 7px 2px;
+    font-size: clamp(0.72rem, 3vw, 0.82rem);
+  }
   .answer-learning-first-line-status .status-button { padding-inline: 3px; font-size: clamp(.78rem, 3.2vw, .94rem); }
   .answer-learning-status-buttons button { min-width: 0; padding: 8px 3px; font-size: clamp(.88rem, 3.4vw, 1rem); }
   .answer-learning-status-buttons button span { margin-right: 3px; }
@@ -9128,12 +9077,20 @@ input:focus-visible + .toggle-switch {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .answer-learning-answer-actions > button:only-of-type,
-  .answer-learning-tts-rate {
+  .answer-learning-answer-actions > button {
+    padding: 8px 4px;
+    font-size: 0.82rem;
+  }
+  .answer-learning-answer-actions > button:nth-of-type(2) ~ .answer-learning-tts-rate {
     grid-column: 1 / -1;
   }
   .answer-learning-tts-rate {
     justify-content: space-between;
+  }
+  .answer-learning-page .answer-learning-sentences button {
+    grid-template-columns: 20px minmax(0, 1fr);
+    gap: 6px;
+    padding: 12px 10px;
   }
   .answer-learning-audio-recorder {
     margin-top: 16px;

@@ -12,6 +12,7 @@ import {
   isAnswerLearningPlaybackActive,
   pauseAnswerLearningPlayback,
   resumeAnswerLearningPlayback,
+  shouldStopAnswerLearningSentencePlayback,
   startAnswerLearningSentencePlayback,
   startFullAnswerPlayback,
   type AnswerLearningPlaybackMode,
@@ -185,6 +186,10 @@ export function useAnswerLearningSpeech(
 
   const playFromSentence = useCallback(
     (index: number) => {
+      if (shouldStopAnswerLearningSentencePlayback(playbackRef.current, index)) {
+        stop();
+        return;
+      }
       const next = startAnswerLearningSentencePlayback(
         playbackRef.current,
         index,
@@ -193,7 +198,7 @@ export function useAnswerLearningSpeech(
       if (next.status === "idle") return;
       playSentence(next.currentIndex, next.mode);
     },
-    [playSentence],
+    [playSentence, stop],
   );
 
   const pause = useCallback(() => {

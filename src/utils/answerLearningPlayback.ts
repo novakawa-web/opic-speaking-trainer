@@ -57,6 +57,17 @@ export function startAnswerLearningSentencePlayback(
   };
 }
 
+export function shouldStopAnswerLearningSentencePlayback(
+  state: AnswerLearningPlaybackState,
+  requestedIndex: number,
+) {
+  return (
+    state.mode === "single" &&
+    (state.status === "loading" || state.status === "playing") &&
+    state.currentIndex === requestedIndex
+  );
+}
+
 export function pauseAnswerLearningPlayback(
   state: AnswerLearningPlaybackState,
 ): AnswerLearningPlaybackState {
