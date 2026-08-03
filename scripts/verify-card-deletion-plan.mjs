@@ -566,6 +566,8 @@ test("40. identical input and now produce an identical semantic plan", () => {
 test("41. navigation dimension filters must be canonical", () => {
   for (const selectedWeeks of [
     ["week7", "week6"],
+    ["practice-session", "week6"],
+    ["level_2", "level_1"],
     ["week6", "week6"],
     ["topic_home"],
     ["week6", "x".repeat(201)],

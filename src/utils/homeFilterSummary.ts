@@ -54,7 +54,7 @@ export function formatHomeFilterSummary({
 }: HomeFilterSummaryInput) {
   const parts: string[] = [];
   if (selectedDeck !== "all") parts.push(selectedDeck);
-  const weekSummary = formatDimensionSummary("주차", selectedWeeks);
+  const weekSummary = formatDimensionSummary("학습 세트", selectedWeeks);
   const topicSummary = formatDimensionSummary("주제", selectedTopics);
   const typeSummary = formatDimensionSummary("유형", selectedTypes);
   if (weekSummary) parts.push(weekSummary);

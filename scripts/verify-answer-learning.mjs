@@ -424,10 +424,22 @@ test("구형 답변 익히기 차원 태그는 version 1 안에서 승격", () =
     ...createEmptyAnswerLearningSession(),
     filters: { ...createEmptyAnswerLearningSession().filters, tag: "topic_home" },
   }, cards.map((card) => card.id));
+  const level = normalizeAnswerLearningSession({
+    ...createEmptyAnswerLearningSession(),
+    filters: { ...createEmptyAnswerLearningSession().filters, tag: "level_2" },
+  }, cards.map((card) => card.id));
+  const version = normalizeAnswerLearningSession({
+    ...createEmptyAnswerLearningSession(),
+    filters: { ...createEmptyAnswerLearningSession().filters, tag: "v2" },
+  }, cards.map((card) => card.id));
   assert.equal(week.version, 1);
   assert.equal(week.filters.tag, "all");
   assert.deepEqual(week.filters.selectedWeeks, ["week7"]);
   assert.deepEqual(topic.filters.selectedTopics, ["topic_home"]);
+  assert.equal(level.filters.tag, "all");
+  assert.deepEqual(level.filters.selectedWeeks, ["level_2"]);
+  assert.equal(version.filters.tag, "v2");
+  assert.deepEqual(version.filters.selectedWeeks, []);
 });
 test("답변 익히기 차원 선택은 malformed 제거와 canonical 정렬", () => {
   const session = normalizeAnswerLearningSession({
@@ -529,6 +541,20 @@ test("일반 태그는 차원 필터와 AND", () => {
     {},
   );
   assert.deepEqual(result.map((card) => card.id), ["dimension-a"]);
+});
+test("v2 기타 태그는 학습 세트와 AND", () => {
+  const learningSetCards = [
+    { ...cardA, id: "level-1-v2", tags: ["level_1", "v2"] },
+    { ...cardB, id: "level-2-v2", tags: ["level_2", "v2"] },
+    { ...cardB, id: "level-1-v1", tags: ["level_1"] },
+  ];
+  const result = filterAnswerLearningCards(
+    learningSetCards,
+    { ...filters, tag: "v2", selectedWeeks: ["level_1"] },
+    {},
+    {},
+  );
+  assert.deepEqual(result.map((card) => card.id), ["level-1-v2"]);
 });
 test("상태 있음 필터는 다른 필터와 AND", () => {
   const deckACard = { ...cardA, id: "deck-a-card", deck: "deck-a" };

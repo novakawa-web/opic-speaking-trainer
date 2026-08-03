@@ -84,7 +84,7 @@ export function CardTagDimensionFilters({
   const baseId = useId();
   const options = getCardTagFilterOptions(tags);
   const configs: DimensionConfig[] = [
-    { key: "selectedWeeks", label: "주차", emptyLabel: "전체 주차", options: options.weeks },
+    { key: "selectedWeeks", label: "학습 세트", emptyLabel: "전체 학습 세트", options: options.weeks },
     { key: "selectedTopics", label: "주제", emptyLabel: "전체 주제", options: options.topics },
     { key: "selectedTypes", label: "질문 유형", emptyLabel: "전체 유형", options: options.types },
   ];

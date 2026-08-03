@@ -396,7 +396,8 @@ test("세 카드 선택 화면은 공통 다중 차원 필터와 동일한 상�
   assert.match(cardLibrary, /selectedWeeks=\{selectedWeeks\}[\s\S]*?onTagDimensionsChange=\{onTagDimensionsChange\}/);
   assert.match(answerLearningSetup, /<span>덱<\/span>[\s\S]*?<CardTagDimensionFilters[\s\S]*?<span>기타 태그<\/span>[\s\S]*?<span>나만의 답변<\/span>/);
   assert.match(tagFilter, /<span>덱<\/span>[\s\S]*?<CardTagDimensionFilterFields[\s\S]*?<span>기타 태그<\/span>[\s\S]*?answerContentFilter/);
-  assert.match(cardTagDimensionFilters, /label: "주차"[\s\S]*?label: "주제"[\s\S]*?label: "질문 유형"/);
+  assert.match(cardTagDimensionFilters, /label: "학습 세트"[\s\S]*?label: "주제"[\s\S]*?label: "질문 유형"/);
+  assert.match(cardTagDimensionFilters, /emptyLabel: "전체 학습 세트"/);
 });
 test("다중 차원 필터는 disclosure checkbox와 선택 요약을 제공한다", () => {
   assert.match(cardTagDimensionFilters, /<details>/);
@@ -428,7 +429,25 @@ test("차원 필터는 pagination signature와 홈 조건 요약에 포함된다
       archiveFilter: "active",
       cardSearchQuery: "",
     }),
-    "주차 2개 · home · description",
+    "학습 세트 2개 · home · description",
+  );
+  assert.equal(
+    formatHomeFilterSummary({
+      selectedDeck: "all",
+      selectedTag: "v2",
+      selectedWeeks: ["level_1"],
+      selectedTopics: [],
+      selectedTypes: [],
+      finalOnly: false,
+      hardOnly: false,
+      cardScope: "all",
+      studyOrder: "default",
+      answerLearningStatusFilter: "all",
+      answerContentFilter: "all",
+      archiveFilter: "active",
+      cardSearchQuery: "",
+    }),
+    "Level 1 · #v2",
   );
 });
 test("카드 라이브러리 답변 상태 select는 presence와 상세 상태 계약을 재사용한다", () => {

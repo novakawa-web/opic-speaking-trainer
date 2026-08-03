@@ -80,6 +80,34 @@ test("구형 navigation 단일 차원 태그는 새 배열로 승격", () => {
   }
 });
 
+test("구형 navigation 연습 세션 태그는 학습 세트로 승격하고 v2는 기타에 유지", () => {
+  const practiceStorage = new MemoryStorage();
+  practiceStorage.setItem(NAVIGATION_SESSION_STORAGE_KEY, JSON.stringify({
+    ...DEFAULT_NAVIGATION_SESSION,
+    filters: { ...DEFAULT_NAVIGATION_SESSION.filters, selectedTag: "practice-session" },
+  }));
+  const versionStorage = new MemoryStorage();
+  versionStorage.setItem(NAVIGATION_SESSION_STORAGE_KEY, JSON.stringify({
+    ...DEFAULT_NAVIGATION_SESSION,
+    filters: { ...DEFAULT_NAVIGATION_SESSION.filters, selectedTag: "v2" },
+  }));
+  const previous = globalThis.sessionStorage;
+  try {
+    globalThis.sessionStorage = practiceStorage;
+    const practice = readNavigationSession();
+    assert.equal(practice.filters.selectedTag, "all");
+    assert.deepEqual(practice.filters.selectedWeeks, ["practice-session"]);
+
+    globalThis.sessionStorage = versionStorage;
+    const version = readNavigationSession();
+    assert.equal(version.filters.selectedTag, "v2");
+    assert.deepEqual(version.filters.selectedWeeks, []);
+  } finally {
+    if (previous === undefined) delete globalThis.sessionStorage;
+    else globalThis.sessionStorage = previous;
+  }
+});
+
 test("navigation 차원 선택은 canonical 정렬하고 dataset에서 사라진 값 제거", () => {
   const resolved = resolveNavigationSession({
     ...DEFAULT_NAVIGATION_SESSION,

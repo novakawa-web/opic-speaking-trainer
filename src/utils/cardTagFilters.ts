@@ -2,6 +2,8 @@ import type { OpicCard } from "../types.ts";
 
 export type CardTagDimension = "week" | "topic" | "type";
 
+// Keep the established session field name for compatibility. The user-facing
+// "학습 세트" dimension also accepts the approved non-week tag families below.
 export type CardTagDimensionFilters = {
   selectedWeeks: string[];
   selectedTopics: string[];
@@ -22,6 +24,8 @@ export const EMPTY_CARD_TAG_DIMENSION_FILTERS: CardTagDimensionFilters = {
 };
 
 const WEEK_TAG_PATTERN = /^week(\d+)$/i;
+const PRACTICE_SESSION_TAG = "practice-session";
+const LEVEL_TAG_PATTERN = /^level_([1-3])$/i;
 const TOPIC_TAG_PATTERN = /^topic_(.+)$/i;
 const TYPE_TAG_PATTERN = /^type_(.+)$/i;
 
@@ -32,8 +36,35 @@ function compareTags(left: string, right: string) {
   });
 }
 
+function compareLearningSetTags(left: string, right: string) {
+  const leftWeek = left.match(WEEK_TAG_PATTERN);
+  const rightWeek = right.match(WEEK_TAG_PATTERN);
+  if (leftWeek && rightWeek) return Number(leftWeek[1]) - Number(rightWeek[1]);
+  if (leftWeek) return -1;
+  if (rightWeek) return 1;
+
+  const leftPractice = left.toLowerCase() === PRACTICE_SESSION_TAG;
+  const rightPractice = right.toLowerCase() === PRACTICE_SESSION_TAG;
+  if (leftPractice !== rightPractice) return leftPractice ? -1 : 1;
+
+  const leftLevel = left.match(LEVEL_TAG_PATTERN);
+  const rightLevel = right.match(LEVEL_TAG_PATTERN);
+  if (leftLevel && rightLevel) return Number(leftLevel[1]) - Number(rightLevel[1]);
+  if (leftLevel) return -1;
+  if (rightLevel) return 1;
+  return compareTags(left, right);
+}
+
+function sortDimensionSelection(dimension: CardTagDimension, tags: string[]) {
+  return tags.sort(dimension === "week" ? compareLearningSetTags : compareTags);
+}
+
 export function getCardTagDimension(tag: string): CardTagDimension | null {
-  if (WEEK_TAG_PATTERN.test(tag)) return "week";
+  if (
+    WEEK_TAG_PATTERN.test(tag) ||
+    tag.toLowerCase() === PRACTICE_SESSION_TAG ||
+    LEVEL_TAG_PATTERN.test(tag)
+  ) return "week";
   if (TOPIC_TAG_PATTERN.test(tag)) return "topic";
   if (TYPE_TAG_PATTERN.test(tag)) return "type";
   return null;
@@ -57,8 +88,11 @@ export function normalizeCardTagDimensionFilters(
   value: Partial<Record<keyof CardTagDimensionFilters, unknown>> | null | undefined,
 ): CardTagDimensionFilters {
   return {
-    selectedWeeks: normalizeCardTagSelection(value?.selectedWeeks).filter(
-      (tag) => getCardTagDimension(tag) === "week",
+    selectedWeeks: sortDimensionSelection(
+      "week",
+      normalizeCardTagSelection(value?.selectedWeeks).filter(
+        (tag) => getCardTagDimension(tag) === "week",
+      ),
     ),
     selectedTopics: normalizeCardTagSelection(value?.selectedTopics).filter(
       (tag) => getCardTagDimension(tag) === "topic",
@@ -97,7 +131,10 @@ export function migrateLegacyCardTagFilter(
     selectedTag: "all",
     dimensions: {
       ...dimensions,
-      [key]: normalizeCardTagSelection([...dimensions[key], legacyTag]),
+      [key]: sortDimensionSelection(
+        dimension,
+        normalizeCardTagSelection([...dimensions[key], legacyTag]),
+      ),
     },
     finalOnly,
   };
@@ -117,7 +154,12 @@ export function getCardTagFilterOptions(tags: readonly string[]): CardTagFilterO
     else if (tag !== "final_rep") otherTags.push(tag);
   });
 
-  return { weeks, topics, types, otherTags };
+  return {
+    weeks: weeks.sort(compareLearningSetTags),
+    topics,
+    types,
+    otherTags,
+  };
 }
 
 export function resolveCardTagDimensionFilters(
@@ -150,6 +192,9 @@ export function matchesCardTagDimensionFilters(
 export function formatCardTagOption(tag: string) {
   const week = tag.match(WEEK_TAG_PATTERN);
   if (week) return `Week ${Number(week[1])}`;
+  if (tag.toLowerCase() === PRACTICE_SESSION_TAG) return "연습 세션";
+  const level = tag.match(LEVEL_TAG_PATTERN);
+  if (level) return `Level ${Number(level[1])}`;
   const topic = tag.match(TOPIC_TAG_PATTERN);
   if (topic) return topic[1].replaceAll("_", " ");
   const type = tag.match(TYPE_TAG_PATTERN);
@@ -162,6 +207,12 @@ export function formatCardTagSelectionSummary(
   emptyLabel: string,
 ) {
   if (selectedTags.length === 0) return emptyLabel;
-  const first = formatCardTagOption(selectedTags[0]);
+  const firstDimension = getCardTagDimension(selectedTags[0]);
+  const orderedTags = firstDimension && selectedTags.every(
+    (tag) => getCardTagDimension(tag) === firstDimension,
+  )
+    ? sortDimensionSelection(firstDimension, [...selectedTags])
+    : [...selectedTags];
+  const first = formatCardTagOption(orderedTags[0]);
   return selectedTags.length === 1 ? first : `${first} 외 ${selectedTags.length - 1}개`;
 }
