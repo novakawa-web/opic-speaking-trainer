@@ -8842,8 +8842,8 @@ input:focus-visible + .toggle-switch {
 .answer-learning-reveal-buttons { display: grid; grid-template-columns: repeat(3, 1fr); margin: 16px 0; }
 .answer-learning-reveal-buttons button[aria-pressed="true"] { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
 .answer-learning-hint-box,
-.answer-learning-first-line,
-.answer-learning-answer { max-width: var(--learning-text-max); margin: 14px auto 0; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-soft); }
+.answer-learning-first-line { max-width: var(--learning-text-max); margin: 14px auto 0; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-soft); }
+.answer-learning-answer { max-width: var(--learning-text-max); margin: 14px auto 0; padding: 0; }
 .answer-learning-hint-box { color: var(--body-copy); line-height: 1.65; }
 .answer-learning-hint-box .hint-flow-lines { display: grid; gap: 5px; margin-top: 12px; }
 .answer-learning-first-line { display: grid; gap: 14px; }
@@ -8887,7 +8887,7 @@ input:focus-visible + .toggle-switch {
 .answer-learning-sentences { display: grid; gap: 16px; margin-top: 14px; }
 .answer-learning-paragraph { display: grid; gap: 8px; min-width: 0; }
 .answer-learning-sentences button { display: grid; grid-template-columns: 24px 1fr; gap: 10px; width: 100%; padding: 12px; border: 0; border-radius: 10px; color: var(--ink); background: var(--surface); text-align: left; font: inherit; line-height: 1.65; cursor: pointer; }
-.answer-learning-sentences button.is-current { color: var(--blue); background: var(--blue-soft); box-shadow: inset 0 0 0 2px var(--blue-border); }
+.answer-learning-sentences button.is-current { color: var(--blue); background: var(--blue-soft); box-shadow: inset 0 0 0 2px var(--blue); }
 .answer-learning-sentences button:disabled { cursor: not-allowed; opacity: .55; }
 .answer-learning-sentences button span { color: var(--muted); font-size: .8rem; }
 .answer-learning-rating > h2,

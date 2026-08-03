@@ -71,6 +71,40 @@ function extractCssAtRuleBlocks(source, marker) {
   }
 }
 
+function extractExactCssRuleBodies(source, selector) {
+  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const marker = new RegExp(`(?:^|\\n)[\\t ]*${escapedSelector}[\\t ]*\\{`, "g");
+  const bodies = [];
+
+  for (const match of source.matchAll(marker)) {
+    const precedingSource = source.slice(0, match.index).trimEnd();
+    const precedingCharacter = precedingSource.at(-1);
+    if (precedingCharacter && precedingCharacter !== "{" && precedingCharacter !== "}") continue;
+
+    const bodyStart = match.index + match[0].lastIndexOf("{");
+    let depth = 0;
+    let closed = false;
+    for (let index = bodyStart; index < source.length; index += 1) {
+      if (source[index] === "{") depth += 1;
+      if (source[index] === "}") depth -= 1;
+      if (depth === 0) {
+        bodies.push(source.slice(bodyStart + 1, index));
+        closed = true;
+        break;
+      }
+    }
+    assert.ok(closed, `${selector} rule must close`);
+  }
+
+  return bodies;
+}
+
+function extractOnlyCssRuleBody(source, selector) {
+  const bodies = extractExactCssRuleBodies(source, selector);
+  assert.equal(bodies.length, 1, `${selector} must have exactly one standalone rule`);
+  return bodies[0];
+}
+
 const selectionStateFunctionSource = extractExportedFunction(
   answerLearningSetup,
   "getAnswerLearningSelectionState",
@@ -213,6 +247,36 @@ test("답변 익히기 준비와 실제 학습 화면은 같은 outer rail을 �
   assert.match(css, learningRail);
   assert.match(css, /\.answer-learning-question h1\s*{[^}]*max-width:\s*var\(--learning-text-max\)/);
   assert.match(css, /\.answer-learning-answer\s*{[^}]*max-width:\s*var\(--learning-text-max\)/);
+});
+test("답변 익히기 전체 답변은 중간 장식 테두리 없이 기능 표면을 유지한다", () => {
+  const answerSelectorOccurrences = css.match(
+    /(?:^|\n)[\t ]*\.answer-learning-answer(?=[\t ]*(?:,|\{))/g,
+  ) ?? [];
+  assert.equal(answerSelectorOccurrences.length, 1);
+  const answerBody = extractOnlyCssRuleBody(css, ".answer-learning-answer");
+  assert.match(answerBody, /max-width:\s*var\(--learning-text-max\)/);
+  assert.match(answerBody, /margin:\s*14px auto 0/);
+  assert.match(answerBody, /padding:\s*0/);
+  assert.doesNotMatch(answerBody, /(?:^|;)\s*(?:border|border-radius|background|box-shadow)\s*:/);
+
+  const revealCard = css.match(
+    /\.home-quick-start,[\s\S]*?\.answer-learning-reveal,[\s\S]*?\.answer-learning-rating\s*{([^}]*)\}/,
+  );
+  assert.ok(revealCard, "answer learning reveal outer card contract must exist");
+  assert.match(revealCard[1], /border:\s*1px solid var\(--line\)/);
+  assert.match(revealCard[1], /border-radius:\s*18px/);
+  assert.match(revealCard[1], /background:\s*var\(--surface\)/);
+  assert.match(revealCard[1], /box-shadow:\s*var\(--shadow\)/);
+
+  const sentenceButton = extractOnlyCssRuleBody(css, ".answer-learning-sentences button");
+  assert.match(sentenceButton, /padding:\s*12px/);
+  assert.match(sentenceButton, /border:\s*0/);
+  assert.match(sentenceButton, /border-radius:\s*10px/);
+  assert.match(sentenceButton, /background:\s*var\(--surface\)/);
+
+  const currentSentence = extractOnlyCssRuleBody(css, ".answer-learning-sentences button.is-current");
+  assert.match(currentSentence, /background:\s*var\(--blue-soft\)/);
+  assert.match(currentSentence, /box-shadow:\s*inset 0 0 0 2px var\(--blue\)/);
 });
 test("답변 익히기 세로 밀도는 설명 범위와 safe-area·터치 계약을 보존한다", () => {
   assert.equal((answerLearning.match(/className="answer-learning-rating-description"/g) ?? []).length, 1);
