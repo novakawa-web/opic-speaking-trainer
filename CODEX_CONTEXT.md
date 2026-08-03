@@ -2,7 +2,7 @@
 
 > 마지막 내용 동기화: 2026-08-03 (Asia/Seoul)
 >
-> 문서 내용의 앱 기능 기준 SHA: `a8f0c0378652f3fcf775eda861ce8f01b686a649`
+> 문서 내용의 앱 기능 기준 SHA: `eff147db1779dc45242f203f35375e962c28112a`
 >
 > 이 SHA는 마지막 앱 runtime·동작 변경을 가리킨다. 문서·repository Skill 전용 commit은 이 값을 올리지 않으며, 현재 repository HEAD와 최신 Pages 상태는 live Git·GitHub에서 확인한다.
 
@@ -16,10 +16,10 @@
 - 운영 앱: <https://novakawa-web.github.io/opic-speaking-trainer/>
 - production Vite base는 `/opic-speaking-trainer/`, 개발 base는 `/`다.
 - 기본 카드 소스는 12장이지만 활성 카드 데이터셋은 TSV 사용에 따라 달라진다. 운영 카드 수를 코드 상수처럼 문서화하지 않는다.
-- 2026-08-03 운영 배포 검증에서 운영 URL, `manifest.webmanifest`, `sw.js`, `404.html`과 배포 HTML·JS·manifest·service worker에서 동적으로 확인한 현재 고유 URL 20개는 모두 HTTP 200이었다. service worker precache는 22개 entry이며 main bundle에서 `학습 세트`, `practice-session`과 `level_1`부터 `level_3`까지의 분류 계약을 확인했다. hash가 바뀌는 asset 이름은 고정해 기록하지 않는다.
-- 2026-08-03 최신 운영 검증은 commit `a8f0c0378652f3fcf775eda861ce8f01b686a649`의 Actions run `30778262114`에서 build job `91577818954`, deploy job `91577867947`과 Pages deployment `5719785098`가 모두 success였다.
-- 최신 release의 운영 검증은 읽기 전용 HTTP·bundle 검사이며 운영 앱에서 클릭·입력·storage 조회를 하지 않았다. 카드 선택 다중 필터와 학습 세트 확장은 release 전에 격리 localhost에서 자동·브라우저 검증했다. 실제 Galaxy 기능은 이번 release에서 별도로 검증하지 않았으며, 기존 답변 익히기 영어 TTS 출력과 마이크 녹음의 Galaxy 미검증 상태도 유지한다.
-- storage transaction, 카드 삭제 transaction, 공통 브랜드 홈 이동, 쉐도잉 UX, 단일 카드 직접 추가, UX 안정화 1차, 카드 통합 검색, 기본 답변과 나만의 답변의 줄바꿈 정규화, 답변 익히기 카드 선택 조작, 첫 문장 답변 연습 상태 필터, 답변 익히기 상태 통합 필터, 공통 학습 화면 rail과 모바일 헤더 action 정렬, 짧은 가로 화면 쉐도잉·답변 익히기 밀도, 카드 라이브러리 답변 연습 상태 있음·없음 필터, 화면별 학습 제목·홈 문구 정리, 복수 TSV 선택과 최신 선택 미리보기 보호, 앱 내부 history 뒤로가기, 답변 익히기 선택 보존·첫 문장 상태 입력·새 학습 공개 상태 초기화, 세로 모바일 쉐도잉 문장 폭 개선, 카드와 나만의 답변의 공통 편집 transaction, 답변 익히기 문장별·연속 TTS와 녹음 위치 정리, 수동 쉐도잉 저장 후 편집 종료, 저장 지문 독립 라이브러리, 개인 메모 홈 미리보기, 카드 라이브러리 결과의 학습 화면 전달, 세 학습 진입 화면의 공통 학습 범위 요약과 카드 선택의 학습 세트·주제·질문 유형 다중 필터가 main과 운영 Pages에 포함되어 있다.
+- 2026-08-03 운영 배포 검증에서 운영 URL, `manifest.webmanifest`, `sw.js`, `404.html`과 배포 HTML·JS·manifest·service worker에서 동적으로 확인한 현재 고유 URL 20개는 모두 HTTP 200이었다. service worker precache는 22개 entry이며 배포 CSS에서 카드 목록의 701px부터 1080px까지 2열 전환 규칙을 확인했다. hash가 바뀌는 asset 이름은 고정해 기록하지 않는다.
+- 2026-08-03 최신 운영 검증은 commit `eff147db1779dc45242f203f35375e962c28112a`의 Actions run `30780839150`에서 build job `91585011331`, deploy job `91585091275`와 Pages deployment `5720232058`가 모두 success였다.
+- 최신 release의 운영 검증은 읽기 전용 HTTP·bundle 검사이며 운영 앱에서 클릭·입력·storage 조회를 하지 않았다. 카드 목록 breakpoint는 release 전에 격리 localhost에서 자동·브라우저 검증했다. 실제 Galaxy 기능은 이번 release에서 별도로 검증하지 않았으며, 기존 답변 익히기 영어 TTS 출력과 마이크 녹음의 Galaxy 미검증 상태도 유지한다.
+- storage transaction, 카드 삭제 transaction, 공통 브랜드 홈 이동, 쉐도잉 UX, 단일 카드 직접 추가, UX 안정화 1차, 카드 통합 검색, 기본 답변과 나만의 답변의 줄바꿈 정규화, 답변 익히기 카드 선택 조작, 첫 문장 답변 연습 상태 필터, 답변 익히기 상태 통합 필터, 공통 학습 화면 rail과 모바일 헤더 action 정렬, 짧은 가로 화면 쉐도잉·답변 익히기 밀도, 카드 라이브러리 답변 연습 상태 있음·없음 필터, 화면별 학습 제목·홈 문구 정리, 복수 TSV 선택과 최신 선택 미리보기 보호, 앱 내부 history 뒤로가기, 답변 익히기 선택 보존·첫 문장 상태 입력·새 학습 공개 상태 초기화, 세로 모바일 쉐도잉 문장 폭 개선, 카드와 나만의 답변의 공통 편집 transaction, 답변 익히기 문장별·연속 TTS와 녹음 위치 정리, 수동 쉐도잉 저장 후 편집 종료, 저장 지문 독립 라이브러리, 개인 메모 홈 미리보기, 카드 라이브러리 결과의 학습 화면 전달, 세 학습 진입 화면의 공통 학습 범위 요약, 카드 선택의 학습 세트·주제·질문 유형 다중 필터와 카드 목록 1·2·3열 반응형 breakpoint가 main과 운영 Pages에 포함되어 있다.
 
 ## 2. 구현된 사용자 흐름
 
@@ -29,7 +29,7 @@
 - 덱·학습 세트·주제·질문 유형·기타 태그·`final_rep`·어려운 카드·첫 문장 전용/전체 답변·답변 연습 상태 있음/없음·보관 상태 필터
 - 카드 라이브러리, 첫 문장 준비와 답변 익히기 준비는 공통 `CardTagDimensionFilters`를 사용한다. 학습 세트·주제·질문 유형은 차원별로 여러 태그를 선택할 수 있고 같은 차원 안에서는 OR, 서로 다른 차원과 기타 태그 사이에서는 AND로 결합한다.
 - 학습 세트는 대소문자를 구분하지 않고 `weekN`, `practice-session`, `level_1`부터 `level_3`까지에 정확히 일치하는 태그다. 선택지는 Week 숫자순 → `연습 세션` → Level 숫자순으로 표시한다. `v2`는 학습 세트와 겹치지 않는 기타 태그로 유지되어 Level과 함께 선택하면 AND로 적용된다. 원본 카드 tag 문자열과 TSV·JSON 데이터는 바꾸지 않는다.
-- 카드 라이브러리 20장 단위 표시와 세션 내 필터·스크롤 복원
+- 카드 라이브러리 20장 단위 표시와 세션 내 필터·스크롤 복원. 카드 grid는 700px 이하 1열, 701px부터 1080px까지 2열, 1081px 이상 3열을 사용한다.
 - 카드 라이브러리의 현재 필터 결과는 페이지에 표시된 수와 무관하게 전체 결과 ID 순서를 유지한 채 `첫 문장 연습` 또는 `답변 익히기` 준비 화면으로 전달된다. 결과가 0장이면 두 전달 button을 비활성화하고, 학습 화면에서 뒤로가면 카드 라이브러리의 검색·필터 문맥으로 복귀한다.
 - 첫 문장 전달은 현재 범위만 준비 후보로 사용한다. 답변 익히기 전달은 활성 카드와 전달 ID의 교집합만 표시·시작 후보로 사용하고 보관 카드를 제외하며, 기존의 범위 밖 선택은 보존한다. 전달 범위는 React 메모리에만 두고 새 localStorage·sessionStorage key나 JSON·TSV·AppBackup 스키마를 만들지 않는다.
 - 답변 익히기 준비, 첫 문장 준비와 카드 라이브러리의 학습 진입 영역은 공통 `StudyScopeSummary`로 제목 연결, 설명, 동적 카드 수, 보조 안내와 action 배치를 일관되게 표시한다. 답변 익히기는 현재 결과와 선택 ID의 교집합 및 숨은 선택 보존을, 첫 문장은 현재 조건 전체 후보 사용을, 카드 라이브러리는 페이지 표시 수가 아닌 전체 필터 결과 전달과 답변 익히기 대상의 보관 카드 제외를 그대로 유지한다. 공통화한 것은 학습 범위 요약 UI이며 화면별 후보·선택 상태 모델은 합치지 않았다. 카드 라이브러리는 기존 상세 결과 수 `aria-live` 하나만 유지해 중복 안내를 피한다.
@@ -250,7 +250,7 @@ mutation은 `opic-my-answers`와 `opic-card-dataset` 순서로 하나의 `runSto
 
 쉐도잉 session은 마지막 유효한 미완료 재생 1건만 보존한다. 카드 또는 저장 지문 식별자, 답변 문장 지문, 현재 반복 설정과 진행 범위가 모두 일치할 때만 `이어 듣기`로 복원한다. 완료됨, 손상됨, 다른 소스, 답변 변경, 범위 이탈 또는 설정 불일치는 처음부터 상태로 정규화한다. 홈·뒤로 이동은 떠나기 직전 현재 진행을 한 번 저장하며 이후 TTS 정리가 그 값을 덮어쓰지 않는다.
 
-`package.json`의 `test:all`은 다음 26개 스크립트를 순서대로 실행한다. 현재 main의 최신 검증 기준은 1,073/1,073이다.
+`package.json`의 `test:all`은 다음 26개 스크립트를 순서대로 실행한다. 현재 main의 최신 검증 기준은 1,074/1,074이다.
 
 | 명령 | 개수 |
 | --- | ---: |
@@ -270,7 +270,7 @@ mutation은 `opic-my-answers`와 `opic-card-dataset` 순서로 하나의 `runSto
 | `test:passages` | 46 |
 | `test:recorder` | 68 |
 | `test:shadowing` | 123 |
-| `test:ui-session` | 23 |
+| `test:ui-session` | 24 |
 | `test:navigation` | 16 |
 | `test:study-handoff` | 11 |
 | `test:tsv` | 44 |
@@ -283,7 +283,7 @@ mutation은 `opic-my-answers`와 `opic-card-dataset` 순서로 하나의 `runSto
 
 `test:cloud-rules` 22개는 실행 중인 Firestore·Storage Emulator가 필요한 별도 Security Rules 검증이다. `test:pwa`도 build 후 별도로 실행한다.
 
-commit `451b4844f22e6dd762b96e114668b44867e233f6`의 기준은 880/880이었다. 답변 익히기 상태 통합 필터 commit `022084a7c22b5e2aad7ea3f7adedc0b9dbe0fbc9`에서 892/892로, 공통 학습 화면 rail commit `03c5082fc0a3fabbe81ba6c6e0b6759650c94ff9`에서 899/899로, 모바일 헤더 action 정렬 commit `abbc66464d50785276e373320ccb3fbc059cf90d`에서 909/909로 증가했다. 짧은 가로 화면 쉐도잉 밀도 commit `650859cb8556f764b7a03515d17b75ee13218a3a`에서 912/912로, 답변 익히기 세로 밀도 commit `498fe3c648fd12e88bd70587402afb44f66aea13`에서 913/913으로 증가했다. 이후 카드 라이브러리 답변 상태 presence 필터 `911fab4`, 짧은 가로 쉐도잉 controller `402bb2d`, 화면별 헤더·홈 문구 `5eacf01`, 복수 TSV 선택 `3eef744`, 최신 TSV 선택 보호 `7e43a88`이 반영되어 934/934가 되었다. 앱 내부 history와 답변 익히기 선택 보존 `f59838c`, 답변 익히기 첫 문장 상태 `a5d84ac`, 새 학습 공개 상태 초기화 `713873a`, 세로 모바일 쉐도잉 문장 폭 `b2f8388`이 이어져 960/960이 되었다. 공통 카드·나만의 답변 편집 transaction commit `47bf2d7685897bcd01e6b1be158ac2cbb9b672ed`에서 전용 33개, 카드 관리 2개와 UI system 1개가 추가되어 996/996이 되었다. 답변 익히기 문장별·연속 TTS와 녹음 위치 정리 commit `0913b54c7391c43130ae6b3b074b7bceae8c4f38`에서 recorder 2개, answer-learning 10개와 UI system 4개가 추가되어 1,012/1,012가 되었다. 수동 쉐도잉 편집 종료 commit `ecee59b4450b4ce6ac16401ec549e445403c5e14`에서 navigation 2개와 passages 3개가 추가되어 1,017/1,017로, 저장 지문 독립 화면 commit `a55331c893273165cf6fb33c750bd21dbe94ccdf`에서 passages 2개와 home-layout 1개가 추가되어 1,020/1,020으로 증가했다. 개인 메모 홈 미리보기 commit `5a67e28d7bc9138fc65df74c57afab1ea1bfdde6`에서 personal-memos 3개와 home-layout 1개가 추가되어 1,024/1,024가 되었다. 카드 라이브러리 결과의 학습 화면 전달 commit `19d648a1b8d80ce09a6d42540b91ed9091433e65`에서 전용 11개와 navigation 1개가 추가되어 1,036/1,036이 되었다. 세 학습 진입 화면의 공통 학습 범위 요약 commit `657d2604ba788be7e978ce0e1f5ce625d81a15fe`에서 UI system 4개가 추가되어 1,040/1,040이 되었다. 카드 태그 다중 선택 commit `83203be818d56e520fd75a1be1aa62cdbc38a6db`과 학습 세트 확장 commit `a8f0c0378652f3fcf775eda861ce8f01b686a649`에서 전용 card-tag 18개, 카드 삭제 plan 2개, UI session 3개, 답변 익히기 7개와 UI system 3개가 추가되어 현재 기준은 1,073/1,073이다. 현재 main과 `a8f0c0378652f3fcf775eda861ce8f01b686a649`의 CI 기준 TypeScript, production build와 PWA/Pages 검증도 통과했다.
+commit `451b4844f22e6dd762b96e114668b44867e233f6`의 기준은 880/880이었다. 답변 익히기 상태 통합 필터 commit `022084a7c22b5e2aad7ea3f7adedc0b9dbe0fbc9`에서 892/892로, 공통 학습 화면 rail commit `03c5082fc0a3fabbe81ba6c6e0b6759650c94ff9`에서 899/899로, 모바일 헤더 action 정렬 commit `abbc66464d50785276e373320ccb3fbc059cf90d`에서 909/909로 증가했다. 짧은 가로 화면 쉐도잉 밀도 commit `650859cb8556f764b7a03515d17b75ee13218a3a`에서 912/912로, 답변 익히기 세로 밀도 commit `498fe3c648fd12e88bd70587402afb44f66aea13`에서 913/913으로 증가했다. 이후 카드 라이브러리 답변 상태 presence 필터 `911fab4`, 짧은 가로 쉐도잉 controller `402bb2d`, 화면별 헤더·홈 문구 `5eacf01`, 복수 TSV 선택 `3eef744`, 최신 TSV 선택 보호 `7e43a88`이 반영되어 934/934가 되었다. 앱 내부 history와 답변 익히기 선택 보존 `f59838c`, 답변 익히기 첫 문장 상태 `a5d84ac`, 새 학습 공개 상태 초기화 `713873a`, 세로 모바일 쉐도잉 문장 폭 `b2f8388`이 이어져 960/960이 되었다. 공통 카드·나만의 답변 편집 transaction commit `47bf2d7685897bcd01e6b1be158ac2cbb9b672ed`에서 전용 33개, 카드 관리 2개와 UI system 1개가 추가되어 996/996이 되었다. 답변 익히기 문장별·연속 TTS와 녹음 위치 정리 commit `0913b54c7391c43130ae6b3b074b7bceae8c4f38`에서 recorder 2개, answer-learning 10개와 UI system 4개가 추가되어 1,012/1,012가 되었다. 수동 쉐도잉 편집 종료 commit `ecee59b4450b4ce6ac16401ec549e445403c5e14`에서 navigation 2개와 passages 3개가 추가되어 1,017/1,017로, 저장 지문 독립 화면 commit `a55331c893273165cf6fb33c750bd21dbe94ccdf`에서 passages 2개와 home-layout 1개가 추가되어 1,020/1,020으로 증가했다. 개인 메모 홈 미리보기 commit `5a67e28d7bc9138fc65df74c57afab1ea1bfdde6`에서 personal-memos 3개와 home-layout 1개가 추가되어 1,024/1,024가 되었다. 카드 라이브러리 결과의 학습 화면 전달 commit `19d648a1b8d80ce09a6d42540b91ed9091433e65`에서 전용 11개와 navigation 1개가 추가되어 1,036/1,036이 되었다. 세 학습 진입 화면의 공통 학습 범위 요약 commit `657d2604ba788be7e978ce0e1f5ce625d81a15fe`에서 UI system 4개가 추가되어 1,040/1,040이 되었다. 카드 태그 다중 선택 commit `83203be818d56e520fd75a1be1aa62cdbc38a6db`과 학습 세트 확장 commit `a8f0c0378652f3fcf775eda861ce8f01b686a649`에서 전용 card-tag 18개, 카드 삭제 plan 2개, UI session 3개, 답변 익히기 7개와 UI system 3개가 추가되어 1,073/1,073이 되었다. 카드 목록 breakpoint commit `eff147db1779dc45242f203f35375e962c28112a`에서 UI session 1개가 추가되어 현재 기준은 1,074/1,074이다. 현재 main과 이 commit의 CI 기준 TypeScript, production build와 PWA/Pages 검증도 통과했다.
 
 ### dependency audit 기준
 
@@ -345,8 +345,7 @@ git diff --check
 
 ### UX backlog
 
-- 현재 추천 후속 작업은 카드 목록 2열 전환 breakpoint를 실제 모바일·태블릿 사용성 기준으로 다시 결정하는 조사다.
-- 첫 문장 훈련에 전체 답변 보기와 첫 문장 공개 시 자동 음성 재생을 검토한다.
+- 현재 추천 후속 작업은 첫 문장 훈련의 전체 답변 보기와 첫 문장 공개 시 자동 음성 재생 동작을 함께 조사하는 것이다.
 - 첫 문장 훈련의 다시 도전 버튼 디자인을 다른 학습 조작과 일관되게 정리한다.
 - 답변 익히기 전체 답변 영역의 3중 테두리를 단순화한다.
 - 쉐도잉 하단 5버튼 controller의 더 넓은 재설계는 완료된 공통 rail 정렬·짧은 가로 40px 한 행 compact 처리와 별도 티켓으로 유지한다.
