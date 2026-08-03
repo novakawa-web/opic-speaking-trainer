@@ -4,6 +4,15 @@ import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
 import { useSwipeNavigation } from "../hooks/useSwipeNavigation";
 import type { FirstLineResult, FirstLineStatus, OpicCard } from "../types";
 import { activateButton } from "../utils/buttonFocus";
+import { createAnswerDisplayRows, joinAnswerLines } from "../utils/answerText";
+import { isFirstLineOnlyCard } from "../utils/cardContent";
+import {
+  isFirstLineRevealed,
+  isFullAnswerRevealed,
+  toggleFirstLineReveal,
+  toggleFullAnswerReveal,
+  type FirstLineRevealStage,
+} from "../utils/firstLineReveal";
 import {
   readAutoAdvanceAfterRating,
   saveAutoAdvanceAfterRating,
@@ -92,7 +101,10 @@ export function FirstLineDrill({
   onNext,
   mode = "practice",
 }: FirstLineDrillProps) {
-  const [showFirstLine, setShowFirstLine] = useState(false);
+  const [revealState, setRevealState] = useState<{
+    cardId: string;
+    stage: FirstLineRevealStage;
+  }>(() => ({ cardId: card.id, stage: "hidden" }));
   const [showFrontKo, setShowFrontKo] = useState(false);
   const [questionAutoplay, setQuestionAutoplay] = useState(
     readQuestionTtsAutoplay,
@@ -109,6 +121,13 @@ export function FirstLineDrill({
   const autoplayRef = useRef(questionAutoplay);
   const autoAdvanceTimerRef = useRef<number | null>(null);
   const questionText = stripQuestionPrefix(card.front);
+  const modelAnswerText = joinAnswerLines(card.back);
+  const modelAnswerRows = createAnswerDisplayRows(modelAnswerText);
+  const firstLineOnly = isFirstLineOnlyCard(card);
+  const revealStage =
+    revealState.cardId === card.id ? revealState.stage : "hidden";
+  const showFirstLine = isFirstLineRevealed(revealStage);
+  const showFullAnswer = isFullAnswerRevealed(revealStage);
   const {
     isSupported: isTtsSupported,
     activeTarget,
@@ -121,8 +140,37 @@ export function FirstLineDrill({
   autoplayRef.current = questionAutoplay;
 
   const toggleFirstLine = useCallback(() => {
-    setShowFirstLine((current) => !current);
-  }, []);
+    const nextStage = toggleFirstLineReveal(revealStage);
+    setRevealState({ cardId: card.id, stage: nextStage });
+
+    if (nextStage === "hidden") {
+      stop();
+      clearMessage();
+      return;
+    }
+
+    if (isTtsSupported) {
+      speak(card.firstLine, "firstLine", "autoplay");
+    }
+  }, [
+    card.firstLine,
+    card.id,
+    clearMessage,
+    isTtsSupported,
+    revealStage,
+    speak,
+    stop,
+  ]);
+
+  const toggleFullAnswer = useCallback(() => {
+    setRevealState((current) => ({
+      cardId: card.id,
+      stage: toggleFullAnswerReveal(
+        current.cardId === card.id ? current.stage : "hidden",
+        !firstLineOnly,
+      ),
+    }));
+  }, [card.id, firstLineOnly]);
 
   const cancelAutoAdvance = useCallback(() => {
     if (autoAdvanceTimerRef.current !== null) {
@@ -225,7 +273,7 @@ export function FirstLineDrill({
   }
 
   useEffect(() => {
-    setShowFirstLine(false);
+    setRevealState({ cardId: card.id, stage: "hidden" });
     setShowFrontKo(false);
     cancelAutoAdvance();
     stop();
@@ -466,6 +514,49 @@ export function FirstLineDrill({
               >
                 <span>FIRST LINE</span>
                 <p>{card.firstLine}</p>
+              </div>
+            ) : null}
+            {showFirstLine && !firstLineOnly ? (
+              <div className="first-line-answer-review">
+                <button
+                  className="secondary-button first-line-answer-toggle"
+                  type="button"
+                  aria-expanded={showFullAnswer}
+                  aria-controls="first-line-full-answer"
+                  onClick={(event) =>
+                    activateButton(event, toggleFullAnswer)
+                  }
+                >
+                  {showFullAnswer ? "전체 답변 숨기기" : "전체 답변 보기"}
+                </button>
+                {showFullAnswer ? (
+                  <div
+                    id="first-line-full-answer"
+                    className="first-line-full-answer-box"
+                    role="region"
+                    aria-label="전체 답변"
+                  >
+                    <span className="first-line-full-answer-label">
+                      MODEL ANSWER
+                    </span>
+                    <div className="answer-lines first-line-answer-lines">
+                      {modelAnswerRows.map((row, index) =>
+                        row.kind === "paragraph-break" ? (
+                          <div
+                            key={`${card.id}-paragraph-break-${index}`}
+                            className="answer-paragraph-break"
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          <p key={`${card.id}-line-${row.number}-${index}`}>
+                            <span>{row.number}</span>
+                            <span className="answer-line-text">{row.text}</span>
+                          </p>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>

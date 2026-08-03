@@ -122,9 +122,11 @@ export function useSpeechSynthesis(
 
           const wasBlocked =
             event.error === "not-allowed" || event.error === "audio-busy";
+          const retryLabel =
+            request.target === "firstLine" ? "첫 문장 듣기" : "문제 듣기";
           setMessage(
             request.source === "autoplay" && wasBlocked
-              ? "자동재생을 시작할 수 없었습니다. 문제 듣기 버튼을 한 번 눌러 주세요."
+              ? `자동재생을 시작할 수 없었습니다. ${retryLabel} 버튼을 한 번 눌러 주세요.`
               : "음성을 재생하지 못했습니다. 잠시 후 다시 시도해 주세요.",
           );
         };

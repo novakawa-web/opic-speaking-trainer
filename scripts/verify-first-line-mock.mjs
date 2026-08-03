@@ -11,6 +11,12 @@ import {
 } from "../src/utils/firstLineMockSession.ts";
 import { matchesAnswerContentFilter } from "../src/utils/cardContent.ts";
 import {
+  isFirstLineRevealed,
+  isFullAnswerRevealed,
+  toggleFirstLineReveal,
+  toggleFullAnswerReveal,
+} from "../src/utils/firstLineReveal.ts";
+import {
   filterCardsByAnswerLearningStatusPresence,
 } from "../src/utils/answerLearningSelectors.ts";
 
@@ -47,6 +53,54 @@ function readPixelDeclaration(ruleBody, property) {
   const match = ruleBody.match(new RegExp(`${escaped}\\s*:\\s*(\\d+)px\\s*;`));
   return match ? Number(match[1]) : null;
 }
+
+test("첫 문장 공개 상태는 숨김에서 첫 문장으로 전환", () => {
+  const stage = toggleFirstLineReveal("hidden");
+  assert.equal(stage, "first-line");
+  assert.equal(isFirstLineRevealed(stage), true);
+  assert.equal(isFullAnswerRevealed(stage), false);
+});
+test("다시 도전은 첫 문장과 전체 답변 공개를 모두 닫음", () => {
+  assert.equal(toggleFirstLineReveal("first-line"), "hidden");
+  assert.equal(toggleFirstLineReveal("full-answer"), "hidden");
+});
+test("전체 답변은 첫 문장 공개 뒤에만 열고 닫음", () => {
+  assert.equal(toggleFullAnswerReveal("hidden", true), "hidden");
+  assert.equal(toggleFullAnswerReveal("first-line", true), "full-answer");
+  assert.equal(toggleFullAnswerReveal("full-answer", true), "first-line");
+});
+test("첫 문장 전용 카드는 전체 답변 공개를 무시", () => {
+  assert.equal(toggleFullAnswerReveal("first-line", false), "first-line");
+});
+test("첫 문장 공개 자동재생과 전체 답변 UI wiring", () => {
+  const source = readFileSync(
+    new URL("../src/components/FirstLineDrill.tsx", import.meta.url),
+    "utf8",
+  );
+  const speechSource = readFileSync(
+    new URL("../src/hooks/useSpeechSynthesis.ts", import.meta.url),
+    "utf8",
+  );
+  const styles = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+
+  assert.ok(source.includes('speak(card.firstLine, "firstLine", "autoplay")'));
+  assert.ok(source.includes('aria-controls="first-line-full-answer"'));
+  assert.ok(source.includes('showFirstLine && !firstLineOnly'));
+  assert.ok(source.includes('revealState.cardId === card.id'));
+  assert.ok(source.includes('setRevealState({ cardId: card.id, stage: "hidden" })'));
+  assert.ok(source.includes('role="region"'));
+  assert.ok(source.includes('aria-label="전체 답변"'));
+  assert.ok(speechSource.includes('request.target === "firstLine" ? "첫 문장 듣기"'));
+
+  const reviewRules = cssRuleBodies(styles, ".first-line-answer-review");
+  const toggleRules = cssRuleBodies(styles, ".first-line-answer-toggle");
+  assert.equal(reviewRules.length, 1);
+  assert.match(reviewRules[0], /max-width\s*:\s*700px\s*;/);
+  assert.deepEqual(
+    toggleRules.map((rule) => readPixelDeclaration(rule, "min-height")),
+    [44, 44],
+  );
+});
 
 test("답변 상태 필터 OFF는 전체 후보 유지", () => {
   assert.equal(
