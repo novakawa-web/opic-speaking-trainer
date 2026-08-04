@@ -9070,8 +9070,20 @@ input:focus-visible + .toggle-switch {
     font-size: clamp(0.72rem, 3vw, 0.82rem);
   }
   .answer-learning-first-line-status .status-button { padding-inline: 3px; font-size: clamp(.78rem, 3.2vw, .94rem); }
-  .answer-learning-status-buttons button { min-width: 0; padding: 8px 3px; font-size: clamp(.88rem, 3.4vw, 1rem); }
-  .answer-learning-status-buttons button span { margin-right: 3px; }
+  .answer-learning-status-buttons button {
+    min-width: 0;
+    padding: 8px 2px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-size: clamp(.75rem, 3.2vw, .88rem);
+  }
+  .answer-learning-status-buttons button span {
+    flex: 0 0 auto;
+    margin-right: 0;
+    font-size: .82em;
+  }
   .answer-learning-secondary-actions { display: grid; grid-template-columns: 1fr; }
   .answer-learning-answer-actions {
     display: grid;
@@ -9085,7 +9097,22 @@ input:focus-visible + .toggle-switch {
     grid-column: 1 / -1;
   }
   .answer-learning-tts-rate {
-    justify-content: space-between;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 4px;
+    padding: 5px;
+  }
+  .answer-learning-tts-rate > span {
+    white-space: nowrap;
+    font-size: .78rem;
+  }
+  .answer-learning-tts-rate select {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    padding-inline: 7px 20px;
+    font-size: .82rem;
   }
   .answer-learning-page .answer-learning-sentences button {
     grid-template-columns: 20px minmax(0, 1fr);

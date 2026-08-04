@@ -408,6 +408,11 @@ test("답변 익히기 오디오 조작은 모바일 터치와 현재 문장 표
   assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-answer-actions\s*\{[^}]*grid-template-columns:\s*repeat\(2/);
   assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-question-actions\s*\{[^}]*gap:\s*5px/);
   assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-answer-actions > button:nth-of-type\(2\) ~ \.answer-learning-tts-rate\s*\{[^}]*grid-column:\s*1 \/ -1/);
+  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-status-buttons button\s*\{[^}]*min-width:\s*0;[^}]*display:\s*inline-flex;[^}]*gap:\s*2px;[^}]*font-size:\s*clamp\(\.75rem,\s*3\.2vw,\s*\.88rem\)/);
+  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-status-buttons button span\s*\{[^}]*flex:\s*0 0 auto;[^}]*margin-right:\s*0;[^}]*font-size:\s*\.82em/);
+  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-tts-rate\s*\{[^}]*min-width:\s*0;[^}]*display:\s*grid;[^}]*grid-template-columns:\s*auto minmax\(0, 1fr\)/);
+  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-tts-rate > span\s*\{[^}]*white-space:\s*nowrap/);
+  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-tts-rate select\s*\{[^}]*width:\s*100%;[^}]*min-width:\s*0;[^}]*font-size:\s*\.82rem/);
   assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-page \.answer-learning-sentences button\s*\{[^}]*grid-template-columns:\s*20px minmax\(0, 1fr\)[^}]*gap:\s*6px[^}]*padding:\s*12px 10px/);
   assert.match(answerLearningSpeech, /shouldStopAnswerLearningSentencePlayback\(playbackRef\.current, index\)[\s\S]*?stop\(\)/);
 });
