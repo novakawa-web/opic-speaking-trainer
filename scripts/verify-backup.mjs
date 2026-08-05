@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { cards as defaultCards } from "../src/data/cards.ts";
 import {
   APP_BACKUP_FORMAT,
+  BACKUP_STORAGE_POLICY,
   DEFAULT_BACKUP_SETTINGS,
   FULL_RESTORE_BACKUP_STORAGE_KEY,
   MAX_BACKUP_FILE_BYTES,
@@ -15,6 +16,10 @@ import {
   serializeAppBackup,
   validateBackup,
 } from "../src/utils/appBackup.ts";
+import {
+  ANSWER_LEARNING_FILTER_PREFERENCES_STORAGE_KEY,
+  FIRST_LINE_FILTER_PREFERENCES_STORAGE_KEY,
+} from "../src/utils/learningFilterPreferences.ts";
 import { CARD_DATASET_STORAGE_KEY } from "../src/utils/cardStorage.ts";
 import { createSampleCards } from "../src/utils/cardTsv.ts";
 import { NAVIGATION_SESSION_STORAGE_KEY } from "../src/utils/navigationSession.ts";
@@ -394,6 +399,42 @@ test("복구 저장 키 매핑", () => {
   assert.equal(storage.getItem(SHADOWING_REPEAT_MODE_KEY), "sentence");
   assert.equal(storage.getItem(SHADOWING_REPEAT_COUNT_KEY), "5");
   assert.equal(storage.getItem(SHADOWING_REST_LEVEL_KEY), "medium");
+});
+
+test("화면별 학습 필터는 JSON 백업과 전체 복구 대상에서 제외", () => {
+  const storage = new MemoryStorage();
+  storage.setItem(FIRST_LINE_FILTER_PREFERENCES_STORAGE_KEY, "first-line-local");
+  storage.setItem(ANSWER_LEARNING_FILTER_PREFERENCES_STORAGE_KEY, "answer-local");
+  applyBackupWithSafety(makeBackup(), makeBackup(), storage);
+  assert.equal(
+    storage.getItem(FIRST_LINE_FILTER_PREFERENCES_STORAGE_KEY),
+    "first-line-local",
+  );
+  assert.equal(
+    storage.getItem(ANSWER_LEARNING_FILTER_PREFERENCES_STORAGE_KEY),
+    "answer-local",
+  );
+  assert.equal(
+    BACKUP_STORAGE_POLICY.find(
+      ({ key }) => key === FIRST_LINE_FILTER_PREFERENCES_STORAGE_KEY,
+    )?.included,
+    false,
+  );
+  assert.equal(
+    BACKUP_STORAGE_POLICY.find(
+      ({ key }) => key === ANSWER_LEARNING_FILTER_PREFERENCES_STORAGE_KEY,
+    )?.included,
+    false,
+  );
+  const serialized = serializeAppBackup(makeBackup());
+  assert.equal(
+    serialized.includes(FIRST_LINE_FILTER_PREFERENCES_STORAGE_KEY),
+    false,
+  );
+  assert.equal(
+    serialized.includes(ANSWER_LEARNING_FILTER_PREFERENCES_STORAGE_KEY),
+    false,
+  );
 });
 
 test("저장 지문 복구 저장 키 매핑", () => {

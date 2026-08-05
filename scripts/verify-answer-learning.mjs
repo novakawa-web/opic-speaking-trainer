@@ -40,6 +40,8 @@ import {
   finishAnswerLearningSentence,
   isAnswerLearningPlaybackActive,
   pauseAnswerLearningPlayback,
+  resolveAnswerLearningSentencePress,
+  resolveAnswerLearningSentenceSelection,
   resumeAnswerLearningPlayback,
   shouldShowAnswerLearningStopControl,
   shouldStopAnswerLearningSentencePlayback,
@@ -106,6 +108,34 @@ test("정지 상태 문장 선택은 선택 문장만 재생", () => {
   assert.deepEqual(
     startAnswerLearningSentencePlayback(createAnswerLearningPlaybackState(), 1, 3),
     { status: "loading", mode: "single", currentIndex: 1 },
+  );
+});
+test("정지 상태 첫 문장 탭은 재생하지 않고 문장만 선택", () => {
+  assert.equal(
+    resolveAnswerLearningSentencePress(
+      createAnswerLearningPlaybackState(),
+      null,
+      1,
+    ),
+    "select",
+  );
+});
+test("시간 제한 없이 같은 문장 두 번째 탭은 단일 재생 요청", () => {
+  assert.equal(
+    resolveAnswerLearningSentencePress(
+      createAnswerLearningPlaybackState(),
+      1,
+      1,
+    ),
+    "play",
+  );
+  assert.equal(
+    resolveAnswerLearningSentencePress(
+      createAnswerLearningPlaybackState(),
+      1,
+      2,
+    ),
+    "select",
   );
 });
 test("단일 문장 재생 중 현재 문장 재선택은 정지 요청", () => {
@@ -518,6 +548,56 @@ test("답변 익히기 복원은 선택 ID를 보존하고 사라진 차원 필�
   assert.deepEqual(session.filters.selectedWeeks, ["week6"]);
   assert.deepEqual(session.filters.selectedTopics, []);
   assert.deepEqual(session.filters.selectedTypes, ["type_description"]);
+});
+test("단일 재생과 연속 재생의 기존 문장 탭 동작 유지", () => {
+  assert.equal(
+    resolveAnswerLearningSentencePress(
+      { status: "playing", mode: "single", currentIndex: 1 },
+      1,
+      1,
+    ),
+    "stop",
+  );
+  assert.equal(
+    resolveAnswerLearningSentencePress(
+      { status: "playing", mode: "continuous", currentIndex: 0 },
+      null,
+      2,
+    ),
+    "play",
+  );
+  assert.deepEqual(
+    resolveAnswerLearningSentenceSelection(
+      { status: "playing", mode: "continuous", currentIndex: 0 },
+      "play",
+      2,
+    ),
+    null,
+  );
+  assert.deepEqual(
+    resolveAnswerLearningSentenceSelection(
+      { status: "paused", mode: "single", currentIndex: 1 },
+      "play",
+      2,
+    ),
+    { index: 2, phase: "playing" },
+  );
+  assert.deepEqual(
+    resolveAnswerLearningSentenceSelection(
+      { status: "completed", mode: "continuous", currentIndex: 2 },
+      "play",
+      1,
+    ),
+    { index: 1, phase: "playing" },
+  );
+  assert.deepEqual(
+    resolveAnswerLearningSentenceSelection(
+      { status: "playing", mode: "single", currentIndex: 1 },
+      "stop",
+      1,
+    ),
+    null,
+  );
 });
 test("별도 정지 버튼은 전체 답변 연속 재생 중에만 표시", () => {
   assert.equal(

@@ -280,14 +280,15 @@ test("첫 문장 필터 UI와 초기화·후보 wiring 계약", () => {
     appSource.indexOf("const orderedFirstLineCards"),
   );
   const firstLineResetBlock = appSource.slice(
-    appSource.indexOf("function resetVisibleStudyFilters"),
-    appSource.indexOf("function resetFilters"),
+    appSource.indexOf("function resetFirstLineFilters"),
+    appSource.indexOf("function updateFirstLineTagDimensions"),
   );
 
   assert.ok(filterSource.includes('className="toggle-row first-line-answer-status-toggle"'));
-  assert.ok(firstLineResetBlock.includes("setFirstLineAnswerStatusOnly(false)"));
+  assert.ok(firstLineResetBlock.includes("setFirstLineFilterState(DEFAULT_FIRST_LINE_FILTER_STATE)"));
   assert.equal(firstLineResetBlock.includes("setCardSearchQuery"), false);
-  assert.ok(appSource.includes("onReset={resetVisibleStudyFilters}"));
+  assert.ok(appSource.includes("onReset={resetFirstLineFilters}"));
+  assert.ok(firstLineCandidateBlock.includes("firstLineFilterState.answerStatusOnly"));
   assert.ok(appSource.includes("cardCount={firstLineSetupCards.length}"));
   assert.ok(appSource.includes("createDrillCardIds(firstLineSetupCards)"));
   assert.ok(appSource.includes("firstLineSetupCards.map((card) => card.id)"));

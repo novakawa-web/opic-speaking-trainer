@@ -8865,6 +8865,7 @@ input:focus-visible + .toggle-switch {
 .answer-learning-sentences { display: grid; gap: 16px; margin-top: 14px; }
 .answer-learning-paragraph { display: grid; gap: 8px; min-width: 0; }
 .answer-learning-sentences button { display: grid; grid-template-columns: 24px 1fr; gap: 10px; width: 100%; padding: 12px; border: 0; border-radius: 10px; color: var(--ink); background: var(--surface); text-align: left; font: inherit; font-size: 1.04rem; font-weight: 650; line-height: 1.6; cursor: pointer; }
+.answer-learning-sentences button.is-selected { background: var(--surface-soft); box-shadow: inset 0 0 0 1px var(--blue); }
 .answer-learning-sentences button.is-current { color: var(--blue); background: var(--blue-soft); box-shadow: inset 0 0 0 2px var(--blue); }
 .answer-learning-sentences button:disabled { cursor: not-allowed; opacity: .55; }
 .answer-learning-sentences button span { color: var(--muted); font-size: .8rem; font-weight: 700; }

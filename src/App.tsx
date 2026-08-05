@@ -71,6 +71,14 @@ import {
   type AnswerLearningSession,
 } from "./utils/answerLearningSession";
 import {
+  DEFAULT_FIRST_LINE_FILTER_STATE,
+  readAnswerLearningFilterPreferences,
+  readFirstLineFilterPreferences,
+  saveAnswerLearningFilterPreferences,
+  saveFirstLineFilterPreferences,
+  type FirstLineFilterState,
+} from "./utils/learningFilterPreferences";
+import {
   createLibraryStudyHandoff,
   mergeLibraryStudySelection,
   resolveLibraryStudyCards,
@@ -388,9 +396,35 @@ function App() {
       initialCardState.cards.filter((card) => !archivedCardIds.includes(card.id)),
     ),
   );
-  const [answerSession, setAnswerSession] = useState<AnswerLearningSession>(
-    initialNavigation.answerSession,
-  );
+  const [answerSession, setAnswerSession] = useState<AnswerLearningSession>(() => ({
+    ...initialNavigation.answerSession,
+    filters: readAnswerLearningFilterPreferences(
+      initialCardState.cards.filter(
+        (card) => !archivedCardIds.includes(card.id),
+      ),
+      localStorage,
+      initialNavigation.answerSession.filters,
+    ).filters,
+  }));
+  const [firstLineFilterState, setFirstLineFilterState] =
+    useState<FirstLineFilterState>(() =>
+      readFirstLineFilterPreferences(
+        initialCardState.cards,
+        localStorage,
+        {
+          ...DEFAULT_FIRST_LINE_FILTER_STATE,
+          selectedDeck: initialNavigation.selectedDeck,
+          selectedTag: initialNavigation.selectedTag,
+          selectedWeeks: initialNavigation.selectedWeeks,
+          selectedTopics: initialNavigation.selectedTopics,
+          selectedTypes: initialNavigation.selectedTypes,
+          finalOnly: initialNavigation.finalOnly,
+          hardOnly: initialNavigation.hardOnly,
+          cardScope: initialNavigation.cardScope,
+          studyOrder: initialNavigation.studyOrder,
+        },
+      ).filters,
+    );
   const [theme, setTheme] = useState(readInitialTheme);
   const [view, setView] = useState<View>(() =>
     initialNavigation.view === "list"
@@ -426,7 +460,6 @@ function App() {
   const [finalOnly, setFinalOnly] = useState(initialNavigation.finalOnly);
   const [hardOnly, setHardOnly] = useState(initialNavigation.hardOnly);
   const [answerContentFilter, setAnswerContentFilter] = useState<AnswerContentFilter>("all");
-  const [firstLineAnswerStatusOnly, setFirstLineAnswerStatusOnly] = useState(false);
   const [firstLineMode, setFirstLineMode] = useState<FirstLineMode>("practice");
   const [mockQuestionCount, setMockQuestionCount] = useState<MockQuestionCount>(10);
   const [mockSession, setMockSession] = useState<FirstLineMockSession | null>(() =>
@@ -521,6 +554,16 @@ function App() {
   }, [answerSession]);
 
   useEffect(() => {
+    if (
+      view !== "drillSetup" ||
+      libraryStudyHandoff?.target === "firstLine"
+    ) {
+      return;
+    }
+    saveFirstLineFilterPreferences(firstLineFilterState, cardCatalog);
+  }, [cardCatalog, firstLineFilterState, libraryStudyHandoff, view]);
+
+  useEffect(() => {
     if (historyInitializedRef.current) return;
     historyInitializedRef.current = true;
 
@@ -552,6 +595,15 @@ function App() {
     () => [...new Set(cardCatalog.flatMap((card) => card.tags))].sort(),
     [cardCatalog],
   );
+  useEffect(() => {
+    if (
+      view !== "answerSetup" ||
+      libraryStudyHandoff?.target === "answerLearning"
+    ) {
+      return;
+    }
+    saveAnswerLearningFilterPreferences(answerSession.filters, activeCatalog);
+  }, [activeCatalog, answerSession.filters, libraryStudyHandoff, view]);
   const tagDimensionFilters = useMemo<CardTagDimensionFilters>(
     () => ({ selectedWeeks, selectedTopics, selectedTypes }),
     [selectedTopics, selectedTypes, selectedWeeks],
@@ -639,16 +691,45 @@ function App() {
       )
       .map(({ card }) => card);
   }, [attemptCounts, filteredCards, studyOrder]);
+  const firstLineTagDimensionFilters = useMemo<CardTagDimensionFilters>(
+    () => ({
+      selectedWeeks: firstLineFilterState.selectedWeeks,
+      selectedTopics: firstLineFilterState.selectedTopics,
+      selectedTypes: firstLineFilterState.selectedTypes,
+    }),
+    [
+      firstLineFilterState.selectedTopics,
+      firstLineFilterState.selectedTypes,
+      firstLineFilterState.selectedWeeks,
+    ],
+  );
   const firstLineFilteredCards = useMemo(() => {
     const visibleFilterCandidates = cardCatalog.filter((card) => {
-      const matchesArchive = matchesArchiveFilter(card, archivedCardIds, archiveFilter);
-      const matchesDeck = selectedDeck === "all" || card.deck === selectedDeck;
-      const matchesTag = selectedTag === "all" || card.tags.includes(selectedTag);
-      const matchesTagDimensions = matchesCardTagDimensionFilters(card, tagDimensionFilters);
-      const matchesFinal = !finalOnly || card.tags.includes("final_rep");
-      const matchesHard = !hardOnly || statuses[card.id] === "hard";
-      const matchesScope = cardScope === "all" || statuses[card.id] == null;
-      const matchesContent = matchesAnswerContentFilter(card, answerContentFilter);
+      const matchesArchive = matchesArchiveFilter(
+        card,
+        archivedCardIds,
+        firstLineFilterState.archiveFilter,
+      );
+      const matchesDeck =
+        firstLineFilterState.selectedDeck === "all" ||
+        card.deck === firstLineFilterState.selectedDeck;
+      const matchesTag =
+        firstLineFilterState.selectedTag === "all" ||
+        card.tags.includes(firstLineFilterState.selectedTag);
+      const matchesTagDimensions = matchesCardTagDimensionFilters(
+        card,
+        firstLineTagDimensionFilters,
+      );
+      const matchesFinal =
+        !firstLineFilterState.finalOnly || card.tags.includes("final_rep");
+      const matchesHard =
+        !firstLineFilterState.hardOnly || statuses[card.id] === "hard";
+      const matchesScope =
+        firstLineFilterState.cardScope === "all" || statuses[card.id] == null;
+      const matchesContent = matchesAnswerContentFilter(
+        card,
+        firstLineFilterState.answerContentFilter,
+      );
 
       return (
         matchesArchive &&
@@ -665,25 +746,20 @@ function App() {
     return filterCardsByAnswerLearningStatusPresence(
       visibleFilterCandidates,
       answerLearningStatuses,
-      firstLineAnswerStatusOnly,
+      firstLineFilterState.answerStatusOnly,
     );
   }, [
-    answerContentFilter,
     answerLearningStatuses,
-    archiveFilter,
     archivedCardIds,
     cardCatalog,
-    cardScope,
-    finalOnly,
-    firstLineAnswerStatusOnly,
-    hardOnly,
-    selectedDeck,
-    selectedTag,
-    tagDimensionFilters,
+    firstLineFilterState,
+    firstLineTagDimensionFilters,
     statuses,
   ]);
   const orderedFirstLineCards = useMemo(() => {
-    if (studyOrder !== "least-practiced") return firstLineFilteredCards;
+    if (firstLineFilterState.studyOrder !== "least-practiced") {
+      return firstLineFilteredCards;
+    }
 
     return firstLineFilteredCards
       .map((card, originalIndex) => ({ card, originalIndex }))
@@ -694,7 +770,7 @@ function App() {
           left.originalIndex - right.originalIndex,
       )
       .map(({ card }) => card);
-  }, [attemptCounts, firstLineFilteredCards, studyOrder]);
+  }, [attemptCounts, firstLineFilterState.studyOrder, firstLineFilteredCards]);
   const firstLineSetupCards = useMemo(
     () =>
       libraryStudyHandoff?.target === "firstLine"
@@ -784,8 +860,13 @@ function App() {
   const canGoNext =
     selectedFilteredIndex >= 0 && selectedFilteredIndex < activeCards.length - 1;
 
+  const firstLineEffectiveStudyOrder =
+    libraryStudyHandoff?.target === "firstLine"
+      ? studyOrder
+      : firstLineFilterState.studyOrder;
+
   function createDrillCardIds(sourceCards: OpicCard[]) {
-    return studyOrder === "random"
+    return firstLineEffectiveStudyOrder === "random"
       ? shuffleCardIds(sourceCards)
       : sourceCards.map((card) => card.id);
   }
@@ -803,7 +884,13 @@ function App() {
     if (!selectedCardId || !recoveredIds.includes(selectedCardId)) {
       setSelectedCardId(recoveredIds[0]);
     }
-  }, [drillCards.length, firstLineSetupCards, selectedCardId, studyOrder, view]);
+  }, [
+    drillCards.length,
+    firstLineEffectiveStudyOrder,
+    firstLineSetupCards,
+    selectedCardId,
+    view,
+  ]);
 
   useEffect(() => {
     if (
@@ -1208,12 +1295,24 @@ function App() {
     window.scrollTo({ top: 0, behavior: "auto" });
   }
 
+  function applyFirstLineFilterState(filters: FirstLineFilterState) {
+    setFirstLineFilterState(filters);
+  }
+
+  function restoreFirstLineFilterPreferences() {
+    const preferences = readFirstLineFilterPreferences(
+      cardCatalog,
+      localStorage,
+      firstLineFilterState,
+    );
+    applyFirstLineFilterState(preferences.filters);
+  }
+
   function openFirstLineSetup() {
     if (!canNavigateFromHome()) return;
+    restoreFirstLineFilterPreferences();
     setLibraryStudyHandoff(null);
     setStudySetupReturnView("list");
-    // The answer-learning status filter is not shown in this setup screen.
-    setAnswerLearningStatusFilter("all");
     setSelectedCardId(null);
     pushHistoryView("drillSetup");
     setView("drillSetup");
@@ -1233,6 +1332,11 @@ function App() {
     pushHistoryView("drillSetup");
     setView("drillSetup");
     window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function clearFirstLineLibraryHandoff() {
+    restoreFirstLineFilterPreferences();
+    setLibraryStudyHandoff(null);
   }
 
   function startFirstLineFromSetup() {
@@ -1279,11 +1383,19 @@ function App() {
 
   function openAnswerLearningSetup() {
     if (!canNavigateFromHome()) return;
+    const filters = readAnswerLearningFilterPreferences(
+      activeCatalog,
+      localStorage,
+      answerSession.filters,
+    ).filters;
     setLibraryStudyHandoff(null);
     setStudySetupReturnView("list");
     setAnswerLearningUndo(null);
     setAnswerLearningFeedback(null);
-    updateAnswerSession(returnToAnswerLearningSetup(answerSession));
+    updateAnswerSession({
+      ...returnToAnswerLearningSetup(answerSession),
+      filters,
+    });
     setSelectedCardId(null);
     setAnswerLearningReturnView("setup");
     pushHistoryView("answerSetup");
@@ -1299,6 +1411,11 @@ function App() {
     if (cardIds.length === 0) return;
 
     const handoff = createLibraryStudyHandoff("answerLearning", cardIds);
+    const filters = readAnswerLearningFilterPreferences(
+      activeCatalog,
+      localStorage,
+      answerSession.filters,
+    ).filters;
     setLibraryStudyHandoff(handoff);
     setStudySetupReturnView("library");
     setAnswerLearningUndo(null);
@@ -1309,7 +1426,7 @@ function App() {
         answerSession.selectedCardIds,
         handoff.cardIds,
       ),
-      filters: { ...DEFAULT_ANSWER_LEARNING_FILTERS },
+      filters,
     });
     setSelectedCardId(null);
     setAnswerLearningReturnView("setup");
@@ -1319,20 +1436,24 @@ function App() {
   }
 
   function startAnswerLearning() {
+    const filters =
+      libraryStudyHandoff?.target === "answerLearning"
+        ? DEFAULT_ANSWER_LEARNING_FILTERS
+        : answerSession.filters;
     const filtered = orderAnswerLearningCards(
       filterAnswerLearningCards(
         answerLearningSetupCards,
-        answerSession.filters,
+        filters,
         answerLearningStatuses,
         myAnswers,
       ),
-      answerSession.filters.order,
+      filters.order,
       answerLearningAttemptCounts,
     );
     const selected = new Set(answerSession.selectedCardIds);
     const ids = filtered.map((card) => card.id).filter((id) => selected.has(id));
     const cardOrder =
-      answerSession.filters.order === "random"
+      filters.order === "random"
         ? shuffleAnswerLearningIds(ids)
         : ids;
     if (cardOrder.length === 0) return;
@@ -1777,11 +1898,23 @@ function App() {
     setSelectedTypes([]);
     setFinalOnly(false);
     setHardOnly(false);
-    setFirstLineAnswerStatusOnly(false);
     setCardScope("all");
     setStudyOrder("default");
     setAnswerContentFilter("all");
     setArchiveFilter("active");
+  }
+
+  function resetFirstLineFilters() {
+    setFirstLineFilterState(DEFAULT_FIRST_LINE_FILTER_STATE);
+  }
+
+  function updateFirstLineTagDimensions(next: CardTagDimensionFilters) {
+    setFirstLineFilterState((current) => ({
+      ...current,
+      selectedWeeks: next.selectedWeeks,
+      selectedTopics: next.selectedTopics,
+      selectedTypes: next.selectedTypes,
+    }));
   }
 
   function resetFilters() {
@@ -2159,31 +2292,53 @@ function App() {
           cardCount={firstLineSetupCards.length}
           decks={decks}
           tags={tags}
-          selectedDeck={selectedDeck}
-          selectedTag={selectedTag}
-          selectedWeeks={selectedWeeks}
-          selectedTopics={selectedTopics}
-          selectedTypes={selectedTypes}
-          finalOnly={finalOnly}
-          hardOnly={hardOnly}
-          cardScope={cardScope}
-          studyOrder={studyOrder}
-          answerContentFilter={answerContentFilter}
-          answerStatusOnly={firstLineAnswerStatusOnly}
+          selectedDeck={firstLineFilterState.selectedDeck}
+          selectedTag={firstLineFilterState.selectedTag}
+          selectedWeeks={firstLineFilterState.selectedWeeks}
+          selectedTopics={firstLineFilterState.selectedTopics}
+          selectedTypes={firstLineFilterState.selectedTypes}
+          finalOnly={firstLineFilterState.finalOnly}
+          hardOnly={firstLineFilterState.hardOnly}
+          cardScope={firstLineFilterState.cardScope}
+          studyOrder={firstLineFilterState.studyOrder}
+          answerContentFilter={firstLineFilterState.answerContentFilter}
+          answerStatusOnly={firstLineFilterState.answerStatusOnly}
           mode={firstLineMode}
           questionCount={mockQuestionCount}
-          onDeckChange={setSelectedDeck}
-          onTagChange={setSelectedTag}
-          onTagDimensionsChange={updateTagDimensions}
-          onFinalOnlyChange={setFinalOnly}
-          onHardOnlyChange={setHardOnly}
-          onCardScopeChange={setCardScope}
-          onStudyOrderChange={setStudyOrder}
-          onAnswerContentFilterChange={setAnswerContentFilter}
-          onAnswerStatusOnlyChange={setFirstLineAnswerStatusOnly}
+          onDeckChange={(selectedDeck) =>
+            setFirstLineFilterState((current) => ({ ...current, selectedDeck }))
+          }
+          onTagChange={(selectedTag) =>
+            setFirstLineFilterState((current) => ({ ...current, selectedTag }))
+          }
+          onTagDimensionsChange={updateFirstLineTagDimensions}
+          onFinalOnlyChange={(finalOnly) =>
+            setFirstLineFilterState((current) => ({ ...current, finalOnly }))
+          }
+          onHardOnlyChange={(hardOnly) =>
+            setFirstLineFilterState((current) => ({ ...current, hardOnly }))
+          }
+          onCardScopeChange={(cardScope) =>
+            setFirstLineFilterState((current) => ({ ...current, cardScope }))
+          }
+          onStudyOrderChange={(studyOrder) =>
+            setFirstLineFilterState((current) => ({ ...current, studyOrder }))
+          }
+          onAnswerContentFilterChange={(answerContentFilter) =>
+            setFirstLineFilterState((current) => ({
+              ...current,
+              answerContentFilter,
+            }))
+          }
+          onAnswerStatusOnlyChange={(answerStatusOnly) =>
+            setFirstLineFilterState((current) => ({
+              ...current,
+              answerStatusOnly,
+            }))
+          }
           onModeChange={setFirstLineMode}
           onQuestionCountChange={setMockQuestionCount}
-          onReset={resetVisibleStudyFilters}
+          onReset={resetFirstLineFilters}
           onStart={startFirstLineFromSetup}
           onBack={() => requestAppBack(true)}
           backLabel={studySetupReturnView === "library" ? "카드 라이브러리로" : "홈으로"}
@@ -2192,9 +2347,11 @@ function App() {
               ? firstLineSetupCards.length
               : null
           }
-          onClearHandoff={() => setLibraryStudyHandoff(null)}
-          archiveFilter={archiveFilter}
-          onArchiveFilterChange={setArchiveFilter}
+          onClearHandoff={clearFirstLineLibraryHandoff}
+          archiveFilter={firstLineFilterState.archiveFilter}
+          onArchiveFilterChange={(archiveFilter) =>
+            setFirstLineFilterState((current) => ({ ...current, archiveFilter }))
+          }
         />
       </div>
     );

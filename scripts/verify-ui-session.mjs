@@ -19,6 +19,15 @@ import {
   parseCardDetailUiSession,
   parseShadowingPlayerSession,
 } from "../src/utils/uiSessionStorage.ts";
+import {
+  ANSWER_LEARNING_FILTER_PREFERENCES_STORAGE_KEY,
+  FIRST_LINE_FILTER_PREFERENCES_STORAGE_KEY,
+  readAnswerLearningFilterPreferences,
+  readFirstLineFilterPreferences,
+  saveAnswerLearningFilterPreferences,
+  saveFirstLineFilterPreferences,
+} from "../src/utils/learningFilterPreferences.ts";
+import { createEmptyAnswerLearningSession } from "../src/utils/answerLearningSession.ts";
 
 let passed = 0;
 function test(name, run) {
@@ -121,6 +130,104 @@ test("navigation 차원 선택은 canonical 정렬하고 dataset에서 사라진
   assert.deepEqual(resolved.filters.selectedWeeks, ["week6"]);
   assert.deepEqual(resolved.filters.selectedTopics, []);
   assert.deepEqual(resolved.filters.selectedTypes, []);
+});
+
+test("첫 문장 필터는 화면 전용 local preference로 복원", () => {
+  const storage = new MemoryStorage();
+  const saved = saveFirstLineFilterPreferences({
+    selectedDeck: cards[0].deck,
+    selectedTag: "all",
+    selectedWeeks: ["week6"],
+    selectedTopics: [],
+    selectedTypes: [],
+    finalOnly: true,
+    hardOnly: true,
+    cardScope: "new",
+    studyOrder: "least-practiced",
+    answerContentFilter: "full-answer",
+    answerStatusOnly: true,
+    archiveFilter: "all",
+  }, cards, storage);
+  assert.ok(storage.getItem(FIRST_LINE_FILTER_PREFERENCES_STORAGE_KEY));
+  assert.deepEqual(readFirstLineFilterPreferences(cards, storage), saved);
+});
+
+test("첫 문장 필터는 사라진 덱과 태그를 기본값으로 정리", () => {
+  const storage = new MemoryStorage();
+  storage.setItem(FIRST_LINE_FILTER_PREFERENCES_STORAGE_KEY, JSON.stringify({
+    version: 1,
+    filters: {
+      selectedDeck: "missing-deck",
+      selectedTag: "missing-tag",
+      selectedWeeks: ["week999"],
+      selectedTopics: ["topic_missing"],
+      selectedTypes: ["type_missing"],
+      finalOnly: false,
+      hardOnly: false,
+      cardScope: "broken",
+      studyOrder: "broken",
+      answerContentFilter: "broken",
+      answerStatusOnly: false,
+      archiveFilter: "broken",
+    },
+  }));
+  const restored = readFirstLineFilterPreferences(cards, storage).filters;
+  assert.equal(restored.selectedDeck, "all");
+  assert.equal(restored.selectedTag, "all");
+  assert.deepEqual(restored.selectedWeeks, []);
+  assert.deepEqual(restored.selectedTopics, []);
+  assert.deepEqual(restored.selectedTypes, []);
+  assert.equal(restored.cardScope, "all");
+  assert.equal(restored.studyOrder, "default");
+  assert.equal(restored.answerContentFilter, "all");
+  assert.equal(restored.archiveFilter, "active");
+});
+
+test("답변 익히기 필터는 선택 카드와 분리된 local preference로 복원", () => {
+  const storage = new MemoryStorage();
+  const filters = {
+    ...createEmptyAnswerLearningSession().filters,
+    deck: cards[0].deck,
+    selectedWeeks: ["week6"],
+    selectedTags: ["hobby"],
+    tag: "hobby",
+    answerPresence: "with",
+    status: "learning",
+    order: "least-practiced",
+    finalOnly: true,
+  };
+  const saved = saveAnswerLearningFilterPreferences(filters, cards, storage);
+  const raw = JSON.parse(storage.getItem(ANSWER_LEARNING_FILTER_PREFERENCES_STORAGE_KEY));
+  assert.equal(Object.hasOwn(raw, "selectedCardIds"), false);
+  assert.equal(Object.hasOwn(raw, "cardOrder"), false);
+  assert.deepEqual(readAnswerLearningFilterPreferences(cards, storage), saved);
+});
+
+test("답변 익히기 필터는 손상값과 사라진 조건을 안전하게 제거", () => {
+  const storage = new MemoryStorage();
+  storage.setItem(ANSWER_LEARNING_FILTER_PREFERENCES_STORAGE_KEY, JSON.stringify({
+    version: 1,
+    filters: {
+      deck: "missing-deck",
+      tag: "missing-tag",
+      selectedTags: ["missing-tag"],
+      selectedWeeks: ["week999"],
+      selectedTopics: ["topic_missing"],
+      selectedTypes: ["type_missing"],
+      finalOnly: false,
+      answerPresence: "broken",
+      status: "broken",
+      order: "broken",
+    },
+  }));
+  const restored = readAnswerLearningFilterPreferences(cards, storage).filters;
+  assert.equal(restored.deck, "all");
+  assert.equal(restored.tag, "all");
+  assert.deepEqual(restored.selectedTags, []);
+  assert.deepEqual(restored.selectedWeeks, []);
+  assert.equal(restored.answerPresence, "all");
+  assert.equal(restored.status, "all");
+  assert.equal(restored.order, "default");
 });
 
 test("홈은 전체 CardList 대신 compact 카드 대시보드 사용", () => {

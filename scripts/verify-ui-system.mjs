@@ -499,6 +499,28 @@ test("다중 차원 필터는 disclosure checkbox와 선택 요약을 제공한�
   assert.match(css, /\.card-tag-dimension-options label,[\s\S]*?min-height:\s*44px/);
   assert.match(css, /@media \(max-width:\s*960px\)[\s\S]*?\.card-tag-dimension-options\s*\{[\s\S]*?position:\s*static/);
 });
+
+test("첫 문장과 답변 익히기 필터는 화면별 local preference로만 저장한다", () => {
+  assert.match(app, /saveFirstLineFilterPreferences\(firstLineFilterState, cardCatalog\)/);
+  assert.match(app, /saveAnswerLearningFilterPreferences\(answerSession\.filters, activeCatalog\)/);
+  assert.match(app, /useState<FirstLineFilterState>/);
+  assert.match(app, /selectedDeck=\{firstLineFilterState\.selectedDeck\}/);
+  assert.doesNotMatch(app, /setFirstLineAnswerStatusOnly/);
+  assert.match(app, /readFirstLineFilterPreferences\([\s\S]*?firstLineFilterState/);
+  assert.match(app, /readAnswerLearningFilterPreferences\([\s\S]*?answerSession\.filters/);
+  assert.match(answerLearningSetup, /handoffCount === null && \(/);
+  assert.match(answerLearningSetup, /const effectiveFilters = handoffCount === null/);
+  assert.match(app, /libraryStudyHandoff\?\.target === "answerLearning"[\s\S]*?DEFAULT_ANSWER_LEARNING_FILTERS[\s\S]*?: answerSession\.filters/);
+});
+
+test("답변 익히기 문장은 시간 제한 없는 두 번 누르기 선택 상태를 제공한다", () => {
+  assert.match(answerLearning, /resolveAnswerLearningSentencePress\(/);
+  assert.match(answerLearning, /resolveAnswerLearningSentenceSelection\(/);
+  assert.match(answerLearning, /aria-pressed=\{isSelectedSentence\}/);
+  assert.match(answerLearning, /같은 문장을 다시 누르면 재생합니다/);
+  assert.match(answerLearning, /sentenceSelectionLabel \|\| answerPlaybackLabel/);
+  assert.match(css, /\.answer-learning-sentences button\.is-selected/);
+});
 test("답변 익히기 기타 태그와 활성 필터는 다중 선택과 강조를 제공한다", () => {
   assert.match(answerLearningSetup, /selected=\{session\.filters\.selectedTags\}/);
   assert.match(answerLearningSetup, /onChange=\{updateOtherTags\}/);

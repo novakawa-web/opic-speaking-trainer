@@ -14,6 +14,12 @@ export type AnswerLearningPlaybackState = {
   currentIndex: number;
 };
 
+export type AnswerLearningSentencePressAction = "select" | "play" | "stop";
+export type AnswerLearningSentenceSelection = {
+  index: number;
+  phase: "armed" | "playing";
+};
+
 export function clampAnswerLearningSentenceIndex(
   index: number,
   sentenceCount: number,
@@ -68,6 +74,37 @@ export function shouldStopAnswerLearningSentencePlayback(
       state.status === "paused") &&
     state.currentIndex === requestedIndex
   );
+}
+
+export function resolveAnswerLearningSentencePress(
+  state: AnswerLearningPlaybackState,
+  selectedIndex: number | null,
+  requestedIndex: number,
+): AnswerLearningSentencePressAction {
+  if (isAnswerLearningPlaybackActive(state.status)) {
+    return shouldStopAnswerLearningSentencePlayback(state, requestedIndex)
+      ? "stop"
+      : "play";
+  }
+  return selectedIndex === requestedIndex ? "play" : "select";
+}
+
+export function resolveAnswerLearningSentenceSelection(
+  state: AnswerLearningPlaybackState,
+  action: AnswerLearningSentencePressAction,
+  requestedIndex: number,
+): AnswerLearningSentenceSelection | null {
+  if (action === "select") {
+    return { index: requestedIndex, phase: "armed" };
+  }
+  if (action === "stop") return null;
+  if (
+    state.mode === "continuous" &&
+    isAnswerLearningPlaybackActive(state.status)
+  ) {
+    return null;
+  }
+  return { index: requestedIndex, phase: "playing" };
 }
 
 export function pauseAnswerLearningPlayback(

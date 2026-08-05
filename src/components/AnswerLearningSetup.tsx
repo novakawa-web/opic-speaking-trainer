@@ -82,14 +82,17 @@ export function AnswerLearningSetup({
   handoffCount,
   onClearHandoff,
 }: Props) {
+  const effectiveFilters = handoffCount === null
+    ? session.filters
+    : DEFAULT_ANSWER_LEARNING_FILTERS;
   const visibleCards = useMemo(
     () =>
       orderAnswerLearningCards(
-        filterAnswerLearningCards(cards, session.filters, statuses, myAnswers),
-        session.filters.order,
+        filterAnswerLearningCards(cards, effectiveFilters, statuses, myAnswers),
+        effectiveFilters.order,
         attemptCounts,
       ),
-    [attemptCounts, cards, myAnswers, session.filters, statuses],
+    [attemptCounts, cards, effectiveFilters, myAnswers, statuses],
   );
   const selected = new Set(session.selectedCardIds);
   const selectionState = getAnswerLearningSelectionState(visibleCards, session.selectedCardIds);
@@ -146,6 +149,7 @@ export function AnswerLearningSetup({
         </section>
       )}
 
+      {handoffCount === null && (
       <section className="answer-learning-filter" aria-labelledby="answer-filter-title">
         <div className="section-title-row">
           <div>
@@ -225,6 +229,7 @@ export function AnswerLearningSetup({
           </label>
         </div>
       </section>
+      )}
 
       <section className="answer-learning-selection">
         <StudyScopeSummary

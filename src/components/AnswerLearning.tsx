@@ -10,7 +10,12 @@ import type {
   OpicCard,
 } from "../types";
 import type { AnswerLearningRevealState } from "../utils/answerLearningSession";
-import { shouldShowAnswerLearningStopControl } from "../utils/answerLearningPlayback";
+import {
+  resolveAnswerLearningSentencePress,
+  resolveAnswerLearningSentenceSelection,
+  shouldShowAnswerLearningStopControl,
+  type AnswerLearningSentenceSelection,
+} from "../utils/answerLearningPlayback";
 import { extractMyFirstLine } from "../utils/myAnswerStorage";
 import { createModelAnswerSource, createMyAnswerSource, type ShadowingSource } from "../utils/shadowingPlayer";
 import {
@@ -97,6 +102,8 @@ export function AnswerLearning({
   const [isEditingCard, setIsEditingCard] = useState(false);
   const [isCardEditorDirty, setIsCardEditorDirty] = useState(false);
   const [ttsRate, setTtsRate] = useState(readTtsRate);
+  const [sentenceSelection, setSentenceSelection] =
+    useState<AnswerLearningSentenceSelection | null>(null);
   const recorderRef = useRef<AudioRecorderHandle | null>(null);
   const [recordingStatus, setRecordingStatus] =
     useState<RecordingStatus>("idle");
@@ -127,12 +134,24 @@ export function AnswerLearning({
   useEffect(() => {
     stop();
     answerSpeech.stop();
+    setSentenceSelection(null);
     recorderRef.current?.clearRecording();
   }, [answerSpeech.stop, card.id, resolvedSource, stop]);
+
+  useEffect(() => {
+    if (sentenceSelection?.phase === "playing" && !answerSpeech.isActive) {
+      setSentenceSelection(null);
+    }
+  }, [answerSpeech.isActive, sentenceSelection]);
+
+  useEffect(() => {
+    if (!reveal.answer) setSentenceSelection(null);
+  }, [reveal.answer]);
 
   const clearCurrentAudio = useCallback(() => {
     stop();
     answerSpeech.stop();
+    setSentenceSelection(null);
     recorderRef.current?.clearRecording();
   }, [answerSpeech.stop, stop]);
 
@@ -172,6 +191,7 @@ export function AnswerLearning({
 
   function toggleSpeech(text: string, target: "question" | "firstLine" | "modelAnswer" | "myAnswer") {
     if (recorderBusy) return;
+    setSentenceSelection(null);
     answerSpeech.stop();
     recorderRef.current?.stopPlayback();
     if (activeTarget === target) stop();
@@ -187,6 +207,7 @@ export function AnswerLearning({
   function changeRate(rawValue: string) {
     const nextRate = Number(rawValue);
     if (!isTtsRate(nextRate)) return;
+    setSentenceSelection(null);
     stop();
     answerSpeech.stop();
     setTtsRate(nextRate);
@@ -206,7 +227,25 @@ export function AnswerLearning({
       answerSpeech.resume();
       return;
     }
+    setSentenceSelection(null);
     answerSpeech.playAll();
+  }
+
+  function handleSentencePress(sentenceIndex: number) {
+    const action = resolveAnswerLearningSentencePress(
+      answerSpeech.playback,
+      sentenceSelection?.index ?? null,
+      sentenceIndex,
+    );
+    setSentenceSelection(
+      resolveAnswerLearningSentenceSelection(
+        answerSpeech.playback,
+        action,
+        sentenceIndex,
+      ),
+    );
+    if (action === "select") return;
+    answerSpeech.playFromSentence(sentenceIndex);
   }
 
   const answerPlaybackLabel =
@@ -219,6 +258,9 @@ export function AnswerLearning({
           : answerSpeech.playback.status === "completed"
             ? "전체 답변 재생을 완료했습니다."
             : answerSpeech.message;
+  const sentenceSelectionLabel = sentenceSelection?.phase === "armed"
+    ? `${sentenceSelection.index + 1}번째 문장이 선택되었습니다. 같은 문장을 한 번 더 누르면 재생합니다.`
+    : null;
 
   function openCardEditor() {
     clearCurrentAudio();
@@ -371,7 +413,15 @@ export function AnswerLearning({
                 </span>
               </button>
               {shouldShowAnswerLearningStopControl(answerSpeech.playback) && (
-                <button type="button" onClick={answerSpeech.stop}>정지</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSentenceSelection(null);
+                    answerSpeech.stop();
+                  }}
+                >
+                  정지
+                </button>
               )}
               <label className="answer-learning-tts-rate">
                 <span>속도</span>
@@ -392,7 +442,7 @@ export function AnswerLearning({
               <button type="button" role="tab" aria-selected={resolvedSource === "my-answer"} disabled={!myAnswer} onClick={() => changeAnswerSource("my-answer")}>나만의 답변</button>
             </div>
             <p className="answer-learning-playback-status" aria-live="polite">
-              {answerPlaybackLabel || "정지 상태에서는 문장을 누르면 선택한 문장만 재생합니다."}
+              {sentenceSelectionLabel || answerPlaybackLabel || "정지 상태에서는 문장을 한 번 선택하고, 같은 문장을 다시 누르면 재생합니다."}
             </p>
             <div className="answer-learning-sentences">
               {answerParagraphs.map((paragraph, paragraphIndex) => (
@@ -409,11 +459,14 @@ export function AnswerLearning({
                     const stopsCurrentSentence =
                       isCurrentSentence &&
                       answerSpeech.playback.mode === "single";
+                    const isSelectedSentence =
+                      sentenceSelection?.index === sentenceIndex;
                     return (
                       <button
                         key={`${card.id}-${sentenceIndex}`}
                         type="button"
-                        className={isCurrentSentence ? "is-current" : ""}
+                        className={`${isSelectedSentence ? "is-selected" : ""} ${isCurrentSentence ? "is-current" : ""}`.trim()}
+                        aria-pressed={isSelectedSentence}
                         aria-current={isCurrentSentence ? "true" : undefined}
                         aria-label={`${sentenceIndex + 1}번 문장${
                           stopsCurrentSentence
@@ -421,10 +474,12 @@ export function AnswerLearning({
                             : answerSpeech.isActive &&
                                 answerSpeech.playback.mode === "continuous"
                             ? "부터 끝까지 재생"
-                            : "만 재생"
+                            : isSelectedSentence
+                              ? " 듣기"
+                              : " 선택"
                         }`}
-                        disabled={recorderBusy}
-                        onClick={() => answerSpeech.playFromSentence(sentenceIndex)}
+                        disabled={!answerSpeech.isSupported || recorderBusy}
+                        onClick={() => handleSentencePress(sentenceIndex)}
                       >
                         <span>{sentenceIndex + 1}</span>
                         {sentence}
@@ -475,10 +530,12 @@ export function AnswerLearning({
           onBeforeRecord={() => {
             stop();
             answerSpeech.stop();
+            setSentenceSelection(null);
           }}
           onBeforePlayback={() => {
             stop();
             answerSpeech.stop();
+            setSentenceSelection(null);
           }}
           onStatusChange={setRecordingStatus}
         />
