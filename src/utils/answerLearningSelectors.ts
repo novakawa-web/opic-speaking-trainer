@@ -53,9 +53,10 @@ export function filterAnswerLearningCards(
 ) {
   return cards.filter((card) => {
     const hasMyAnswer = Boolean(myAnswers[card.id]);
+    const selectedTags = filters.selectedTags ?? (filters.tag === "all" ? [] : [filters.tag]);
     return (
       (filters.deck === "all" || card.deck === filters.deck) &&
-      (filters.tag === "all" || card.tags.includes(filters.tag)) &&
+      (selectedTags.length === 0 || selectedTags.some((tag) => card.tags.includes(tag))) &&
       matchesCardTagDimensionFilters(card, filters) &&
       (!filters.finalOnly || card.tags.includes("final_rep")) &&
       (filters.answerPresence === "all" ||

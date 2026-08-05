@@ -17,8 +17,8 @@ import {
   orderAnswerLearningCards,
 } from "../utils/answerLearningSelectors";
 import { StudyScopeSummary } from "./StudyScopeSummary";
-import { CardTagDimensionFilters } from "./CardTagDimensionFilters";
-import { getCardTagFilterOptions } from "../utils/cardTagFilters";
+import { CardTagDimensionFilters, CardTagMultiSelectField } from "./CardTagDimensionFilters";
+import { formatAnswerLearningTag, getCardTagFilterOptions } from "../utils/cardTagFilters";
 
 type Props = {
   cards: OpicCard[];
@@ -103,6 +103,10 @@ export function AnswerLearningSetup({
     });
   }
 
+  function updateOtherTags(selectedTags: string[]) {
+    updateFilters({ selectedTags, tag: selectedTags[0] ?? "all" });
+  }
+
   function toggleCard(cardId: string) {
     const next = selected.has(cardId)
       ? session.selectedCardIds.filter((id) => id !== cardId)
@@ -163,7 +167,7 @@ export function AnswerLearningSetup({
           </button>
         </div>
         <div className="answer-learning-filter-grid">
-          <label>
+          <label className={session.filters.deck !== "all" ? "is-filter-active" : ""}>
             <span>덱</span>
             <select value={session.filters.deck} onChange={(event) => updateFilters({ deck: event.target.value })}>
               <option value="all">전체 덱</option>
@@ -178,15 +182,17 @@ export function AnswerLearningSetup({
             onChange={(next) => updateFilters(next)}
           />
           {otherTags.length > 0 && (
-            <label>
-              <span>기타 태그</span>
-              <select value={session.filters.tag} onChange={(event) => updateFilters({ tag: event.target.value })}>
-                <option value="all">전체 기타 태그</option>
-                {otherTags.map((tag) => <option key={tag} value={tag}>{tag}</option>)}
-              </select>
-            </label>
+            <CardTagMultiSelectField
+              id="answer-learning-other-tags"
+              label="기타 태그"
+              emptyLabel="전체 기타 태그"
+              options={otherTags}
+              selected={session.filters.selectedTags}
+              onChange={updateOtherTags}
+              formatOption={formatAnswerLearningTag}
+            />
           )}
-          <label>
+          <label className={session.filters.answerPresence !== "all" ? "is-filter-active" : ""}>
             <span>나만의 답변</span>
             <select value={session.filters.answerPresence} onChange={(event) => updateFilters({ answerPresence: event.target.value as AnswerLearningFilters["answerPresence"] })}>
               <option value="all">전체</option>
@@ -194,7 +200,7 @@ export function AnswerLearningSetup({
               <option value="without">없음</option>
             </select>
           </label>
-          <label>
+          <label className={session.filters.status !== "all" ? "is-filter-active" : ""}>
             <span>답변 익히기 상태</span>
             <select value={session.filters.status} onChange={(event) => updateFilters({ status: event.target.value as AnswerLearningFilters["status"] })}>
               <option value="all">전체</option>
@@ -205,7 +211,7 @@ export function AnswerLearningSetup({
               <option value="speakable">말할 수 있음</option>
             </select>
           </label>
-          <label>
+          <label className={session.filters.order !== "default" ? "is-filter-active" : ""}>
             <span>학습 순서</span>
             <select value={session.filters.order} onChange={(event) => updateFilters({ order: event.target.value as AnswerLearningFilters["order"] })}>
               <option value="default">기본 순서</option>
@@ -213,7 +219,7 @@ export function AnswerLearningSetup({
               <option value="least-practiced">연습 횟수 적은 순</option>
             </select>
           </label>
-          <label className="answer-final-filter">
+          <label className={`answer-final-filter ${session.filters.finalOnly ? "is-filter-active" : ""}`}>
             <input type="checkbox" checked={session.filters.finalOnly} onChange={(event) => updateFilters({ finalOnly: event.target.checked })} />
             <span>final_rep만 보기</span>
           </label>

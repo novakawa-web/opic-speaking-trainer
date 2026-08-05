@@ -165,7 +165,10 @@ test("홈 안내 문구는 현재 제공하는 세 학습 흐름과 실제 이�
   assert.match(quickStart, />질문에 첫 문장을 바로 말해요\.<\/span>/);
   assert.match(quickStart, />쉐도잉 지문 열기<\/strong>/);
   assert.match(quickStart, />지문을 고르거나 작성한 뒤 문장별로 따라 말해요\.<\/span>/);
-  assert.match(dashboard, /현재 조건으로 첫 문장 연습하세요\./);
+  assert.match(dashboard, /전체 목록과 현재 학습 조건은 카드 라이브러리에서 확인하세요\./);
+  assert.match(dashboard, />\s*카드 라이브러리 열기\s*</);
+  assert.doesNotMatch(dashboard, /첫 문장 연습 시작|onStartDrill/);
+  assert.match(quickStart, />첫 문장 연습<\/strong>/);
   assert.match(homeManagement, /학습일 · 카드 TSV · 전체 JSON 백업/);
   assert.match(app, /onOpenShadowing=\{\(\) => openSavedPassages\(false\)\}/);
   assert.match(directTextPractice, /<h2 id="direct-practice-title"[^>]*>쉐도잉 지문<\/h2>/);
@@ -473,7 +476,7 @@ test("답변 익히기 상태 select는 없음 있음과 기존 상세 상태를
 test("세 카드 선택 화면은 공통 다중 차원 필터와 동일한 상대 순서를 사용한다", () => {
   assert.match(firstLineSetup, /selectedWeeks=\{props\.selectedWeeks\}[\s\S]*?onTagDimensionsChange=\{props\.onTagDimensionsChange\}/);
   assert.match(cardLibrary, /selectedWeeks=\{selectedWeeks\}[\s\S]*?onTagDimensionsChange=\{onTagDimensionsChange\}/);
-  assert.match(answerLearningSetup, /<span>덱<\/span>[\s\S]*?<CardTagDimensionFilters[\s\S]*?<span>기타 태그<\/span>[\s\S]*?<span>나만의 답변<\/span>/);
+  assert.match(answerLearningSetup, /<span>덱<\/span>[\s\S]*?<CardTagDimensionFilters[\s\S]*?label="기타 태그"[\s\S]*?<span>나만의 답변<\/span>/);
   assert.match(tagFilter, /<span>덱<\/span>[\s\S]*?<CardTagDimensionFilterFields[\s\S]*?<span>기타 태그<\/span>[\s\S]*?answerContentFilter/);
   assert.match(cardTagDimensionFilters, /label: "학습 세트"[\s\S]*?label: "주제"[\s\S]*?label: "질문 유형"/);
   assert.match(cardTagDimensionFilters, /emptyLabel: "전체 학습 세트"/);
@@ -488,6 +491,23 @@ test("다중 차원 필터는 disclosure checkbox와 선택 요약을 제공한�
   assert.match(css, /\.card-tag-dimension-filter summary\s*\{[\s\S]*?min-height:\s*46px/);
   assert.match(css, /\.card-tag-dimension-options label,[\s\S]*?min-height:\s*44px/);
   assert.match(css, /@media \(max-width:\s*960px\)[\s\S]*?\.card-tag-dimension-options\s*\{[\s\S]*?position:\s*static/);
+});
+test("답변 익히기 기타 태그와 활성 필터는 다중 선택과 강조를 제공한다", () => {
+  assert.match(answerLearningSetup, /selected=\{session\.filters\.selectedTags\}/);
+  assert.match(answerLearningSetup, /onChange=\{updateOtherTags\}/);
+  assert.match(answerLearningSetup, /formatOption=\{formatAnswerLearningTag\}/);
+  assert.match(cardTagDimensionFilters, /selected\.length > 0 \? "has-selection"/);
+  assert.match(css, /\.answer-learning-filter-grid > label\.is-filter-active select,/);
+  assert.match(css, /\.card-tag-dimension-filter\.has-selection summary/);
+});
+test("답변 익히기 태그는 펼친 힌트의 최소 답변 다음에만 표시한다", () => {
+  assert.match(answerLearning, /card\.hint\.minimum[\s\S]*?answer-learning-hint-tags[\s\S]*?card\.hint\.flow/);
+  assert.match(answerLearning, /card\.tags\.map\(formatAnswerLearningTag\)\.join\(" · "\)/);
+  assert.match(css, /\.answer-learning-hint-tags\s*\{[\s\S]*?font-size:\s*0\.74rem/);
+});
+test("카드 라이브러리 필터 변경은 현재 스크롤 위치를 저장하고 상단 이동을 강제하지 않는다", () => {
+  assert.doesNotMatch(cardLibrary, /window\.scrollTo\(\{ top: 0/);
+  assert.match(cardLibrary, /filterSignature,[\s\S]*?visibleCount: CARD_LIBRARY_PAGE_SIZE,[\s\S]*?scrollY: window\.scrollY/);
 });
 test("차원 필터는 pagination signature와 홈 조건 요약에 포함된다", () => {
   assert.match(app, /const filterSignature = JSON\.stringify\(\[[\s\S]*?selectedWeeks,[\s\S]*?selectedTopics,[\s\S]*?selectedTypes,/);

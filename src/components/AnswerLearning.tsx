@@ -25,6 +25,7 @@ import {
   TTS_RATE_OPTIONS,
 } from "../utils/ttsSettings";
 import { isFirstLineOnlyCard } from "../utils/cardContent";
+import { formatAnswerLearningTag } from "../utils/cardTagFilters";
 import { isRecordingBusy, type RecordingStatus } from "../utils/audioRecorder";
 import {
   ANSWER_LEARNING_STATUS_OPTIONS,
@@ -300,6 +301,11 @@ export function AnswerLearning({
             {card.hint.memoryTip && <p>{card.hint.memoryTip}</p>}
             {card.hint.subjectTip && <p>{card.hint.subjectTip}</p>}
             {card.hint.minimum && <p><strong>최소 답변</strong> {card.hint.minimum}</p>}
+            {card.tags.length > 0 && (
+              <p className="answer-learning-hint-tags">
+                {card.tags.map(formatAnswerLearningTag).join(" · ")}
+              </p>
+            )}
             {card.hint.flow.length > 0 && (
               <div className="hint-flow-lines" role="list">
                 {card.hint.flow.map((step, index) => (

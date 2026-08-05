@@ -3,7 +3,6 @@ type HomeCardDashboardProps = {
   filteredCount: number;
   filterSummary: string;
   onOpenLibrary: () => void;
-  onStartDrill: () => void;
 };
 
 export function HomeCardDashboard({
@@ -11,7 +10,6 @@ export function HomeCardDashboard({
   filteredCount,
   filterSummary,
   onOpenLibrary,
-  onStartDrill,
 }: HomeCardDashboardProps) {
   const hasCards = filteredCount > 0;
 
@@ -21,7 +19,7 @@ export function HomeCardDashboard({
         <div>
           <p className="eyebrow">STUDY CARDS</p>
           <h2 id="home-card-dashboard-title" className="home-section-title">학습 카드</h2>
-          <p className="home-card-description">전체 목록은 카드 라이브러리에서 보고, 현재 조건으로 첫 문장 연습하세요.</p>
+          <p className="home-card-description">전체 목록과 현재 학습 조건은 카드 라이브러리에서 확인하세요.</p>
         </div>
       </div>
 
@@ -46,21 +44,7 @@ export function HomeCardDashboard({
         <button type="button" className="secondary-button" onClick={onOpenLibrary}>
           카드 라이브러리 열기
         </button>
-        <button
-          type="button"
-          className="primary-button"
-          disabled={!hasCards}
-          aria-describedby={!hasCards ? "home-card-empty-help" : undefined}
-          onClick={onStartDrill}
-        >
-          첫 문장 연습 시작
-        </button>
       </div>
-      {!hasCards && (
-        <span id="home-card-empty-help" className="visually-hidden">
-          현재 조건에 맞는 카드가 없어 연습을 시작할 수 없습니다.
-        </span>
-      )}
     </section>
   );
 }

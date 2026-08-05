@@ -149,9 +149,8 @@ export function CardLibrary({
     saveCardLibrarySession({
       filterSignature,
       visibleCount: CARD_LIBRARY_PAGE_SIZE,
-      scrollY: 0,
+      scrollY: window.scrollY,
     });
-    window.scrollTo({ top: 0, behavior: "auto" });
   }, [filterSignature]);
 
   useEffect(() => {
@@ -159,7 +158,11 @@ export function CardLibrary({
     previousSearchQueryRef.current = searchQuery;
     visibleCountRef.current = CARD_LIBRARY_PAGE_SIZE;
     setVisibleCount(CARD_LIBRARY_PAGE_SIZE);
-    window.scrollTo({ top: 0, behavior: "auto" });
+    saveCardLibrarySession({
+      filterSignature: filterSignatureRef.current,
+      visibleCount: CARD_LIBRARY_PAGE_SIZE,
+      scrollY: window.scrollY,
+    });
   }, [searchQuery]);
 
   function selectCard(card: OpicCard) {

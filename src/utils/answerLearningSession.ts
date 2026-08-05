@@ -4,7 +4,9 @@ import {
   EMPTY_CARD_TAG_DIMENSION_FILTERS,
   migrateLegacyCardTagFilter,
   normalizeCardTagDimensionFilters,
+  normalizeCardTagSelection,
   resolveCardTagDimensionFilters,
+  resolveOtherCardTags,
 } from "./cardTagFilters.ts";
 
 export const ANSWER_LEARNING_SESSION_KEY = "opic-answer-learning-session";
@@ -26,6 +28,7 @@ export type AnswerLearningRevealState = {
 export type AnswerLearningFilters = {
   deck: string;
   tag: string;
+  selectedTags: string[];
   selectedWeeks: string[];
   selectedTopics: string[];
   selectedTypes: string[];
@@ -60,6 +63,7 @@ const validPresence = new Set<AnswerPresenceFilter>(["all", "with", "without"]);
 export const DEFAULT_ANSWER_LEARNING_FILTERS: AnswerLearningFilters = {
   deck: "all",
   tag: "all",
+  selectedTags: [],
   ...EMPTY_CARD_TAG_DIMENSION_FILTERS,
   finalOnly: false,
   answerPresence: "all",
@@ -109,9 +113,19 @@ export function normalizeAnswerLearningSession(
   const resolvedDimensions = availableTags
     ? resolveCardTagDimensionFilters(legacyTag.dimensions, availableTags)
     : legacyTag.dimensions;
+  const rawSelectedTags = normalizeCardTagSelection(filtersValue.selectedTags);
+  const selectedTags = rawSelectedTags.length > 0
+    ? rawSelectedTags
+    : legacyTag.selectedTag === "all"
+      ? []
+      : [legacyTag.selectedTag];
+  const resolvedSelectedTags = availableTags
+    ? resolveOtherCardTags(selectedTags, availableTags)
+    : selectedTags;
   const filters: AnswerLearningFilters = {
     deck: typeof filtersValue.deck === "string" ? filtersValue.deck : "all",
-    tag: legacyTag.selectedTag,
+    tag: resolvedSelectedTags[0] ?? "all",
+    selectedTags: resolvedSelectedTags,
     ...resolvedDimensions,
     finalOnly: legacyTag.finalOnly,
     answerPresence: validPresence.has(filtersValue.answerPresence as AnswerPresenceFilter)

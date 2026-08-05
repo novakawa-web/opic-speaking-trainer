@@ -19,13 +19,14 @@ type Props = CardTagDimensionFilterValues & {
   onChange: (next: CardTagDimensionFilterValues) => void;
 };
 
-function CardTagDimensionField({
+export function CardTagMultiSelectField({
   id,
   label,
   emptyLabel,
   options,
   selected,
   onChange,
+  formatOption = formatCardTagOption,
 }: {
   id: string;
   label: string;
@@ -33,13 +34,14 @@ function CardTagDimensionField({
   options: string[];
   selected: string[];
   onChange: (next: string[]) => void;
+  formatOption?: (tag: string) => string;
 }) {
   if (options.length === 0) return null;
   const selectedSet = new Set(selected);
-  const selectionSummary = formatCardTagSelectionSummary(selected, emptyLabel);
+  const selectionSummary = formatCardTagSelectionSummary(selected, emptyLabel, formatOption);
 
   return (
-    <div className="field-label card-tag-dimension-filter">
+    <div className={`field-label card-tag-dimension-filter ${selected.length > 0 ? "has-selection" : ""}`}>
       <span id={`${id}-label`}>{label}</span>
       <details>
         <summary
@@ -65,7 +67,7 @@ function CardTagDimensionField({
                   )
                 }
               />
-              <span>{formatCardTagOption(tag)}</span>
+              <span>{formatOption(tag)}</span>
             </label>
           ))}
         </div>
@@ -91,7 +93,7 @@ export function CardTagDimensionFilters({
   const values = { selectedWeeks, selectedTopics, selectedTypes };
 
   return configs.map((config) => (
-    <CardTagDimensionField
+    <CardTagMultiSelectField
       key={config.key}
       id={`${baseId}-${config.key}`}
       label={config.label}

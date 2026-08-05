@@ -174,6 +174,14 @@ export function resolveCardTagDimensionFilters(
   };
 }
 
+export function resolveOtherCardTags(
+  selectedTags: readonly string[],
+  availableTags: readonly string[],
+) {
+  const available = new Set(getCardTagFilterOptions(availableTags).otherTags);
+  return normalizeCardTagSelection(selectedTags).filter((tag) => available.has(tag));
+}
+
 function matchesDimension(cardTags: readonly string[], selectedTags?: readonly string[]) {
   return !selectedTags || selectedTags.length === 0 || selectedTags.some((tag) => cardTags.includes(tag));
 }
@@ -202,9 +210,16 @@ export function formatCardTagOption(tag: string) {
   return tag;
 }
 
+export function formatAnswerLearningTag(tag: string) {
+  return tag
+    .replace(/^(?:topic|category|catecory)_/i, "")
+    .replaceAll("_", " ");
+}
+
 export function formatCardTagSelectionSummary(
   selectedTags: readonly string[],
   emptyLabel: string,
+  formatOption: (tag: string) => string = formatCardTagOption,
 ) {
   if (selectedTags.length === 0) return emptyLabel;
   const firstDimension = getCardTagDimension(selectedTags[0]);
@@ -213,6 +228,6 @@ export function formatCardTagSelectionSummary(
   )
     ? sortDimensionSelection(firstDimension, [...selectedTags])
     : [...selectedTags];
-  const first = formatCardTagOption(orderedTags[0]);
+  const first = formatOption(orderedTags[0]);
   return selectedTags.length === 1 ? first : `${first} 외 ${selectedTags.length - 1}개`;
 }

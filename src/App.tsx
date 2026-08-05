@@ -34,6 +34,7 @@ import {
   matchesCardTagDimensionFilters,
   normalizeCardTagDimensionFilters,
   resolveCardTagDimensionFilters,
+  resolveOtherCardTags,
   type CardTagDimensionFilters,
 } from "./utils/cardTagFilters";
 import { ShadowingPlayer } from "./components/ShadowingPlayer";
@@ -1811,6 +1812,10 @@ function App() {
       normalizeCardTagDimensionFilters(answerSession.filters),
       nextAvailableTags,
     );
+    const nextAnswerTags = resolveOtherCardTags(
+      answerSession.filters.selectedTags,
+      nextAvailableTags,
+    );
 
     setCardCatalog(nextCards);
     setCardStorageWarning(false);
@@ -1823,7 +1828,12 @@ function App() {
       cardOrder: nextAnswerOrder,
       currentIndex: Math.min(answerSession.currentIndex, Math.max(nextAnswerOrder.length - 1, 0)),
       screen: answerSession.screen === "learning" && nextAnswerOrder.length === 0 ? "setup" : answerSession.screen,
-      filters: { ...answerSession.filters, ...nextAnswerDimensions },
+      filters: {
+        ...answerSession.filters,
+        ...nextAnswerDimensions,
+        selectedTags: nextAnswerTags,
+        tag: nextAnswerTags[0] ?? "all",
+      },
     });
     updateTagDimensions(nextDimensions);
 
@@ -2635,7 +2645,6 @@ function App() {
                 filteredCount={orderedFilteredCards.length}
                 filterSummary={filterSummary}
                 onOpenLibrary={openCardLibrary}
-                onStartDrill={openFirstLineSetup}
               />
 
               <DirectTextPracticeSummary

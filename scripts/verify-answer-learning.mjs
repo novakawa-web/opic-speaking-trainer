@@ -476,6 +476,7 @@ test("구형 답변 익히기 차원 태그는 version 1 안에서 승격", () =
   assert.equal(level.filters.tag, "all");
   assert.deepEqual(level.filters.selectedWeeks, ["level_2"]);
   assert.equal(version.filters.tag, "v2");
+  assert.deepEqual(version.filters.selectedTags, ["v2"]);
   assert.deepEqual(version.filters.selectedWeeks, []);
 });
 test("답변 익히기 차원 선택은 malformed 제거와 canonical 정렬", () => {
@@ -509,6 +510,30 @@ test("답변 익히기 복원은 선택 ID를 보존하고 사라진 차원 필�
   assert.deepEqual(session.filters.selectedWeeks, ["week6"]);
   assert.deepEqual(session.filters.selectedTopics, []);
   assert.deepEqual(session.filters.selectedTypes, ["type_description"]);
+});
+test("구형 단일 기타 태그는 다중 선택으로 복원", () => {
+  const session = normalizeAnswerLearningSession({
+    ...createEmptyAnswerLearningSession(),
+    filters: {
+      ...createEmptyAnswerLearningSession().filters,
+      tag: "v2",
+      selectedTags: undefined,
+    },
+  }, cards.map((card) => card.id), ["v2", "core"]);
+  assert.equal(session.filters.tag, "v2");
+  assert.deepEqual(session.filters.selectedTags, ["v2"]);
+});
+test("기타 태그 다중 선택은 중복과 사라진 값을 정리하고 legacy mirror를 유지", () => {
+  const session = normalizeAnswerLearningSession({
+    ...createEmptyAnswerLearningSession(),
+    filters: {
+      ...createEmptyAnswerLearningSession().filters,
+      tag: "old",
+      selectedTags: ["v2", "core", "v2", "missing", null],
+    },
+  }, cards.map((card) => card.id), ["week6", "v2", "core", "final_rep"]);
+  assert.equal(session.filters.tag, "core");
+  assert.deepEqual(session.filters.selectedTags, ["core", "v2"]);
 });
 test("구형 final_rep 태그는 기존 final toggle로 승격", () => {
   const session = normalizeAnswerLearningSession({
@@ -546,7 +571,21 @@ test("연습 적은 순 안정 정렬", () => {
 });
 test("기본 순서 유지", () => assert.deepEqual(orderAnswerLearningCards([cardA, cardB], "default", {}).map((card) => card.id), [cardA.id, cardB.id]));
 test("덱 필터", () => assert.ok(filterAnswerLearningCards(cards, { ...filters, deck: cardA.deck }, {}, {}).every((card) => card.deck === cardA.deck)));
-test("태그 필터", () => assert.ok(filterAnswerLearningCards(cards, { ...filters, tag: cardA.tags[0] }, {}, {}).every((card) => card.tags.includes(cardA.tags[0]))));
+test("태그 필터", () => assert.ok(filterAnswerLearningCards(cards, { ...filters, selectedTags: [cardA.tags[0]] }, {}, {}).every((card) => card.tags.includes(cardA.tags[0]))));
+test("기타 태그는 여러 항목을 OR로 선택", () => {
+  const taggedCards = [
+    { ...cardA, id: "core-card", tags: ["week6", "core"] },
+    { ...cardB, id: "v2-card", tags: ["week6", "v2"] },
+    { ...cardB, id: "other-card", tags: ["week6", "other"] },
+  ];
+  const result = filterAnswerLearningCards(
+    taggedCards,
+    { ...filters, selectedTags: ["core", "v2"] },
+    {},
+    {},
+  );
+  assert.deepEqual(result.map((card) => card.id), ["core-card", "v2-card"]);
+});
 test("차원 내 OR와 차원 간 AND", () => {
   const dimensionCards = [
     { ...cardA, id: "dimension-a", tags: ["week6", "topic_home", "type_description"] },
@@ -573,7 +612,7 @@ test("일반 태그는 차원 필터와 AND", () => {
   ];
   const result = filterAnswerLearningCards(
     dimensionCards,
-    { ...filters, tag: "core", selectedWeeks: ["week6"], selectedTopics: ["topic_home"] },
+    { ...filters, tag: "core", selectedTags: ["core"], selectedWeeks: ["week6"], selectedTopics: ["topic_home"] },
     {},
     {},
   );
@@ -587,7 +626,7 @@ test("v2 기타 태그는 학습 세트와 AND", () => {
   ];
   const result = filterAnswerLearningCards(
     learningSetCards,
-    { ...filters, tag: "v2", selectedWeeks: ["level_1"] },
+    { ...filters, tag: "v2", selectedTags: ["v2"], selectedWeeks: ["level_1"] },
     {},
     {},
   );

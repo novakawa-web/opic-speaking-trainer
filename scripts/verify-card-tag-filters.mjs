@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   EMPTY_CARD_TAG_DIMENSION_FILTERS,
+  formatAnswerLearningTag,
   formatCardTagOption,
   formatCardTagSelectionSummary,
   getCardTagDimension,
@@ -196,6 +197,18 @@ test("화면 표시는 원문 태그를 바꾸지 않고 접두사만 정리", (
   assert.equal(formatCardTagOption("level_2"), "Level 2");
   assert.equal(formatCardTagOption("v2"), "v2");
   assert.equal(formatCardTagOption("topic_public_transportation"), "public transportation");
+  assert.equal(formatAnswerLearningTag("topic_public_transportation"), "public transportation");
+  assert.equal(formatAnswerLearningTag("category_daily_life"), "daily life");
+  assert.equal(formatAnswerLearningTag("Catecory_Work"), "Work");
+  assert.equal(formatAnswerLearningTag("v2"), "v2");
+  assert.equal(
+    formatCardTagSelectionSummary(
+      ["category_daily_life"],
+      "전체 기타 태그",
+      formatAnswerLearningTag,
+    ),
+    "daily life",
+  );
   assert.equal(
     formatCardTagSelectionSummary(["level_1", "week8"], "전체 학습 세트"),
     "Week 8 외 1개",

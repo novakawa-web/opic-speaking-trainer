@@ -514,7 +514,7 @@ input:focus-visible + .toggle-switch {
 
 .home-card-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 10px;
   margin-top: 16px;
 }
@@ -8652,6 +8652,12 @@ input:focus-visible + .toggle-switch {
   font-weight: 700;
 }
 
+.answer-learning-filter-grid > label > span,
+.answer-learning-filter-grid > .card-tag-dimension-filter > span {
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
 .answer-learning-filter-grid select {
   width: 100%;
   min-height: 46px;
@@ -8660,6 +8666,20 @@ input:focus-visible + .toggle-switch {
   border-radius: 10px;
   color: var(--ink);
   background: var(--input-bg);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.answer-learning-filter-grid .card-tag-dimension-filter summary {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.answer-learning-filter-grid > label.is-filter-active select,
+.answer-learning-filter-grid .card-tag-dimension-filter.has-selection summary {
+  border-color: color-mix(in srgb, var(--blue) 72%, var(--line));
+  color: var(--first-line-text);
+  background: color-mix(in srgb, var(--blue-soft) 82%, var(--input-bg));
 }
 
 .answer-final-filter {
@@ -8667,6 +8687,14 @@ input:focus-visible + .toggle-switch {
   min-height: 46px;
   align-items: center;
   gap: 10px;
+}
+
+.answer-final-filter.is-filter-active {
+  padding-inline: 12px;
+  border: 1px solid color-mix(in srgb, var(--blue) 72%, var(--line));
+  border-radius: 10px;
+  color: var(--first-line-text);
+  background: color-mix(in srgb, var(--blue-soft) 82%, var(--input-bg));
 }
 
 .answer-learning-scope {
@@ -8787,6 +8815,14 @@ input:focus-visible + .toggle-switch {
 .answer-learning-first-line { max-width: var(--learning-text-max); margin: 14px auto 0; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-soft); }
 .answer-learning-answer { max-width: var(--learning-text-max); margin: 14px auto 0; padding: 0; }
 .answer-learning-hint-box { color: var(--body-copy); line-height: 1.65; }
+.answer-learning-hint-tags {
+  margin: -2px 0 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 550;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
 .answer-learning-hint-box .hint-flow-lines { display: grid; gap: 5px; margin-top: 12px; }
 .answer-learning-first-line { display: grid; gap: 14px; }
 .answer-learning-first-line-content { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
