@@ -41,6 +41,7 @@ import {
   isAnswerLearningPlaybackActive,
   pauseAnswerLearningPlayback,
   resumeAnswerLearningPlayback,
+  shouldShowAnswerLearningStopControl,
   shouldStopAnswerLearningSentencePlayback,
   startAnswerLearningSentencePlayback,
   startFullAnswerPlayback,
@@ -118,6 +119,13 @@ test("단일 문장 재생 중 현재 문장 재선택은 정지 요청", () => 
   assert.equal(
     shouldStopAnswerLearningSentencePlayback(
       { status: "loading", mode: "single", currentIndex: 1 },
+      1,
+    ),
+    true,
+  );
+  assert.equal(
+    shouldStopAnswerLearningSentencePlayback(
+      { status: "paused", mode: "single", currentIndex: 1 },
       1,
     ),
     true,
@@ -510,6 +518,24 @@ test("답변 익히기 복원은 선택 ID를 보존하고 사라진 차원 필�
   assert.deepEqual(session.filters.selectedWeeks, ["week6"]);
   assert.deepEqual(session.filters.selectedTopics, []);
   assert.deepEqual(session.filters.selectedTypes, ["type_description"]);
+});
+test("별도 정지 버튼은 전체 답변 연속 재생 중에만 표시", () => {
+  assert.equal(
+    shouldShowAnswerLearningStopControl({ status: "loading", mode: "continuous", currentIndex: 0 }),
+    true,
+  );
+  assert.equal(
+    shouldShowAnswerLearningStopControl({ status: "playing", mode: "continuous", currentIndex: 0 }),
+    true,
+  );
+  assert.equal(
+    shouldShowAnswerLearningStopControl({ status: "playing", mode: "single", currentIndex: 0 }),
+    false,
+  );
+  assert.equal(
+    shouldShowAnswerLearningStopControl({ status: "idle", mode: "single", currentIndex: 0 }),
+    false,
+  );
 });
 test("구형 단일 기타 태그는 다중 선택으로 복원", () => {
   const session = normalizeAnswerLearningSession({

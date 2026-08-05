@@ -63,7 +63,9 @@ export function shouldStopAnswerLearningSentencePlayback(
 ) {
   return (
     state.mode === "single" &&
-    (state.status === "loading" || state.status === "playing") &&
+    (state.status === "loading" ||
+      state.status === "playing" ||
+      state.status === "paused") &&
     state.currentIndex === requestedIndex
   );
 }
@@ -101,4 +103,10 @@ export function isAnswerLearningPlaybackActive(
   status: AnswerLearningPlaybackStatus,
 ) {
   return status === "loading" || status === "playing" || status === "paused";
+}
+
+export function shouldShowAnswerLearningStopControl(
+  state: AnswerLearningPlaybackState,
+) {
+  return state.mode === "continuous" && isAnswerLearningPlaybackActive(state.status);
 }

@@ -10,6 +10,7 @@ import type {
   OpicCard,
 } from "../types";
 import type { AnswerLearningRevealState } from "../utils/answerLearningSession";
+import { shouldShowAnswerLearningStopControl } from "../utils/answerLearningPlayback";
 import { extractMyFirstLine } from "../utils/myAnswerStorage";
 import { createModelAnswerSource, createMyAnswerSource, type ShadowingSource } from "../utils/shadowingPlayer";
 import {
@@ -369,7 +370,7 @@ export function AnswerLearning({
                       : "전체 답변 듣기"}
                 </span>
               </button>
-              {answerSpeech.isActive && (
+              {shouldShowAnswerLearningStopControl(answerSpeech.playback) && (
                 <button type="button" onClick={answerSpeech.stop}>정지</button>
               )}
               <label className="answer-learning-tts-rate">

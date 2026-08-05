@@ -273,6 +273,9 @@ test("답변 익히기 전체 답변은 중간 장식 테두리 없이 기능 �
 
   const sentenceButton = extractOnlyCssRuleBody(css, ".answer-learning-sentences button");
   assert.match(sentenceButton, /padding:\s*12px/);
+  assert.match(sentenceButton, /font-size:\s*1\.04rem/);
+  assert.match(sentenceButton, /font-weight:\s*650/);
+  assert.match(sentenceButton, /line-height:\s*1\.6/);
   assert.match(sentenceButton, /border:\s*0/);
   assert.match(sentenceButton, /border-radius:\s*10px/);
   assert.match(sentenceButton, /background:\s*var\(--surface\)/);
@@ -416,7 +419,11 @@ test("답변 익히기 오디오 조작은 모바일 터치와 현재 문장 표
   assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-tts-rate\s*\{[^}]*min-width:\s*0;[^}]*display:\s*grid;[^}]*grid-template-columns:\s*auto minmax\(0, 1fr\)/);
   assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-tts-rate > span\s*\{[^}]*white-space:\s*nowrap/);
   assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-tts-rate select\s*\{[^}]*width:\s*100%;[^}]*min-width:\s*0;[^}]*font-size:\s*\.82rem/);
-  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-page \.answer-learning-sentences button\s*\{[^}]*grid-template-columns:\s*20px minmax\(0, 1fr\)[^}]*gap:\s*6px[^}]*padding:\s*12px 10px/);
+  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-playback-status\s*\{[^}]*min-height:\s*3em[^}]*display:\s*flex/);
+  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-page \.answer-learning-sentences\s*\{[^}]*gap:\s*10px[^}]*margin-inline:\s*-3px/);
+  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-page \.answer-learning-paragraph\s*\{[^}]*gap:\s*5px/);
+  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-page \.answer-learning-sentences button\s*\{[^}]*grid-template-columns:\s*18px minmax\(0, 1fr\)[^}]*gap:\s*4px[^}]*padding:\s*10px 7px/);
+  assert.match(answerLearning, /shouldShowAnswerLearningStopControl\(answerSpeech\.playback\)/);
   assert.match(answerLearningSpeech, /shouldStopAnswerLearningSentencePlayback\(playbackRef\.current, index\)[\s\S]*?stop\(\)/);
 });
 test("공통 AppHeader는 내부 rail에서 기존 표시 요소를 유지한다", () => {
