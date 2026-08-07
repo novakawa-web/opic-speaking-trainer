@@ -271,7 +271,7 @@ test("답변 익히기 전체 답변은 중간 장식 테두리 없이 기능 �
   assert.match(revealCard[1], /background:\s*var\(--surface\)/);
   assert.match(revealCard[1], /box-shadow:\s*var\(--shadow\)/);
 
-  const sentenceButton = extractOnlyCssRuleBody(css, ".answer-learning-sentences button");
+  const sentenceButton = extractOnlyCssRuleBody(css, ".answer-learning-sentence-playback");
   assert.match(sentenceButton, /padding:\s*12px/);
   assert.match(sentenceButton, /font-size:\s*1\.04rem/);
   assert.match(sentenceButton, /font-weight:\s*650/);
@@ -280,7 +280,7 @@ test("답변 익히기 전체 답변은 중간 장식 테두리 없이 기능 �
   assert.match(sentenceButton, /border-radius:\s*10px/);
   assert.match(sentenceButton, /background:\s*var\(--surface\)/);
 
-  const currentSentence = extractOnlyCssRuleBody(css, ".answer-learning-sentences button.is-current");
+  const currentSentence = extractOnlyCssRuleBody(css, ".answer-learning-sentence-playback.is-current");
   assert.match(currentSentence, /background:\s*var\(--blue-soft\)/);
   assert.match(currentSentence, /box-shadow:\s*inset 0 0 0 2px var\(--blue\)/);
 });
@@ -405,7 +405,7 @@ test("답변 익히기 녹음기는 평가 아래와 카드 이동 위에 있고
 });
 test("답변 익히기 오디오 조작은 모바일 터치와 현재 문장 표시 계약을 유지한다", () => {
   assert.match(css, /\.answer-learning-tts-rate\s*\{[\s\S]*?min-height:\s*44px/);
-  assert.match(css, /\.answer-learning-sentences button\.is-current\s*\{[^}]*var\(--blue-soft\)/);
+  assert.match(css, /\.answer-learning-sentence-playback\.is-current\s*\{[^}]*var\(--blue-soft\)/);
   assert.match(css, /\.answer-learning-audio-recorder\s*\{[\s\S]*?var\(--app-content-max\)/);
   const mobileAnswerLearningBlocks = extractCssAtRuleBlocks(
     css,
@@ -422,7 +422,7 @@ test("답변 익히기 오디오 조작은 모바일 터치와 현재 문장 표
   assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-playback-status\s*\{[^}]*min-height:\s*3em[^}]*display:\s*flex/);
   assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-page \.answer-learning-sentences\s*\{[^}]*gap:\s*10px[^}]*margin-inline:\s*-3px/);
   assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-page \.answer-learning-paragraph\s*\{[^}]*gap:\s*5px/);
-  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-page \.answer-learning-sentences button\s*\{[^}]*grid-template-columns:\s*18px minmax\(0, 1fr\)[^}]*gap:\s*4px[^}]*padding:\s*10px 7px/);
+  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-page \.answer-learning-sentence-playback\s*\{[^}]*grid-template-columns:\s*18px minmax\(0, 1fr\)[^}]*gap:\s*4px[^}]*padding:\s*10px 7px/);
   assert.match(answerLearning, /shouldShowAnswerLearningStopControl\(answerSpeech\.playback\)/);
   assert.match(answerLearningSpeech, /shouldStopAnswerLearningSentencePlayback\(playbackRef\.current, index\)[\s\S]*?stop\(\)/);
 });
@@ -519,7 +519,7 @@ test("답변 익히기 문장은 시간 제한 없는 두 번 누르기 선택 �
   assert.match(answerLearning, /aria-pressed=\{isSelectedSentence\}/);
   assert.match(answerLearning, /같은 문장을 다시 누르면 재생합니다/);
   assert.match(answerLearning, /sentenceSelectionLabel \|\| answerPlaybackLabel/);
-  assert.match(css, /\.answer-learning-sentences button\.is-selected/);
+  assert.match(css, /\.answer-learning-sentence-playback\.is-selected/);
 });
 test("답변 익히기 기타 태그와 활성 필터는 다중 선택과 강조를 제공한다", () => {
   assert.match(answerLearningSetup, /selected=\{session\.filters\.selectedTags\}/);
@@ -823,6 +823,29 @@ test("current condition stays inline and only its value may wrap", () => {
   assert.match(dashboard, /home-filter-summary-value/);
   assert.match(css, /\.home-filter-summary\s*\{[\s\S]*?align-items:\s*center[\s\S]*?flex-wrap:\s*nowrap[\s\S]*?word-break:\s*keep-all/);
   assert.doesNotMatch(css, /\.home-filter-summary\s*\{\s*display:\s*grid/);
+});
+
+test("answer-learning sentence checks are separate accessible controls", () => {
+  assert.match(answerLearning, /createAnswerLearningSentenceCheckIds\(answerSentences\)/);
+  assert.match(answerLearning, /className="answer-learning-sentence-row"/);
+  assert.match(answerLearning, /answer-learning-sentence-playback/);
+  assert.match(answerLearning, /className="answer-learning-sentence-check"/);
+  assert.match(answerLearning, /aria-pressed=\{isChecked\}/);
+  assert.match(answerLearning, /onToggleSentenceCheck\([\s\S]*?sentenceCheckId,[\s\S]*?sentenceCheckIds/);
+  assert.match(css, /\.answer-learning-sentence-row\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 44px/);
+  assert.match(css, /\.answer-learning-sentence-check\s*\{[^}]*width:\s*44px[^}]*min-height:\s*44px/);
+  assert.match(css, /\.answer-learning-sentence-check\[aria-pressed="true"\]\s*\{[^}]*var\(--blue\)/);
+  assert.match(app, /saveAnswerLearningSentenceChecks\(next\)[\s\S]*?setAnswerLearningSentenceChecks\(next\)/);
+});
+
+test("answer-learning filter header shows actual selected and filtered counts", () => {
+  assert.match(answerLearningSetup, /className="answer-learning-filter-header-actions"/);
+  assert.match(answerLearningSetup, /className="answer-learning-filter-counts"/);
+  assert.match(answerLearningSetup, /선택 \{selectionState\.startCandidateCount\}장/);
+  assert.match(answerLearningSetup, /필터 \{visibleCards\.length\}장/);
+  assert.match(answerLearningSetup, /aria-label=\{`현재 필터 결과 \$\{visibleCards\.length\}장 중 선택 \$\{selectionState\.startCandidateCount\}장`\}/);
+  assert.match(css, /\.answer-learning-filter-header-actions\s*\{[^}]*margin-left:\s*auto/);
+  assert.match(css, /\.answer-learning-filter-counts\s*\{[^}]*white-space:\s*nowrap/);
 });
 
 console.log(`UI system verification passed: ${passed} tests`);

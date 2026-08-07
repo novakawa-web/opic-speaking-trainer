@@ -156,19 +156,30 @@ export function AnswerLearningSetup({
             <p className="eyebrow">SELECT CARDS</p>
             <h2 id="answer-filter-title">학습 카드 고르기</h2>
           </div>
-          <button
-            type="button"
-            className="text-button"
-            onClick={() =>
-              onSessionChange({
-                ...session,
-                filters: { ...DEFAULT_ANSWER_LEARNING_FILTERS },
-                screen: "setup",
-              })
-            }
-          >
-            필터 초기화
-          </button>
+          <div className="answer-learning-filter-header-actions">
+            <output
+              className="answer-learning-filter-counts"
+              aria-live="polite"
+              aria-label={`현재 필터 결과 ${visibleCards.length}장 중 선택 ${selectionState.startCandidateCount}장`}
+            >
+              <span>선택 {selectionState.startCandidateCount}장</span>
+              <span aria-hidden="true">/</span>
+              <span>필터 {visibleCards.length}장</span>
+            </output>
+            <button
+              type="button"
+              className="text-button"
+              onClick={() =>
+                onSessionChange({
+                  ...session,
+                  filters: { ...DEFAULT_ANSWER_LEARNING_FILTERS },
+                  screen: "setup",
+                })
+              }
+            >
+              필터 초기화
+            </button>
+          </div>
         </div>
         <div className="answer-learning-filter-grid">
           <label className={session.filters.deck !== "all" ? "is-filter-active" : ""}>

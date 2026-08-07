@@ -119,8 +119,9 @@ test("모의고사 세션에서 카드 제거", () => {
   assert.equal(next?.answers[base.id], undefined);
 });
 test("마지막 모의고사 카드 삭제 시 세션 종료", () => assert.equal(removeCardFromMockSession(createFirstLineMockSession([base.id], "all"), base.id), null));
-test("연관 기록 존재 확인", () => assert.equal(hasCardRelatedData(base.id, { statuses: { [base.id]: "success" }, attempts: {}, answerLearningStatuses: {}, answerLearningAttempts: {}, myAnswers: {}, cardMemos: {} }), true));
-test("다른 카드 기록은 연관 없음", () => assert.equal(hasCardRelatedData(base.id, { statuses: { other: "success" }, attempts: {}, answerLearningStatuses: {}, answerLearningAttempts: {}, myAnswers: {}, cardMemos: {} }), false));
+test("연관 기록 존재 확인", () => assert.equal(hasCardRelatedData(base.id, { statuses: { [base.id]: "success" }, attempts: {}, answerLearningStatuses: {}, answerLearningAttempts: {}, answerLearningSentenceChecks: {}, myAnswers: {}, cardMemos: {} }), true));
+test("문장 체크만 있어도 연관 기록으로 확인", () => assert.equal(hasCardRelatedData(base.id, { statuses: {}, attempts: {}, answerLearningStatuses: {}, answerLearningAttempts: {}, answerLearningSentenceChecks: { [base.id]: { default: ["v1-1-00000000-1"] } }, myAnswers: {}, cardMemos: {} }), true));
+test("다른 카드 기록은 연관 없음", () => assert.equal(hasCardRelatedData(base.id, { statuses: { other: "success" }, attempts: {}, answerLearningStatuses: {}, answerLearningAttempts: {}, answerLearningSentenceChecks: { other: { default: ["v1-1-00000000-1"] } }, myAnswers: {}, cardMemos: {} }), false));
 
 test("TSV 동일 ID 덮어쓰기 뒤 보관 ID 독립 유지", () => {
   const updated = { ...base, front: "Updated question" };

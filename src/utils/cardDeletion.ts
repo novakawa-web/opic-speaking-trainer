@@ -8,6 +8,10 @@ import type { AnswerLearningSession } from "./answerLearningSession.ts";
 import type { CardMemos } from "./cardMemoStorage.ts";
 import type { FirstLineMockSession } from "./firstLineMockSession.ts";
 import type { MyAnswers } from "./myAnswerStorage.ts";
+import {
+  countAnswerLearningSentenceChecksForCard,
+  type AnswerLearningSentenceChecks,
+} from "./answerLearningSentenceChecks.ts";
 
 export function removeCardFromRecord<T>(record: Record<string, T>, cardId: string) {
   const next = { ...record };
@@ -69,6 +73,7 @@ export function hasCardRelatedData(
     attempts: StudyAttemptsByDate;
     answerLearningStatuses: AnswerLearningStatuses;
     answerLearningAttempts: AnswerLearningAttemptsByDate;
+    answerLearningSentenceChecks: AnswerLearningSentenceChecks;
     myAnswers: MyAnswers;
     cardMemos: CardMemos;
   },
@@ -76,6 +81,10 @@ export function hasCardRelatedData(
   return Boolean(
     data.statuses[cardId] ||
       data.answerLearningStatuses[cardId] ||
+      countAnswerLearningSentenceChecksForCard(
+        data.answerLearningSentenceChecks,
+        cardId,
+      ) > 0 ||
       data.myAnswers[cardId] ||
       data.cardMemos[cardId]?.length ||
       Object.values(data.attempts).some((attempts) =>

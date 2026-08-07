@@ -44,6 +44,7 @@ import { TransientToast } from "./components/TransientToast";
 import { cards as defaultCards } from "./data/cards";
 import type {
   DeckName,
+  AnswerLearningAnswerSource,
   AnswerLearningStatus,
   AnswerLearningUndoEntry,
   FirstLineResult,
@@ -60,6 +61,13 @@ import {
   removeAnswerLearningAttempt,
   saveAnswerLearningStatuses,
 } from "./utils/answerLearningStorage";
+import {
+  getAnswerLearningSentenceCheckIds,
+  readAnswerLearningSentenceChecks,
+  saveAnswerLearningSentenceChecks,
+  toggleAnswerLearningSentenceCheck,
+  type AnswerLearningSentenceChecks,
+} from "./utils/answerLearningSentenceChecks";
 import {
   DEFAULT_ANSWER_LEARNING_FILTERS,
   createStartedAnswerLearningSession,
@@ -496,6 +504,10 @@ function App() {
   const [answerLearningAttempts, setAnswerLearningAttempts] = useState(
     readAnswerLearningAttempts,
   );
+  const [answerLearningSentenceChecks, setAnswerLearningSentenceChecks] =
+    useState<AnswerLearningSentenceChecks>(readAnswerLearningSentenceChecks);
+  const [answerLearningSentenceCheckMessage, setAnswerLearningSentenceCheckMessage] =
+    useState<string | null>(null);
   const [answerLearningUndo, setAnswerLearningUndo] =
     useState<AnswerLearningUndoEntry | null>(null);
   const [answerLearningFeedback, setAnswerLearningFeedback] = useState<string | null>(null);
@@ -1512,6 +1524,7 @@ function App() {
     if (!nextCardId) return;
     setAnswerLearningUndo(null);
     setAnswerLearningFeedback(null);
+    setAnswerLearningSentenceCheckMessage(null);
     const nextSession: AnswerLearningSession = {
       ...answerSession,
       currentIndex: nextIndex,
@@ -1527,6 +1540,31 @@ function App() {
     updateAnswerSession(nextSession);
     setSelectedCardId(nextCardId);
     window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
+  function updateAnswerLearningSentenceCheck(
+    cardId: string,
+    source: AnswerLearningAnswerSource,
+    sentenceId: string,
+    validSentenceIds: readonly string[],
+  ) {
+    const next = toggleAnswerLearningSentenceCheck(
+      answerLearningSentenceChecks,
+      cardId,
+      source,
+      sentenceId,
+      validSentenceIds,
+    );
+    if (next === answerLearningSentenceChecks) return;
+    try {
+      saveAnswerLearningSentenceChecks(next);
+      setAnswerLearningSentenceChecks(next);
+      setAnswerLearningSentenceCheckMessage(null);
+    } catch {
+      setAnswerLearningSentenceCheckMessage(
+        "문장 체크를 저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요.",
+      );
+    }
   }
 
   function updateAnswerLearningStatus(status: AnswerLearningStatus) {
@@ -2160,6 +2198,7 @@ function App() {
     setStudyAttempts(state.firstLineAttemptsByDate);
     setAnswerLearningStatuses(state.answerLearningStatuses);
     setAnswerLearningAttempts(state.answerLearningAttemptsByDate);
+    setAnswerLearningSentenceChecks(state.answerLearningSentenceChecks);
     setMyAnswers(state.myAnswers);
     setCardMemos(state.cardMemos);
     setArchivedCardIds(state.archivedCardIds);
@@ -2204,6 +2243,7 @@ function App() {
         firstLineAttemptsByDate: studyAttempts,
         answerLearningStatuses,
         answerLearningAttemptsByDate: answerLearningAttempts,
+        answerLearningSentenceChecks,
         myAnswers,
         cardMemos,
         archivedCardIds,
@@ -2438,12 +2478,19 @@ function App() {
             statusLabel: answerStatusLabels[answerLearningUndo.newStatus],
           } : null}
           feedbackMessage={answerLearningFeedback}
-          onAnswerSourceChange={(source) =>
+          checkedSentenceIds={getAnswerLearningSentenceCheckIds(
+            answerLearningSentenceChecks,
+            selectedCard.id,
+            answerSource,
+          )}
+          sentenceCheckMessage={answerLearningSentenceCheckMessage}
+          onAnswerSourceChange={(source) => {
+            setAnswerLearningSentenceCheckMessage(null);
             updateAnswerSession({
               ...answerSession,
               answerSources: { ...answerSession.answerSources, [selectedCard.id]: source },
-            })
-          }
+            });
+          }}
           onRevealChange={(nextReveal) =>
             updateAnswerSession({
               ...answerSession,
@@ -2456,6 +2503,14 @@ function App() {
           onFirstLineStatusChange={updateAnswerLearningFirstLineStatus}
           onUndo={undoAnswerLearningStatus}
           onReset={resetAnswerLearningStatus}
+          onToggleSentenceCheck={(sentenceId, validSentenceIds) =>
+            updateAnswerLearningSentenceCheck(
+              selectedCard.id,
+              answerSource,
+              sentenceId,
+              validSentenceIds,
+            )
+          }
           onStartShadowing={startAnswerLearningShadowing}
           onBack={leaveAnswerLearning}
           onSaveCardEdit={saveCardEdit}
@@ -2734,6 +2789,7 @@ function App() {
             attempts: studyAttempts,
             answerLearningStatuses,
             answerLearningAttempts,
+            answerLearningSentenceChecks,
             myAnswers,
             cardMemos,
           })}

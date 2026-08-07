@@ -69,6 +69,7 @@ import {
   ANSWER_LEARNING_FILTER_PREFERENCES_STORAGE_KEY,
   FIRST_LINE_FILTER_PREFERENCES_STORAGE_KEY,
 } from "./learningFilterPreferences.ts";
+import { ANSWER_LEARNING_SENTENCE_CHECKS_STORAGE_KEY } from "./answerLearningSentenceChecks.ts";
 import {
   MY_ANSWERS_STORAGE_KEY,
   normalizeMyAnswers,
@@ -273,6 +274,7 @@ export const BACKUP_STORAGE_POLICY = [
   { key: SHADOWING_REST_LEVEL_KEY, schemaPath: "data.settings.shadowingRestLevel", included: true },
   { key: FIRST_LINE_FILTER_PREFERENCES_STORAGE_KEY, schemaPath: "local first-line filter preferences", included: false },
   { key: ANSWER_LEARNING_FILTER_PREFERENCES_STORAGE_KEY, schemaPath: "local answer-learning filter preferences", included: false },
+  { key: ANSWER_LEARNING_SENTENCE_CHECKS_STORAGE_KEY, schemaPath: "local answer-learning sentence checks", included: false },
   { key: NAVIGATION_SESSION_STORAGE_KEY, schemaPath: "session navigation", included: false },
   { key: SWIPE_HINT_SESSION_KEY, schemaPath: "session swipe hint", included: false },
   { key: CARD_IMPORT_BACKUP_KEY, schemaPath: "TSV temporary backup", included: false },

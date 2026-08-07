@@ -132,6 +132,10 @@ function createState(overrides = {}) {
         { id: "other-answer", date: DATE, cardId: other.id, status: "speakable", timestamp: `${DATE}T04:00:00.000Z`, answerSource: "default" },
       ],
     },
+    answerLearningSentenceChecks: {
+      [target.id]: { default: ["v1-15-11111111-1"] },
+      [other.id]: { "my-answer": ["v1-14-22222222-1"] },
+    },
     myAnswers: { [target.id]: "private target answer", [other.id]: "other answer" },
     cardMemos: {
       [target.id]: [{ id: "target-memo", cardId: target.id, content: "private target memo", pinned: true, createdAt: NOW.toISOString(), updatedAt: NOW.toISOString() }],
@@ -227,6 +231,14 @@ test("successful delete commits semantic state exactly once", () => {
   const result = execute();
   assert.equal(result.commits.length, 1);
   assert.equal(result.commits[0], result.plan.nextState);
+  assert.equal(
+    result.commits[0].answerLearningSentenceChecks[target.id],
+    undefined,
+  );
+  assert.deepEqual(
+    result.commits[0].answerLearningSentenceChecks[other.id],
+    { "my-answer": ["v1-14-22222222-1"] },
+  );
 });
 
 test("React commit callback runs only after all mutations", () => {

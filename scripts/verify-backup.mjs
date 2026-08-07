@@ -20,6 +20,7 @@ import {
   ANSWER_LEARNING_FILTER_PREFERENCES_STORAGE_KEY,
   FIRST_LINE_FILTER_PREFERENCES_STORAGE_KEY,
 } from "../src/utils/learningFilterPreferences.ts";
+import { ANSWER_LEARNING_SENTENCE_CHECKS_STORAGE_KEY } from "../src/utils/answerLearningSentenceChecks.ts";
 import { CARD_DATASET_STORAGE_KEY } from "../src/utils/cardStorage.ts";
 import { createSampleCards } from "../src/utils/cardTsv.ts";
 import { NAVIGATION_SESSION_STORAGE_KEY } from "../src/utils/navigationSession.ts";
@@ -405,6 +406,7 @@ test("화면별 학습 필터는 JSON 백업과 전체 복구 대상에서 제�
   const storage = new MemoryStorage();
   storage.setItem(FIRST_LINE_FILTER_PREFERENCES_STORAGE_KEY, "first-line-local");
   storage.setItem(ANSWER_LEARNING_FILTER_PREFERENCES_STORAGE_KEY, "answer-local");
+  storage.setItem(ANSWER_LEARNING_SENTENCE_CHECKS_STORAGE_KEY, "sentence-checks-local");
   applyBackupWithSafety(makeBackup(), makeBackup(), storage);
   assert.equal(
     storage.getItem(FIRST_LINE_FILTER_PREFERENCES_STORAGE_KEY),
@@ -413,6 +415,10 @@ test("화면별 학습 필터는 JSON 백업과 전체 복구 대상에서 제�
   assert.equal(
     storage.getItem(ANSWER_LEARNING_FILTER_PREFERENCES_STORAGE_KEY),
     "answer-local",
+  );
+  assert.equal(
+    storage.getItem(ANSWER_LEARNING_SENTENCE_CHECKS_STORAGE_KEY),
+    "sentence-checks-local",
   );
   assert.equal(
     BACKUP_STORAGE_POLICY.find(
@@ -426,6 +432,12 @@ test("화면별 학습 필터는 JSON 백업과 전체 복구 대상에서 제�
     )?.included,
     false,
   );
+  assert.equal(
+    BACKUP_STORAGE_POLICY.find(
+      ({ key }) => key === ANSWER_LEARNING_SENTENCE_CHECKS_STORAGE_KEY,
+    )?.included,
+    false,
+  );
   const serialized = serializeAppBackup(makeBackup());
   assert.equal(
     serialized.includes(FIRST_LINE_FILTER_PREFERENCES_STORAGE_KEY),
@@ -433,6 +445,10 @@ test("화면별 학습 필터는 JSON 백업과 전체 복구 대상에서 제�
   );
   assert.equal(
     serialized.includes(ANSWER_LEARNING_FILTER_PREFERENCES_STORAGE_KEY),
+    false,
+  );
+  assert.equal(
+    serialized.includes(ANSWER_LEARNING_SENTENCE_CHECKS_STORAGE_KEY),
     false,
   );
 });

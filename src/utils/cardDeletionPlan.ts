@@ -18,6 +18,15 @@ import {
   type AnswerLearningSession,
 } from "./answerLearningSession.ts";
 import {
+  ANSWER_LEARNING_SENTENCE_CHECKS_STORAGE_KEY,
+  countAnswerLearningSentenceChecksForCard,
+  normalizeAnswerLearningSentenceChecks,
+  parseAnswerLearningSentenceChecks,
+  removeCardFromAnswerLearningSentenceChecks,
+  serializeAnswerLearningSentenceChecks,
+  type AnswerLearningSentenceChecks,
+} from "./answerLearningSentenceChecks.ts";
+import {
   ARCHIVED_CARD_IDS_STORAGE_KEY,
   normalizeArchivedCardIds,
   parseArchivedCardIds,
@@ -87,6 +96,7 @@ export type CardDeletionState = {
   firstLineAttemptsByDate: StudyAttemptsByDate;
   answerLearningStatuses: AnswerLearningStatuses;
   answerLearningAttemptsByDate: AnswerLearningAttemptsByDate;
+  answerLearningSentenceChecks: AnswerLearningSentenceChecks;
   myAnswers: MyAnswers;
   cardMemos: CardMemos;
   archivedCardIds: string[];
@@ -102,6 +112,7 @@ export type RemovedCardReferences = {
   firstLineAttemptCount: number;
   answerLearningStatusCount: number;
   answerLearningAttemptCount: number;
+  answerLearningSentenceCheckCount: number;
   myAnswerCount: number;
   memoCount: number;
   archivedReferenceCount: number;
@@ -305,6 +316,11 @@ function assertValidCurrentState(state: CardDeletionState): void {
     state.answerLearningAttemptsByDate,
     normalizeAnswerLearningAttempts,
   );
+  assertCanonical(
+    "answer-learning-sentence-checks",
+    state.answerLearningSentenceChecks,
+    normalizeAnswerLearningSentenceChecks,
+  );
   assertCanonical("my-answers", state.myAnswers, normalizeMyAnswers);
   assertCanonical("card-memos", state.cardMemos, normalizeCardMemos);
   assertCanonical("archived-card-ids", state.archivedCardIds, normalizeArchivedCardIds);
@@ -462,6 +478,10 @@ function createNextState(
       current.answerLearningAttemptsByDate,
       cardId,
     ),
+    answerLearningSentenceChecks: removeCardFromAnswerLearningSentenceChecks(
+      current.answerLearningSentenceChecks,
+      cardId,
+    ),
     myAnswers: removeCardFromRecord(current.myAnswers, cardId),
     cardMemos: removeCardFromRecord(current.cardMemos, cardId),
     archivedCardIds: current.archivedCardIds.filter((id) => id !== cardId),
@@ -583,6 +603,14 @@ function buildMutations(
     {
       area: "local",
       storage: localStorage,
+      key: ANSWER_LEARNING_SENTENCE_CHECKS_STORAGE_KEY,
+      value: serializeAnswerLearningSentenceChecks(
+        next.answerLearningSentenceChecks,
+      ),
+    },
+    {
+      area: "local",
+      storage: localStorage,
       key: MY_ANSWERS_STORAGE_KEY,
       value: emptyRecordAsNull(normalizeMyAnswers(next.myAnswers)),
     },
@@ -627,6 +655,10 @@ function assertNoCardReferences(state: CardDeletionState, cardId: string): void 
     state.cards.some((card) => card.id === cardId) ||
     Object.hasOwn(state.firstLineStatuses, cardId) ||
     Object.hasOwn(state.answerLearningStatuses, cardId) ||
+    countAnswerLearningSentenceChecksForCard(
+      state.answerLearningSentenceChecks,
+      cardId,
+    ) > 0 ||
     Object.hasOwn(state.myAnswers, cardId) ||
     Object.hasOwn(state.cardMemos, cardId) ||
     state.archivedCardIds.includes(cardId) ||
@@ -744,7 +776,15 @@ export function validateCardDeletionPlan(plan: CardDeletionPlan): void {
   const answersMutation = mutationFor(plan, MY_ANSWERS_STORAGE_KEY);
   const memosMutation = mutationFor(plan, CARD_MEMOS_STORAGE_KEY);
   const archivedMutation = mutationFor(plan, ARCHIVED_CARD_IDS_STORAGE_KEY);
+  const sentenceChecksMutation = mutationFor(
+    plan,
+    ANSWER_LEARNING_SENTENCE_CHECKS_STORAGE_KEY,
+  );
   if (
+    !sameJson(
+      parseAnswerLearningSentenceChecks(sentenceChecksMutation?.value ?? null),
+      plan.nextState.answerLearningSentenceChecks,
+    ) ||
     !sameJson(parseMyAnswers(answersMutation?.value ?? null), plan.nextState.myAnswers) ||
     !sameJson(parseCardMemos(memosMutation?.value ?? null), plan.nextState.cardMemos) ||
     !sameJson(
@@ -837,6 +877,11 @@ export function createCardDeletionPlan({
         currentState.answerLearningAttemptsByDate,
         cardId,
       ),
+      answerLearningSentenceCheckCount:
+        countAnswerLearningSentenceChecksForCard(
+          currentState.answerLearningSentenceChecks,
+          cardId,
+        ),
       myAnswerCount: Number(Object.hasOwn(currentState.myAnswers, cardId)),
       memoCount: currentState.cardMemos[cardId]?.length ?? 0,
       archivedReferenceCount: currentState.archivedCardIds.filter(

@@ -48,6 +48,16 @@ import {
   startAnswerLearningSentencePlayback,
   startFullAnswerPlayback,
 } from "../src/utils/answerLearningPlayback.ts";
+import {
+  ANSWER_LEARNING_SENTENCE_CHECKS_STORAGE_KEY,
+  createAnswerLearningSentenceCheckIds,
+  getAnswerLearningSentenceCheckIds,
+  parseAnswerLearningSentenceChecks,
+  readAnswerLearningSentenceChecks,
+  saveAnswerLearningSentenceChecks,
+  serializeAnswerLearningSentenceChecks,
+  toggleAnswerLearningSentenceCheck,
+} from "../src/utils/answerLearningSentenceChecks.ts";
 
 class MemoryStorage {
   values = new Map();
@@ -63,6 +73,105 @@ function test(name, run) { tests.push({ name, run }); }
 const cardA = cards[0];
 const cardB = cards[1];
 const now = new Date(2026, 6, 17, 4, 30); // 실행 환경의 로컬 시각 2026-07-17 04:30
+
+test("문장 체크 ID는 공백을 정규화하고 동일 문장 출현 순서를 구분", () => {
+  const ids = createAnswerLearningSentenceCheckIds([
+    "First sentence.",
+    " First   sentence. ",
+    "Second sentence.",
+  ]);
+  assert.notEqual(ids[0], ids[1]);
+  assert.equal(ids[0].replace(/-1$/, ""), ids[1].replace(/-2$/, ""));
+  assert.equal(
+    ids[2],
+    createAnswerLearningSentenceCheckIds(["Second sentence."])[0],
+  );
+});
+
+test("문장 체크는 카드와 기본·나만의 답변 source별로 분리", () => {
+  const [sentenceId] = createAnswerLearningSentenceCheckIds(["Checked sentence."]);
+  const modelChecked = toggleAnswerLearningSentenceCheck(
+    {},
+    cardA.id,
+    "default",
+    sentenceId,
+    [sentenceId],
+  );
+  const bothChecked = toggleAnswerLearningSentenceCheck(
+    modelChecked,
+    cardA.id,
+    "my-answer",
+    sentenceId,
+    [sentenceId],
+  );
+  assert.deepEqual(
+    getAnswerLearningSentenceCheckIds(bothChecked, cardA.id, "default"),
+    [sentenceId],
+  );
+  assert.deepEqual(
+    getAnswerLearningSentenceCheckIds(bothChecked, cardA.id, "my-answer"),
+    [sentenceId],
+  );
+});
+
+test("문장 변경 뒤 토글하면 현재 존재하는 문장 체크만 남김", () => {
+  const [oldId, currentId] = createAnswerLearningSentenceCheckIds([
+    "Old sentence.",
+    "Current sentence.",
+  ]);
+  const checks = { [cardA.id]: { default: [oldId, currentId] } };
+  const toggled = toggleAnswerLearningSentenceCheck(
+    checks,
+    cardA.id,
+    "default",
+    currentId,
+    [currentId],
+  );
+  assert.deepEqual(toggled, {});
+});
+
+test("문장 체크 저장은 version wrapper를 사용하고 원문을 저장하지 않음", () => {
+  const [sentenceId] = createAnswerLearningSentenceCheckIds(["Private sentence text."]);
+  const checks = { [cardA.id]: { default: [sentenceId] } };
+  const raw = serializeAnswerLearningSentenceChecks(checks);
+  assert.equal(raw.includes("Private sentence text."), false);
+  assert.deepEqual(parseAnswerLearningSentenceChecks(raw), checks);
+});
+
+test("문장 체크 parser는 손상값·버전 불일치·위험 키를 빈 값으로 정리", () => {
+  assert.deepEqual(parseAnswerLearningSentenceChecks("{"), {});
+  assert.deepEqual(parseAnswerLearningSentenceChecks('{"version":2,"cards":{}}'), {});
+  assert.deepEqual(
+    parseAnswerLearningSentenceChecks(
+      '{"version":1,"cards":{"__proto__":{"default":["v1-1-00000000-1"]}}}',
+    ),
+    {},
+  );
+});
+
+test("문장 체크 localStorage round trip과 빈 값 key 제거", () => {
+  const storage = new MemoryStorage();
+  const [sentenceId] = createAnswerLearningSentenceCheckIds(["Stored sentence."]);
+  const checks = { [cardA.id]: { default: [sentenceId] } };
+  saveAnswerLearningSentenceChecks(checks, storage);
+  assert.deepEqual(readAnswerLearningSentenceChecks(storage), checks);
+  saveAnswerLearningSentenceChecks({}, storage);
+  assert.equal(storage.getItem(ANSWER_LEARNING_SENTENCE_CHECKS_STORAGE_KEY), null);
+});
+
+test("문장 체크 저장 실패는 호출자에게 전달되어 낙관적 UI 반영을 막음", () => {
+  const [sentenceId] = createAnswerLearningSentenceCheckIds(["Stored sentence."]);
+  const failingStorage = {
+    setItem() { throw new Error("QuotaExceededError"); },
+    removeItem() { throw new Error("QuotaExceededError"); },
+  };
+  assert.throws(() =>
+    saveAnswerLearningSentenceChecks(
+      { [cardA.id]: { default: [sentenceId] } },
+      failingStorage,
+    ),
+  );
+});
 
 test("첫 문장 상태는 긍정에서 어려움 순서와 기존 단축키를 유지", () => {
   assert.deepEqual(

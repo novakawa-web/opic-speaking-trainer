@@ -20,6 +20,11 @@ import {
   saveAnswerLearningSession,
 } from "../src/utils/answerLearningSession.ts";
 import {
+  ANSWER_LEARNING_SENTENCE_CHECKS_STORAGE_KEY,
+  parseAnswerLearningSentenceChecks,
+  saveAnswerLearningSentenceChecks,
+} from "../src/utils/answerLearningSentenceChecks.ts";
+import {
   ARCHIVED_CARD_IDS_STORAGE_KEY,
   saveArchivedCardIds,
 } from "../src/utils/cardArchiveStorage.ts";
@@ -141,6 +146,13 @@ function createState(overrides = {}) {
         { id: "target-answer-b", date: DATE_B, cardId: target.id, status: "hard", timestamp: `${DATE_B}T03:00:00.000Z`, answerSource: "default" },
       ],
     },
+    answerLearningSentenceChecks: {
+      [target.id]: {
+        default: ["v1-15-11111111-1"],
+        "my-answer": ["v1-17-22222222-1"],
+      },
+      [other.id]: { default: ["v1-14-33333333-1"] },
+    },
     myAnswers: { [target.id]: "My target answer.", [other.id]: "My other answer." },
     cardMemos: {
       [target.id]: [
@@ -227,6 +239,21 @@ test("3. archived card deletion", () => {
   const { plan } = makePlan();
   assert.deepEqual(plan.nextState.archivedCardIds, [other.id]);
   assert.equal(plan.removedReferences.archivedReferenceCount, 1);
+});
+
+test("3a. answer-learning sentence checks removed", () => {
+  const { plan } = makePlan();
+  assert.equal(plan.nextState.answerLearningSentenceChecks[target.id], undefined);
+  assert.deepEqual(plan.nextState.answerLearningSentenceChecks[other.id], {
+    default: ["v1-14-33333333-1"],
+  });
+  assert.equal(plan.removedReferences.answerLearningSentenceCheckCount, 2);
+  assert.deepEqual(
+    parseAnswerLearningSentenceChecks(
+      mutation(plan, ANSWER_LEARNING_SENTENCE_CHECKS_STORAGE_KEY)?.value ?? null,
+    ),
+    plan.nextState.answerLearningSentenceChecks,
+  );
 });
 
 test("4. first-line status removed", () => {
@@ -438,13 +465,17 @@ test("27. raw format matches existing savers", () => {
   saveStudyAttempts(plan.nextState.firstLineAttemptsByDate);
   saveAnswerLearningStatuses(plan.nextState.answerLearningStatuses, local);
   saveAnswerLearningAttempts(plan.nextState.answerLearningAttemptsByDate, local);
+  saveAnswerLearningSentenceChecks(
+    plan.nextState.answerLearningSentenceChecks,
+    local,
+  );
   saveMyAnswers(plan.nextState.myAnswers);
   saveCardMemos(plan.nextState.cardMemos);
   saveArchivedCardIds(plan.nextState.archivedCardIds, local);
   if (plan.nextState.firstLineMockSession) saveFirstLineMockSession(plan.nextState.firstLineMockSession);
   saveAnswerLearningSession(plan.nextState.answerLearningSession);
   saveNavigationSession(plan.nextState.navigationSession);
-  for (const key of [FIRST_LINE_STATUSES_STORAGE_KEY, STUDY_ATTEMPTS_STORAGE_KEY, ANSWER_LEARNING_STATUSES_STORAGE_KEY, ANSWER_LEARNING_ATTEMPTS_STORAGE_KEY, MY_ANSWERS_STORAGE_KEY, CARD_MEMOS_STORAGE_KEY, ARCHIVED_CARD_IDS_STORAGE_KEY]) {
+  for (const key of [FIRST_LINE_STATUSES_STORAGE_KEY, STUDY_ATTEMPTS_STORAGE_KEY, ANSWER_LEARNING_STATUSES_STORAGE_KEY, ANSWER_LEARNING_ATTEMPTS_STORAGE_KEY, ANSWER_LEARNING_SENTENCE_CHECKS_STORAGE_KEY, MY_ANSWERS_STORAGE_KEY, CARD_MEMOS_STORAGE_KEY, ARCHIVED_CARD_IDS_STORAGE_KEY]) {
     assert.equal(mutation(plan, key).value, local.peek(key));
   }
   for (const key of [FIRST_LINE_MOCK_SESSION_KEY, ANSWER_LEARNING_SESSION_KEY, NAVIGATION_SESSION_STORAGE_KEY]) {

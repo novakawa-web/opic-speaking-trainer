@@ -37,6 +37,7 @@ import {
   ANSWER_LEARNING_STATUS_OPTIONS,
   FIRST_LINE_STATUS_OPTIONS,
 } from "../utils/studyStatusOptions";
+import { createAnswerLearningSentenceCheckIds } from "../utils/answerLearningSentenceChecks";
 import { CardEditor } from "./CardEditor";
 import { AudioRecorder, type AudioRecorderHandle } from "./AudioRecorder";
 
@@ -53,6 +54,8 @@ type Props = {
   canGoNext: boolean;
   undoTarget: { cardTitle: string; statusLabel: string } | null;
   feedbackMessage: string | null;
+  checkedSentenceIds: readonly string[];
+  sentenceCheckMessage: string | null;
   onAnswerSourceChange: (source: AnswerLearningAnswerSource) => void;
   onRevealChange: (reveal: AnswerLearningRevealState) => void;
   onPrevious: () => void;
@@ -61,6 +64,10 @@ type Props = {
   onFirstLineStatusChange: (status: FirstLineResult) => void;
   onUndo: () => void;
   onReset: () => void;
+  onToggleSentenceCheck: (
+    sentenceId: string,
+    validSentenceIds: readonly string[],
+  ) => void;
   onStartShadowing: (source: ShadowingSource) => void;
   onBack: () => void;
   onSaveCardEdit: (card: OpicCard, myAnswer: string) => boolean;
@@ -83,6 +90,8 @@ export function AnswerLearning({
   canGoNext,
   undoTarget,
   feedbackMessage,
+  checkedSentenceIds,
+  sentenceCheckMessage,
   onAnswerSourceChange,
   onRevealChange,
   onPrevious,
@@ -91,6 +100,7 @@ export function AnswerLearning({
   onFirstLineStatusChange,
   onUndo,
   onReset,
+  onToggleSentenceCheck,
   onStartShadowing,
   onBack,
   onSaveCardEdit,
@@ -120,6 +130,14 @@ export function AnswerLearning({
   const answerSentences = useMemo(
     () => flattenParagraphSentences(answerParagraphs),
     [answerParagraphs],
+  );
+  const sentenceCheckIds = useMemo(
+    () => createAnswerLearningSentenceCheckIds(answerSentences),
+    [answerSentences],
+  );
+  const checkedSentenceIdSet = useMemo(
+    () => new Set(checkedSentenceIds),
+    [checkedSentenceIds],
   );
   const answerSpeech = useAnswerLearningSpeech(answerSentences, ttsRate, () => {
     stop();
@@ -461,34 +479,63 @@ export function AnswerLearning({
                       answerSpeech.playback.mode === "single";
                     const isSelectedSentence =
                       sentenceSelection?.index === sentenceIndex;
+                    const sentenceCheckId = sentenceCheckIds[sentenceIndex];
+                    const isChecked = sentenceCheckId
+                      ? checkedSentenceIdSet.has(sentenceCheckId)
+                      : false;
                     return (
-                      <button
+                      <div
                         key={`${card.id}-${sentenceIndex}`}
-                        type="button"
-                        className={`${isSelectedSentence ? "is-selected" : ""} ${isCurrentSentence ? "is-current" : ""}`.trim()}
-                        aria-pressed={isSelectedSentence}
-                        aria-current={isCurrentSentence ? "true" : undefined}
-                        aria-label={`${sentenceIndex + 1}번 문장${
-                          stopsCurrentSentence
-                            ? " 재생 중지"
-                            : answerSpeech.isActive &&
-                                answerSpeech.playback.mode === "continuous"
-                            ? "부터 끝까지 재생"
-                            : isSelectedSentence
-                              ? " 듣기"
-                              : " 선택"
-                        }`}
-                        disabled={!answerSpeech.isSupported || recorderBusy}
-                        onClick={() => handleSentencePress(sentenceIndex)}
+                        className="answer-learning-sentence-row"
                       >
-                        <span>{sentenceIndex + 1}</span>
-                        {sentence}
-                      </button>
+                        <button
+                          type="button"
+                          className={`answer-learning-sentence-playback ${isSelectedSentence ? "is-selected" : ""} ${isCurrentSentence ? "is-current" : ""}`.trim()}
+                          aria-pressed={isSelectedSentence}
+                          aria-current={isCurrentSentence ? "true" : undefined}
+                          aria-label={`${sentenceIndex + 1}번 문장${
+                            stopsCurrentSentence
+                              ? " 재생 중지"
+                              : answerSpeech.isActive &&
+                                  answerSpeech.playback.mode === "continuous"
+                              ? "부터 끝까지 재생"
+                              : isSelectedSentence
+                                ? " 듣기"
+                                : " 선택"
+                          }`}
+                          disabled={!answerSpeech.isSupported || recorderBusy}
+                          onClick={() => handleSentencePress(sentenceIndex)}
+                        >
+                          <span className="answer-learning-sentence-number">{sentenceIndex + 1}</span>
+                          <span className="answer-learning-sentence-text">{sentence}</span>
+                        </button>
+                        {sentenceCheckId && (
+                          <button
+                            type="button"
+                            className="answer-learning-sentence-check"
+                            aria-label={`${sentenceIndex + 1}번 문장 복습 체크${isChecked ? " 해제" : ""}`}
+                            aria-pressed={isChecked}
+                            onClick={() =>
+                              onToggleSentenceCheck(
+                                sentenceCheckId,
+                                sentenceCheckIds,
+                              )
+                            }
+                          >
+                            <span aria-hidden="true">✓</span>
+                          </button>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
               ))}
             </div>
+            {sentenceCheckMessage && (
+              <p className="answer-learning-sentence-check-feedback" role="status">
+                {sentenceCheckMessage}
+              </p>
+            )}
           </div>
         )}
       </section>
