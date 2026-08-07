@@ -422,7 +422,9 @@ test("답변 익히기 오디오 조작은 모바일 터치와 현재 문장 표
   assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-playback-status\s*\{[^}]*min-height:\s*3em[^}]*display:\s*flex/);
   assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-page \.answer-learning-sentences\s*\{[^}]*gap:\s*10px[^}]*margin-inline:\s*-3px/);
   assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-page \.answer-learning-paragraph\s*\{[^}]*gap:\s*5px/);
-  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-page \.answer-learning-sentence-playback\s*\{[^}]*grid-template-columns:\s*18px minmax\(0, 1fr\)[^}]*gap:\s*4px[^}]*padding:\s*10px 7px/);
+  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-page \.answer-learning-sentence-playback\s*\{[^}]*padding:\s*10px 2px/);
+  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-page \.answer-learning-sentence-row\s*\{[^}]*grid-template-columns:\s*18px minmax\(0, 1fr\)/);
+  assert.match(mobileAnswerLearningBlocks[0], /\.answer-learning-page \.answer-learning-sentence-check\s*\{[^}]*width:\s*18px[^}]*min-height:\s*18px/);
   assert.match(answerLearning, /shouldShowAnswerLearningStopControl\(answerSpeech\.playback\)/);
   assert.match(answerLearningSpeech, /shouldStopAnswerLearningSentencePlayback\(playbackRef\.current, index\)[\s\S]*?stop\(\)/);
 });
@@ -828,13 +830,17 @@ test("current condition stays inline and only its value may wrap", () => {
 test("answer-learning sentence checks are separate accessible controls", () => {
   assert.match(answerLearning, /createAnswerLearningSentenceCheckIds\(answerSentences\)/);
   assert.match(answerLearning, /className="answer-learning-sentence-row"/);
+  assert.match(answerLearning, /className="answer-learning-sentence-meta"/);
   assert.match(answerLearning, /answer-learning-sentence-playback/);
   assert.match(answerLearning, /className="answer-learning-sentence-check"/);
   assert.match(answerLearning, /aria-pressed=\{isChecked\}/);
   assert.match(answerLearning, /onToggleSentenceCheck\([\s\S]*?sentenceCheckId,[\s\S]*?sentenceCheckIds/);
-  assert.match(css, /\.answer-learning-sentence-row\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 44px/);
-  assert.match(css, /\.answer-learning-sentence-check\s*\{[^}]*width:\s*44px[^}]*min-height:\s*44px/);
-  assert.match(css, /\.answer-learning-sentence-check\[aria-pressed="true"\]\s*\{[^}]*var\(--blue\)/);
+  assert.match(css, /\.answer-learning-sentence-row\s*\{[^}]*grid-template-columns:\s*24px minmax\(0, 1fr\)/);
+  assert.match(css, /\.answer-learning-sentence-meta\s*\{[^}]*flex-direction:\s*column[^}]*gap:\s*1px/);
+  assert.match(css, /\.answer-learning-sentence-check\s*\{[^}]*width:\s*20px[^}]*min-height:\s*20px[^}]*border:\s*1px solid var\(--line\)[^}]*color:\s*transparent[^}]*background:\s*transparent/);
+  assert.match(css, /\.answer-learning-sentence-check\[aria-pressed="true"\]\s*\{[^}]*color:\s*var\(--white\)[^}]*border-color:\s*var\(--blue\)[^}]*background:\s*var\(--blue\)/);
+  assert.match(css, /@media \(hover:\s*hover\) and \(pointer:\s*fine\)[\s\S]*?\.answer-learning-sentence-check:hover\s*\{[^}]*border-color:\s*var\(--blue\)[^}]*\}/);
+  assert.doesNotMatch(css, /\.answer-learning-sentence-check:hover\s*\{[^}]*background:/);
   assert.match(app, /saveAnswerLearningSentenceChecks\(next\)[\s\S]*?setAnswerLearningSentenceChecks\(next\)/);
 });
 

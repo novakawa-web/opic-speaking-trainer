@@ -488,6 +488,27 @@ export function AnswerLearning({
                         key={`${card.id}-${sentenceIndex}`}
                         className="answer-learning-sentence-row"
                       >
+                        <div className="answer-learning-sentence-meta">
+                          <span className="answer-learning-sentence-number" aria-hidden="true">
+                            {sentenceIndex + 1}
+                          </span>
+                          {sentenceCheckId && (
+                            <button
+                              type="button"
+                              className="answer-learning-sentence-check"
+                              aria-label={`${sentenceIndex + 1}번 문장 복습 체크${isChecked ? " 해제" : ""}`}
+                              aria-pressed={isChecked}
+                              onClick={() =>
+                                onToggleSentenceCheck(
+                                  sentenceCheckId,
+                                  sentenceCheckIds,
+                                )
+                              }
+                            >
+                              <span aria-hidden="true">✓</span>
+                            </button>
+                          )}
+                        </div>
                         <button
                           type="button"
                           className={`answer-learning-sentence-playback ${isSelectedSentence ? "is-selected" : ""} ${isCurrentSentence ? "is-current" : ""}`.trim()}
@@ -506,25 +527,8 @@ export function AnswerLearning({
                           disabled={!answerSpeech.isSupported || recorderBusy}
                           onClick={() => handleSentencePress(sentenceIndex)}
                         >
-                          <span className="answer-learning-sentence-number">{sentenceIndex + 1}</span>
                           <span className="answer-learning-sentence-text">{sentence}</span>
                         </button>
-                        {sentenceCheckId && (
-                          <button
-                            type="button"
-                            className="answer-learning-sentence-check"
-                            aria-label={`${sentenceIndex + 1}번 문장 복습 체크${isChecked ? " 해제" : ""}`}
-                            aria-pressed={isChecked}
-                            onClick={() =>
-                              onToggleSentenceCheck(
-                                sentenceCheckId,
-                                sentenceCheckIds,
-                              )
-                            }
-                          >
-                            <span aria-hidden="true">✓</span>
-                          </button>
-                        )}
                       </div>
                     );
                   })}
