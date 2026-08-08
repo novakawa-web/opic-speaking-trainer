@@ -16,6 +16,7 @@ type Props = {
   selectedWeeks: string[];
   selectedTopics: string[];
   selectedTypes: string[];
+  favoriteOnly: boolean;
   finalOnly: boolean;
   hardOnly: boolean;
   cardScope: StudyCardScope;
@@ -27,6 +28,7 @@ type Props = {
   onDeckChange: (value: DeckName | "all") => void;
   onTagChange: (value: string) => void;
   onTagDimensionsChange: (next: CardTagDimensionFilters) => void;
+  onFavoriteOnlyChange: (value: boolean) => void;
   onFinalOnlyChange: (value: boolean) => void;
   onHardOnlyChange: (value: boolean) => void;
   onCardScopeChange: (value: StudyCardScope) => void;
@@ -64,6 +66,7 @@ export function FirstLineSetup(props: Props) {
           selectedWeeks={props.selectedWeeks}
           selectedTopics={props.selectedTopics}
           selectedTypes={props.selectedTypes}
+          favoriteOnly={props.favoriteOnly}
           finalOnly={props.finalOnly}
           hardOnly={props.hardOnly}
           cardScope={props.cardScope}
@@ -73,6 +76,7 @@ export function FirstLineSetup(props: Props) {
           onDeckChange={props.onDeckChange}
           onTagChange={props.onTagChange}
           onTagDimensionsChange={props.onTagDimensionsChange}
+          onFavoriteOnlyChange={props.onFavoriteOnlyChange}
           onFinalOnlyChange={props.onFinalOnlyChange}
           onHardOnlyChange={props.onHardOnlyChange}
           onCardScopeChange={props.onCardScopeChange}

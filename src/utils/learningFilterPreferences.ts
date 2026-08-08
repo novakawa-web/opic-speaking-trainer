@@ -30,6 +30,7 @@ export type FirstLineFilterState = {
   selectedWeeks: string[];
   selectedTopics: string[];
   selectedTypes: string[];
+  favoriteOnly: boolean;
   finalOnly: boolean;
   hardOnly: boolean;
   cardScope: StudyCardScope;
@@ -69,6 +70,7 @@ export const DEFAULT_FIRST_LINE_FILTER_STATE: FirstLineFilterState = {
   selectedWeeks: [],
   selectedTopics: [],
   selectedTypes: [],
+  favoriteOnly: false,
   finalOnly: false,
   hardOnly: false,
   cardScope: "all",
@@ -123,6 +125,7 @@ export function normalizeFirstLineFilterPreferences(
       selectedDeck: resolveDeck(filters.selectedDeck, cards),
       selectedTag: selectedOtherTags[0] ?? "all",
       ...resolvedDimensions,
+      favoriteOnly: filters.favoriteOnly === true,
       finalOnly: legacy.finalOnly,
       hardOnly: filters.hardOnly === true,
       cardScope: isStudyCardScope(filters.cardScope)

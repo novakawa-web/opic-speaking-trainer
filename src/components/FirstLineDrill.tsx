@@ -29,6 +29,7 @@ import {
 import { FIRST_LINE_STATUS_OPTIONS } from "../utils/studyStatusOptions";
 import { ShortcutHelp } from "./ShortcutHelp";
 import { StudyNavigation } from "./StudyNavigation";
+import { FavoriteButton } from "./FavoriteButton";
 import type { FirstLineMode } from "../utils/firstLineMockSession";
 
 type FirstLineDrillProps = {
@@ -45,6 +46,8 @@ type FirstLineDrillProps = {
     statusLabel: string;
   } | null;
   feedbackMessage: string | null;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
   onStatusChange: (status: Exclude<FirstLineStatus, null>) => void;
   onUndo: () => void;
   onResetStatus: () => void;
@@ -93,6 +96,8 @@ export function FirstLineDrill({
   backLabel,
   undoTarget,
   feedbackMessage,
+  isFavorite,
+  onToggleFavorite,
   onStatusChange,
   onUndo,
   onResetStatus,
@@ -367,7 +372,13 @@ export function FirstLineDrill({
       <section className="drill-card" {...swipeHandlers}>
         <div className="drill-decoration" aria-hidden="true" />
         <div className="drill-content">
-          <span className="drill-kicker">{mode === "mock" ? "첫 문장 모의고사" : "3초 안에 시작해 보세요"}</span>
+          <div className="drill-kicker-row">
+            <span className="drill-kicker">{mode === "mock" ? "첫 문장 모의고사" : "3초 안에 시작해 보세요"}</span>
+            <FavoriteButton
+              isFavorite={isFavorite}
+              onToggle={onToggleFavorite}
+            />
+          </div>
           {mode === "mock" && (
             <div className={`mock-countdown ${countdown === 0 ? "is-finished" : ""}`} role="timer" aria-live="polite">
               {countdown > 0 ? <><strong>{countdown}</strong><span>초 안에 첫 문장을 시작하세요</span></> : <span>말한 뒤 정답을 확인하세요</span>}

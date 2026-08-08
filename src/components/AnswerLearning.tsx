@@ -40,6 +40,7 @@ import {
 import { createAnswerLearningSentenceCheckIds } from "../utils/answerLearningSentenceChecks";
 import { CardEditor } from "./CardEditor";
 import { AudioRecorder, type AudioRecorderHandle } from "./AudioRecorder";
+import { FavoriteButton } from "./FavoriteButton";
 
 type Props = {
   card: OpicCard;
@@ -56,6 +57,8 @@ type Props = {
   feedbackMessage: string | null;
   checkedSentenceIds: readonly string[];
   sentenceCheckMessage: string | null;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
   onAnswerSourceChange: (source: AnswerLearningAnswerSource) => void;
   onRevealChange: (reveal: AnswerLearningRevealState) => void;
   onPrevious: () => void;
@@ -92,6 +95,8 @@ export function AnswerLearning({
   feedbackMessage,
   checkedSentenceIds,
   sentenceCheckMessage,
+  isFavorite,
+  onToggleFavorite,
   onAnswerSourceChange,
   onRevealChange,
   onPrevious,
@@ -318,6 +323,12 @@ export function AnswerLearning({
           <button type="button" className="answer-learning-inline-back" onClick={() => { clearCurrentAudio(); onBack(); }}>← 준비 화면으로</button>
           <strong>{currentPosition} / {totalCards} 카드</strong>
           <span>{card.deck}</span>
+        </div>
+        <div className="answer-learning-favorite-row">
+          <FavoriteButton
+            isFavorite={isFavorite}
+            onToggle={onToggleFavorite}
+          />
         </div>
         <h1>{card.front}</h1>
         <div className="answer-learning-question-actions">

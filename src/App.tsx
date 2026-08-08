@@ -204,6 +204,11 @@ import {
   type ArchiveFilter,
 } from "./utils/cardArchiveStorage";
 import {
+  matchesFavoriteFilter,
+  readFavoriteCardIds,
+  setCardFavorite,
+} from "./utils/cardFavoriteStorage";
+import {
   hasCardRelatedData,
 } from "./utils/cardDeletion";
 import {
@@ -355,6 +360,7 @@ function readInitialNavigationState(availableCards: OpicCard[]) {
     selectedWeeks: stored.filters.selectedWeeks,
     selectedTopics: stored.filters.selectedTopics,
     selectedTypes: stored.filters.selectedTypes,
+    favoriteOnly: stored.filters.favoriteOnly,
     finalOnly: stored.filters.finalOnly,
     hardOnly: stored.filters.hardOnly,
     cardScope: stored.filters.cardScope,
@@ -373,6 +379,7 @@ function App() {
     initialCardState.invalidStoredData,
   );
   const [archivedCardIds, setArchivedCardIds] = useState(readArchivedCardIds);
+  const [favoriteCardIds, setFavoriteCardIds] = useState(readFavoriteCardIds);
   const [archiveFilter, setArchiveFilter] = useState<ArchiveFilter>("active");
   const [deletedCardSnapshot, setDeletedCardSnapshot] =
     useState<DeletedCardUndoSnapshot | null>(null);
@@ -426,6 +433,7 @@ function App() {
           selectedWeeks: initialNavigation.selectedWeeks,
           selectedTopics: initialNavigation.selectedTopics,
           selectedTypes: initialNavigation.selectedTypes,
+          favoriteOnly: initialNavigation.favoriteOnly,
           finalOnly: initialNavigation.finalOnly,
           hardOnly: initialNavigation.hardOnly,
           cardScope: initialNavigation.cardScope,
@@ -465,6 +473,7 @@ function App() {
   const [selectedTopics, setSelectedTopics] = useState(initialNavigation.selectedTopics);
   const [selectedTypes, setSelectedTypes] = useState(initialNavigation.selectedTypes);
   const [cardSearchQuery, setCardSearchQuery] = useState("");
+  const [favoriteOnly, setFavoriteOnly] = useState(initialNavigation.favoriteOnly);
   const [finalOnly, setFinalOnly] = useState(initialNavigation.finalOnly);
   const [hardOnly, setHardOnly] = useState(initialNavigation.hardOnly);
   const [answerContentFilter, setAnswerContentFilter] = useState<AnswerContentFilter>("all");
@@ -644,6 +653,7 @@ function App() {
         const matchesDeck = selectedDeck === "all" || card.deck === selectedDeck;
         const matchesTag = selectedTag === "all" || card.tags.includes(selectedTag);
         const matchesTagDimensions = matchesCardTagDimensionFilters(card, tagDimensionFilters);
+        const matchesFavorite = matchesFavoriteFilter(card, favoriteCardIds, favoriteOnly);
         const matchesFinal = !finalOnly || card.tags.includes("final_rep");
         const matchesHard = !hardOnly || statuses[card.id] === "hard";
         const matchesScope = cardScope === "all" || statuses[card.id] == null;
@@ -663,6 +673,7 @@ function App() {
           matchesDeck &&
           matchesTag &&
           matchesTagDimensions &&
+          matchesFavorite &&
           matchesFinal &&
           matchesHard &&
           matchesScope &&
@@ -682,6 +693,8 @@ function App() {
       answerLearningStatusFilter,
       answerContentFilter,
       cardScope,
+      favoriteCardIds,
+      favoriteOnly,
       finalOnly,
       hardOnly,
       selectedDeck,
@@ -732,6 +745,11 @@ function App() {
         card,
         firstLineTagDimensionFilters,
       );
+      const matchesFavorite = matchesFavoriteFilter(
+        card,
+        favoriteCardIds,
+        firstLineFilterState.favoriteOnly,
+      );
       const matchesFinal =
         !firstLineFilterState.finalOnly || card.tags.includes("final_rep");
       const matchesHard =
@@ -748,6 +766,7 @@ function App() {
         matchesDeck &&
         matchesTag &&
         matchesTagDimensions &&
+        matchesFavorite &&
         matchesFinal &&
         matchesHard &&
         matchesScope &&
@@ -764,6 +783,7 @@ function App() {
     answerLearningStatuses,
     archivedCardIds,
     cardCatalog,
+    favoriteCardIds,
     firstLineFilterState,
     firstLineTagDimensionFilters,
     statuses,
@@ -807,6 +827,7 @@ function App() {
     selectedWeeks,
     selectedTopics,
     selectedTypes,
+    favoriteOnly,
     finalOnly,
     hardOnly,
     cardScope,
@@ -822,6 +843,7 @@ function App() {
       selectedWeeks,
       selectedTopics,
       selectedTypes,
+      favoriteOnly,
       finalOnly,
       hardOnly,
       cardScope,
@@ -831,7 +853,7 @@ function App() {
       archiveFilter,
       cardSearchQuery,
     });
-  }, [answerContentFilter, answerLearningStatusFilter, archiveFilter, cardScope, cardSearchQuery, finalOnly, hardOnly, selectedDeck, selectedTag, selectedTopics, selectedTypes, selectedWeeks, studyOrder]);
+  }, [answerContentFilter, answerLearningStatusFilter, archiveFilter, cardScope, cardSearchQuery, favoriteOnly, finalOnly, hardOnly, selectedDeck, selectedTag, selectedTopics, selectedTypes, selectedWeeks, studyOrder]);
   const drillCards = useMemo(() => {
     const byId = new Map(cardCatalog.map((card) => [card.id, card]));
     return drillCardIds.flatMap((cardId) => {
@@ -933,6 +955,7 @@ function App() {
         selectedWeeks,
         selectedTopics,
         selectedTypes,
+        favoriteOnly,
         finalOnly,
         hardOnly,
         cardScope,
@@ -944,6 +967,7 @@ function App() {
     drillCardIds,
     drillReturnView,
     detailReturnView,
+    favoriteOnly,
     finalOnly,
     hardOnly,
     selectedCardId,
@@ -1458,6 +1482,7 @@ function App() {
         filters,
         answerLearningStatuses,
         myAnswers,
+        favoriteCardIds,
       ),
       filters.order,
       answerLearningAttemptCounts,
@@ -1928,12 +1953,23 @@ function App() {
     setTheme((current) => (current === "light" ? "dark" : "light"));
   }
 
+  function toggleFavoriteCard(cardId: string) {
+    const next = setCardFavorite(
+      favoriteCardIds,
+      cardId,
+      !favoriteCardIds.includes(cardId),
+      localStorage,
+    );
+    setFavoriteCardIds(next);
+  }
+
   function resetVisibleStudyFilters() {
     setSelectedDeck("all");
     setSelectedTag("all");
     setSelectedWeeks([]);
     setSelectedTopics([]);
     setSelectedTypes([]);
+    setFavoriteOnly(false);
     setFinalOnly(false);
     setHardOnly(false);
     setCardScope("all");
@@ -2184,6 +2220,7 @@ function App() {
         selectedWeeks,
         selectedTopics,
         selectedTypes,
+        favoriteOnly,
         finalOnly,
         hardOnly,
         cardScope,
@@ -2202,6 +2239,7 @@ function App() {
     setMyAnswers(state.myAnswers);
     setCardMemos(state.cardMemos);
     setArchivedCardIds(state.archivedCardIds);
+    setFavoriteCardIds(state.favoriteCardIds);
     setDrillCardIds(state.navigationSession.drillCardIds);
     setAnswerSession(state.answerLearningSession);
     setMockSession(state.firstLineMockSession);
@@ -2213,6 +2251,7 @@ function App() {
     setSelectedWeeks(state.navigationSession.filters.selectedWeeks);
     setSelectedTopics(state.navigationSession.filters.selectedTopics);
     setSelectedTypes(state.navigationSession.filters.selectedTypes);
+    setFavoriteOnly(state.navigationSession.filters.favoriteOnly);
     setFinalOnly(state.navigationSession.filters.finalOnly);
     setHardOnly(state.navigationSession.filters.hardOnly);
     setCardScope(state.navigationSession.filters.cardScope);
@@ -2247,6 +2286,7 @@ function App() {
         myAnswers,
         cardMemos,
         archivedCardIds,
+        favoriteCardIds,
         firstLineMockSession: mockSession,
         answerLearningSession: answerSession,
         navigationSession: createCurrentNavigationSession(),
@@ -2337,6 +2377,7 @@ function App() {
           selectedWeeks={firstLineFilterState.selectedWeeks}
           selectedTopics={firstLineFilterState.selectedTopics}
           selectedTypes={firstLineFilterState.selectedTypes}
+          favoriteOnly={firstLineFilterState.favoriteOnly}
           finalOnly={firstLineFilterState.finalOnly}
           hardOnly={firstLineFilterState.hardOnly}
           cardScope={firstLineFilterState.cardScope}
@@ -2352,6 +2393,9 @@ function App() {
             setFirstLineFilterState((current) => ({ ...current, selectedTag }))
           }
           onTagDimensionsChange={updateFirstLineTagDimensions}
+          onFavoriteOnlyChange={(favoriteOnly) =>
+            setFirstLineFilterState((current) => ({ ...current, favoriteOnly }))
+          }
           onFinalOnlyChange={(finalOnly) =>
             setFirstLineFilterState((current) => ({ ...current, finalOnly }))
           }
@@ -2415,6 +2459,7 @@ function App() {
           myAnswers={myAnswers}
           cardMemos={cardMemos}
           attemptCounts={answerLearningAttemptCounts}
+          favoriteCardIds={favoriteCardIds}
           session={answerSession}
           onSessionChange={updateAnswerSession}
           onStart={startAnswerLearning}
@@ -2484,6 +2529,8 @@ function App() {
             answerSource,
           )}
           sentenceCheckMessage={answerLearningSentenceCheckMessage}
+          isFavorite={favoriteCardIds.includes(selectedCard.id)}
+          onToggleFavorite={() => toggleFavoriteCard(selectedCard.id)}
           onAnswerSourceChange={(source) => {
             setAnswerLearningSentenceCheckMessage(null);
             updateAnswerSession({
@@ -2596,20 +2643,24 @@ function App() {
           selectedWeeks={selectedWeeks}
           selectedTopics={selectedTopics}
           selectedTypes={selectedTypes}
+          favoriteOnly={favoriteOnly}
           finalOnly={finalOnly}
           hardOnly={hardOnly}
           cardScope={cardScope}
           studyOrder={studyOrder}
           filterSignature={filterSignature}
+          favoriteCardIds={favoriteCardIds}
           onDeckChange={setSelectedDeck}
           onTagChange={setSelectedTag}
           onTagDimensionsChange={updateTagDimensions}
+          onFavoriteOnlyChange={setFavoriteOnly}
           onFinalOnlyChange={setFinalOnly}
           onHardOnlyChange={setHardOnly}
           onCardScopeChange={setCardScope}
           onStudyOrderChange={setStudyOrder}
           onReset={resetFilters}
           onSelect={(card) => openCard(card, "library")}
+          onToggleFavorite={toggleFavoriteCard}
           onCreate={openCardCreation}
           answerLearningCardCount={libraryAnswerLearningCardCount}
           onStartFirstLine={openFirstLineSetupFromLibrary}
@@ -2707,6 +2758,8 @@ function App() {
         />
         <FirstLineDrill
           card={selectedCard}
+          isFavorite={favoriteCardIds.includes(selectedCard.id)}
+          onToggleFavorite={() => toggleFavoriteCard(selectedCard.id)}
           status={statuses[selectedCard.id] ?? null}
           currentPosition={currentPosition}
           totalCards={activeCards.length}
@@ -2792,6 +2845,7 @@ function App() {
             answerLearningSentenceChecks,
             myAnswers,
             cardMemos,
+            favoriteCardIds,
           })}
           onSaveCardEdit={saveCardEdit}
           cardEditError={cardEditFailure?.message ?? null}

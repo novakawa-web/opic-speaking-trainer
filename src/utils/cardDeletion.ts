@@ -76,6 +76,7 @@ export function hasCardRelatedData(
     answerLearningSentenceChecks: AnswerLearningSentenceChecks;
     myAnswers: MyAnswers;
     cardMemos: CardMemos;
+    favoriteCardIds?: readonly string[];
   },
 ) {
   return Boolean(
@@ -87,6 +88,7 @@ export function hasCardRelatedData(
       ) > 0 ||
       data.myAnswers[cardId] ||
       data.cardMemos[cardId]?.length ||
+      data.favoriteCardIds?.includes(cardId) ||
       Object.values(data.attempts).some((attempts) =>
         attempts.some((attempt) => attempt.cardId === cardId),
       ) ||

@@ -22,6 +22,7 @@ type TagFilterProps = {
   selectedTypes: string[];
   searchQuery?: string;
   onSearchQueryChange?: (query: string) => void;
+  favoriteOnly: boolean;
   finalOnly: boolean;
   hardOnly: boolean;
   cardScope: StudyCardScope;
@@ -29,6 +30,7 @@ type TagFilterProps = {
   onDeckChange: (deck: DeckName | "all") => void;
   onTagChange: (tag: string) => void;
   onTagDimensionsChange: (next: CardTagDimensionFilters) => void;
+  onFavoriteOnlyChange: (checked: boolean) => void;
   onFinalOnlyChange: (checked: boolean) => void;
   onHardOnlyChange: (checked: boolean) => void;
   onCardScopeChange: (scope: StudyCardScope) => void;
@@ -56,6 +58,7 @@ export function TagFilter({
   selectedTypes,
   searchQuery,
   onSearchQueryChange,
+  favoriteOnly,
   finalOnly,
   hardOnly,
   cardScope,
@@ -63,6 +66,7 @@ export function TagFilter({
   onDeckChange,
   onTagChange,
   onTagDimensionsChange,
+  onFavoriteOnlyChange,
   onFinalOnlyChange,
   onHardOnlyChange,
   onCardScopeChange,
@@ -226,6 +230,16 @@ export function TagFilter({
         </p>
 
         <div className="toggle-group" aria-label="빠른 필터">
+          <label className="toggle-row">
+            <input
+              type="checkbox"
+              checked={favoriteOnly}
+              onChange={(event) => onFavoriteOnlyChange(event.target.checked)}
+            />
+            <span className="toggle-switch" aria-hidden="true" />
+            <span>즐겨찾기만 보기</span>
+          </label>
+
           <label className="toggle-row">
             <input
               type="checkbox"

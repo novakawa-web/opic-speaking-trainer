@@ -32,6 +32,7 @@ export type AnswerLearningFilters = {
   selectedWeeks: string[];
   selectedTopics: string[];
   selectedTypes: string[];
+  favoriteOnly: boolean;
   finalOnly: boolean;
   answerPresence: AnswerPresenceFilter;
   status: AnswerLearningStatusFilter;
@@ -65,6 +66,7 @@ export const DEFAULT_ANSWER_LEARNING_FILTERS: AnswerLearningFilters = {
   tag: "all",
   selectedTags: [],
   ...EMPTY_CARD_TAG_DIMENSION_FILTERS,
+  favoriteOnly: false,
   finalOnly: false,
   answerPresence: "all",
   status: "all",
@@ -127,6 +129,7 @@ export function normalizeAnswerLearningSession(
     tag: resolvedSelectedTags[0] ?? "all",
     selectedTags: resolvedSelectedTags,
     ...resolvedDimensions,
+    favoriteOnly: filtersValue.favoriteOnly === true,
     finalOnly: legacyTag.finalOnly,
     answerPresence: validPresence.has(filtersValue.answerPresence as AnswerPresenceFilter)
       ? (filtersValue.answerPresence as AnswerPresenceFilter)

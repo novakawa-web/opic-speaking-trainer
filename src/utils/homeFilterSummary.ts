@@ -11,6 +11,7 @@ export type HomeFilterSummaryInput = {
   selectedWeeks: string[];
   selectedTopics: string[];
   selectedTypes: string[];
+  favoriteOnly: boolean;
   finalOnly: boolean;
   hardOnly: boolean;
   cardScope: StudyCardScope;
@@ -43,6 +44,7 @@ export function formatHomeFilterSummary({
   selectedWeeks = [],
   selectedTopics = [],
   selectedTypes = [],
+  favoriteOnly,
   finalOnly,
   hardOnly,
   cardScope,
@@ -61,6 +63,7 @@ export function formatHomeFilterSummary({
   if (topicSummary) parts.push(topicSummary);
   if (typeSummary) parts.push(typeSummary);
   if (selectedTag !== "all") parts.push(`#${selectedTag}`);
+  if (favoriteOnly) parts.push("즐겨찾기");
   if (finalOnly) parts.push("final_rep");
   if (hardOnly) parts.push("첫 문장 어려움");
   if (answerLearningStatusFilter !== "all") {

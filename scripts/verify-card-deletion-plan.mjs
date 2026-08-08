@@ -164,6 +164,7 @@ function createState(overrides = {}) {
       ],
     },
     archivedCardIds: [target.id, other.id],
+    favoriteCardIds: [target.id, other.id],
     firstLineMockSession: mockSession,
     answerLearningSession: answerSession,
     cardDetailSession: detailSession,

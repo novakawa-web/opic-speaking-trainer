@@ -126,6 +126,11 @@ import {
   normalizeArchivedCardIds,
   readArchivedCardIds,
 } from "./cardArchiveStorage.ts";
+import {
+  FAVORITE_CARD_IDS_STORAGE_KEY,
+  normalizeFavoriteCardIds,
+  readFavoriteCardIds,
+} from "./cardFavoriteStorage.ts";
 
 export const APP_BACKUP_FORMAT = "opic-trainer-backup";
 export const APP_BACKUP_VERSION = 1;
@@ -194,6 +199,7 @@ export type AppBackupV1 = {
     answerLearningStatuses: AnswerLearningStatuses;
     answerLearningAttempts: AnswerLearningAttempt[];
     archivedCardIds: string[];
+    favoriteCardIds: string[];
     settings: BackupSettings;
   };
 };
@@ -262,6 +268,7 @@ export const BACKUP_STORAGE_POLICY = [
   { key: ANSWER_LEARNING_STATUSES_STORAGE_KEY, schemaPath: "data.answerLearningStatuses", included: true },
   { key: ANSWER_LEARNING_ATTEMPTS_STORAGE_KEY, schemaPath: "data.answerLearningAttempts", included: true },
   { key: ARCHIVED_CARD_IDS_STORAGE_KEY, schemaPath: "data.archivedCardIds", included: true },
+  { key: FAVORITE_CARD_IDS_STORAGE_KEY, schemaPath: "data.favoriteCardIds", included: true },
   { key: THEME_STORAGE_KEY, schemaPath: "data.settings.theme", included: true },
   { key: STUDY_DAY_START_STORAGE_KEY, schemaPath: "data.settings.studyDayStartTime", included: true },
   { key: TTS_RATE_STORAGE_KEY, schemaPath: "data.settings.ttsRate", included: true },
@@ -893,6 +900,7 @@ export function createAppBackup(
   answerLearningStatuses: AnswerLearningStatuses = {},
   answerLearningAttemptsByDate: AnswerLearningAttemptsByDate = {},
   archivedCardIds = readArchivedCardIds(),
+  favoriteCardIds = readFavoriteCardIds(),
 ): AppBackupV1 {
   const exportedAt = now.toISOString();
   const normalizedStatuses = normalizeStatuses(statuses) as Record<
@@ -912,6 +920,7 @@ export function createAppBackup(
     answerLearningAttemptsByDate,
   );
   const normalizedArchivedCardIds = normalizeArchivedCardIds(archivedCardIds);
+  const normalizedFavoriteCardIds = normalizeFavoriteCardIds(favoriteCardIds);
 
   return {
     format: APP_BACKUP_FORMAT,
@@ -948,6 +957,7 @@ export function createAppBackup(
       answerLearningStatuses: normalizedAnswerLearningStatuses,
       answerLearningAttempts,
       archivedCardIds: normalizedArchivedCardIds,
+      favoriteCardIds: normalizedFavoriteCardIds,
       settings: { ...settings },
     },
   };
@@ -1115,6 +1125,7 @@ export function validateBackup(value: unknown): BackupValidationResult {
       "answerLearningStatuses",
       "answerLearningAttempts",
       "archivedCardIds",
+      "favoriteCardIds",
       "settings",
     ],
     "data",
@@ -1319,6 +1330,18 @@ export function validateBackup(value: unknown): BackupValidationResult {
     }
     return normalized;
   })();
+  const normalizedFavoriteCardIds = (() => {
+    if (data.favoriteCardIds === undefined) return [];
+    if (!Array.isArray(data.favoriteCardIds)) {
+      issues.push(createIssue("warning", "data.favoriteCardIds", "즐겨찾기 카드 목록이 올바르지 않아 빈 목록으로 복구합니다."));
+      return [];
+    }
+    const normalized = normalizeFavoriteCardIds(data.favoriteCardIds);
+    if (normalized.length !== data.favoriteCardIds.length) {
+      issues.push(createIssue("warning", "data.favoriteCardIds", "잘못되거나 중복된 즐겨찾기 카드 ID를 제외했습니다."));
+    }
+    return normalized;
+  })();
   const settings = normalizeSettings(data.settings, issues);
   if (issues.some((issue) => issue.severity === "error")) {
     return finalizeValidation(null, issues);
@@ -1360,6 +1383,7 @@ export function validateBackup(value: unknown): BackupValidationResult {
       answerLearningStatuses: normalizedAnswerLearningStatuses,
       answerLearningAttempts: normalizedAnswerLearningAttempts,
       archivedCardIds: normalizedArchivedCardIds,
+      favoriteCardIds: normalizedFavoriteCardIds,
       settings,
     },
   };
@@ -1413,6 +1437,7 @@ function backupToStorageValues(backup: AppBackupV1) {
     [ANSWER_LEARNING_STATUSES_STORAGE_KEY, JSON.stringify(backup.data.answerLearningStatuses)],
     [ANSWER_LEARNING_ATTEMPTS_STORAGE_KEY, JSON.stringify(groupAnswerLearningAttempts(backup.data.answerLearningAttempts))],
     [ARCHIVED_CARD_IDS_STORAGE_KEY, JSON.stringify(backup.data.archivedCardIds)],
+    [FAVORITE_CARD_IDS_STORAGE_KEY, JSON.stringify(backup.data.favoriteCardIds)],
     [THEME_STORAGE_KEY, settings.theme],
     [STUDY_DAY_START_STORAGE_KEY, settings.studyDayStartTime],
     [TTS_RATE_STORAGE_KEY, String(settings.ttsRate)],

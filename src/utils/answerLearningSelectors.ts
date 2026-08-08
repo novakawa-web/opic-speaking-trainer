@@ -6,6 +6,7 @@ import type {
   AnswerLearningStatusFilter,
 } from "./answerLearningSession.ts";
 import { matchesCardTagDimensionFilters } from "./cardTagFilters.ts";
+import { matchesFavoriteFilter } from "./cardFavoriteStorage.ts";
 
 const dangerousCardIds = new Set(["__proto__", "constructor", "prototype"]);
 
@@ -50,6 +51,7 @@ export function filterAnswerLearningCards(
   filters: AnswerLearningFilters,
   statuses: AnswerLearningStatuses,
   myAnswers: MyAnswers,
+  favoriteCardIds: readonly string[] = [],
 ) {
   return cards.filter((card) => {
     const hasMyAnswer = Boolean(myAnswers[card.id]);
@@ -58,6 +60,7 @@ export function filterAnswerLearningCards(
       (filters.deck === "all" || card.deck === filters.deck) &&
       (selectedTags.length === 0 || selectedTags.some((tag) => card.tags.includes(tag))) &&
       matchesCardTagDimensionFilters(card, filters) &&
+      matchesFavoriteFilter(card, favoriteCardIds, filters.favoriteOnly) &&
       (!filters.finalOnly || card.tags.includes("final_rep")) &&
       (filters.answerPresence === "all" ||
         (filters.answerPresence === "with" ? hasMyAnswer : !hasMyAnswer)) &&

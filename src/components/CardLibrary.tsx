@@ -35,6 +35,7 @@ type CardLibraryProps = {
   selectedTypes: string[];
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
+  favoriteOnly: boolean;
   finalOnly: boolean;
   hardOnly: boolean;
   cardScope: StudyCardScope;
@@ -43,6 +44,7 @@ type CardLibraryProps = {
   onDeckChange: (deck: DeckName | "all") => void;
   onTagChange: (tag: string) => void;
   onTagDimensionsChange: (next: CardTagDimensionFilters) => void;
+  onFavoriteOnlyChange: (checked: boolean) => void;
   onFinalOnlyChange: (checked: boolean) => void;
   onHardOnlyChange: (checked: boolean) => void;
   onCardScopeChange: (scope: StudyCardScope) => void;
@@ -60,6 +62,8 @@ type CardLibraryProps = {
   archiveFilter: ArchiveFilter;
   onArchiveFilterChange: (value: ArchiveFilter) => void;
   archivedCardIds: string[];
+  favoriteCardIds: string[];
+  onToggleFavorite: (cardId: string) => void;
 };
 
 export function CardLibrary({
@@ -78,6 +82,7 @@ export function CardLibrary({
   selectedTypes,
   searchQuery,
   onSearchQueryChange,
+  favoriteOnly,
   finalOnly,
   hardOnly,
   cardScope,
@@ -86,6 +91,7 @@ export function CardLibrary({
   onDeckChange,
   onTagChange,
   onTagDimensionsChange,
+  onFavoriteOnlyChange,
   onFinalOnlyChange,
   onHardOnlyChange,
   onCardScopeChange,
@@ -103,6 +109,8 @@ export function CardLibrary({
   archiveFilter,
   onArchiveFilterChange,
   archivedCardIds,
+  favoriteCardIds,
+  onToggleFavorite,
 }: CardLibraryProps) {
   const initialSessionRef = useRef(readCardLibrarySession());
   const visibleCountRef = useRef(CARD_LIBRARY_PAGE_SIZE);
@@ -216,6 +224,7 @@ export function CardLibrary({
         selectedTypes={selectedTypes}
         searchQuery={searchQuery}
         onSearchQueryChange={onSearchQueryChange}
+        favoriteOnly={favoriteOnly}
         finalOnly={finalOnly}
         hardOnly={hardOnly}
         cardScope={cardScope}
@@ -223,6 +232,7 @@ export function CardLibrary({
         onDeckChange={onDeckChange}
         onTagChange={onTagChange}
         onTagDimensionsChange={onTagDimensionsChange}
+        onFavoriteOnlyChange={onFavoriteOnlyChange}
         onFinalOnlyChange={onFinalOnlyChange}
         onHardOnlyChange={onHardOnlyChange}
         onCardScopeChange={onCardScopeChange}
@@ -291,6 +301,8 @@ export function CardLibrary({
           cardMemos={cardMemos}
           onSelect={selectCard}
           archivedCardIds={archivedCardIds}
+          favoriteCardIds={favoriteCardIds}
+          onToggleFavorite={onToggleFavorite}
         />
       )}
 

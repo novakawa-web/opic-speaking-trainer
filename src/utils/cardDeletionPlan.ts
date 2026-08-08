@@ -32,6 +32,11 @@ import {
   parseArchivedCardIds,
 } from "./cardArchiveStorage.ts";
 import {
+  FAVORITE_CARD_IDS_STORAGE_KEY,
+  normalizeFavoriteCardIds,
+  parseFavoriteCardIds,
+} from "./cardFavoriteStorage.ts";
+import {
   removeCardFromAnswerLearningSession,
   removeCardFromAttempts,
   removeCardFromMockSession,
@@ -100,6 +105,7 @@ export type CardDeletionState = {
   myAnswers: MyAnswers;
   cardMemos: CardMemos;
   archivedCardIds: string[];
+  favoriteCardIds: string[];
   firstLineMockSession: FirstLineMockSession | null;
   answerLearningSession: AnswerLearningSession;
   cardDetailSession: CardDetailUiSession | null;
@@ -116,6 +122,7 @@ export type RemovedCardReferences = {
   myAnswerCount: number;
   memoCount: number;
   archivedReferenceCount: number;
+  favoriteReferenceCount: number;
   sessionReferenceCount: number;
 };
 
@@ -269,6 +276,7 @@ function assertNavigationSession(
     !session.filters.selectedTopics.every((tag) => typeof tag === "string") ||
     !Array.isArray(session.filters.selectedTypes) ||
     !session.filters.selectedTypes.every((tag) => typeof tag === "string") ||
+    typeof session.filters.favoriteOnly !== "boolean" ||
     typeof session.filters.finalOnly !== "boolean" ||
     typeof session.filters.hardOnly !== "boolean" ||
     !["all", "new"].includes(session.filters.cardScope) ||
@@ -324,6 +332,7 @@ function assertValidCurrentState(state: CardDeletionState): void {
   assertCanonical("my-answers", state.myAnswers, normalizeMyAnswers);
   assertCanonical("card-memos", state.cardMemos, normalizeCardMemos);
   assertCanonical("archived-card-ids", state.archivedCardIds, normalizeArchivedCardIds);
+  assertCanonical("favorite-card-ids", state.favoriteCardIds, normalizeFavoriteCardIds);
 
   if (state.firstLineMockSession) {
     const parsed = parseFirstLineMockSession(
@@ -485,6 +494,7 @@ function createNextState(
     myAnswers: removeCardFromRecord(current.myAnswers, cardId),
     cardMemos: removeCardFromRecord(current.cardMemos, cardId),
     archivedCardIds: current.archivedCardIds.filter((id) => id !== cardId),
+    favoriteCardIds: current.favoriteCardIds.filter((id) => id !== cardId),
     firstLineMockSession: nextMock,
     answerLearningSession: {
       ...nextAnswerSession,
@@ -632,6 +642,18 @@ function buildMutations(
               normalizeArchivedCardIds(next.archivedCardIds),
             ),
     },
+    {
+      area: "local",
+      storage: localStorage,
+      key: FAVORITE_CARD_IDS_STORAGE_KEY,
+      value:
+        next.favoriteCardIds.length === 0
+          ? null
+          : serialize(
+              "favorite-card-ids",
+              normalizeFavoriteCardIds(next.favoriteCardIds),
+            ),
+    },
   );
 
   // The dataset is ordered last so readers do not observe a removed card while
@@ -662,6 +684,7 @@ function assertNoCardReferences(state: CardDeletionState, cardId: string): void 
     Object.hasOwn(state.myAnswers, cardId) ||
     Object.hasOwn(state.cardMemos, cardId) ||
     state.archivedCardIds.includes(cardId) ||
+    state.favoriteCardIds.includes(cardId) ||
     countAttemptReferences(state.firstLineAttemptsByDate, cardId) > 0 ||
     countAttemptReferences(state.answerLearningAttemptsByDate, cardId) > 0 ||
     countSessionReferences(state, cardId) > 0
@@ -776,6 +799,7 @@ export function validateCardDeletionPlan(plan: CardDeletionPlan): void {
   const answersMutation = mutationFor(plan, MY_ANSWERS_STORAGE_KEY);
   const memosMutation = mutationFor(plan, CARD_MEMOS_STORAGE_KEY);
   const archivedMutation = mutationFor(plan, ARCHIVED_CARD_IDS_STORAGE_KEY);
+  const favoriteMutation = mutationFor(plan, FAVORITE_CARD_IDS_STORAGE_KEY);
   const sentenceChecksMutation = mutationFor(
     plan,
     ANSWER_LEARNING_SENTENCE_CHECKS_STORAGE_KEY,
@@ -790,6 +814,10 @@ export function validateCardDeletionPlan(plan: CardDeletionPlan): void {
     !sameJson(
       parseArchivedCardIds(archivedMutation?.value ?? null),
       plan.nextState.archivedCardIds,
+    ) ||
+    !sameJson(
+      parseFavoriteCardIds(favoriteMutation?.value ?? null),
+      plan.nextState.favoriteCardIds,
     )
   ) {
     throw new CardDeletionPlanError("validation-failed", { dataKind: "optional-records" });
@@ -885,6 +913,9 @@ export function createCardDeletionPlan({
       myAnswerCount: Number(Object.hasOwn(currentState.myAnswers, cardId)),
       memoCount: currentState.cardMemos[cardId]?.length ?? 0,
       archivedReferenceCount: currentState.archivedCardIds.filter(
+        (id) => id === cardId,
+      ).length,
+      favoriteReferenceCount: currentState.favoriteCardIds.filter(
         (id) => id === cardId,
       ).length,
       sessionReferenceCount: countSessionReferences(currentState, cardId),

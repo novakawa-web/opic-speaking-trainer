@@ -32,6 +32,7 @@ export type NavigationSession = {
     selectedWeeks: string[];
     selectedTopics: string[];
     selectedTypes: string[];
+    favoriteOnly: boolean;
     finalOnly: boolean;
     hardOnly: boolean;
     cardScope: StudyCardScope;
@@ -47,9 +48,10 @@ export const DEFAULT_NAVIGATION_SESSION: NavigationSession = {
   drillCardIds: [],
   filters: {
     selectedDeck: "all",
-    selectedTag: "all",
-    ...EMPTY_CARD_TAG_DIMENSION_FILTERS,
-    finalOnly: false,
+      selectedTag: "all",
+      ...EMPTY_CARD_TAG_DIMENSION_FILTERS,
+      favoriteOnly: false,
+      finalOnly: false,
     hardOnly: false,
     cardScope: "all",
     studyOrder: "default",
@@ -118,6 +120,7 @@ export function readNavigationSession(): NavigationSession {
             : "all",
         selectedTag: legacyTag.selectedTag,
         ...legacyTag.dimensions,
+        favoriteOnly: filters.favoriteOnly === true,
         finalOnly: legacyTag.finalOnly,
         hardOnly:
           typeof filters.hardOnly === "boolean" ? filters.hardOnly : false,

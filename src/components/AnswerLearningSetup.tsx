@@ -28,6 +28,7 @@ type Props = {
   myAnswers: MyAnswers;
   cardMemos: CardMemos;
   attemptCounts: Record<string, number>;
+  favoriteCardIds: string[];
   session: AnswerLearningSession;
   onSessionChange: (session: AnswerLearningSession) => void;
   onStart: () => void;
@@ -74,6 +75,7 @@ export function AnswerLearningSetup({
   myAnswers,
   cardMemos,
   attemptCounts,
+  favoriteCardIds,
   session,
   onSessionChange,
   onStart,
@@ -88,11 +90,17 @@ export function AnswerLearningSetup({
   const visibleCards = useMemo(
     () =>
       orderAnswerLearningCards(
-        filterAnswerLearningCards(cards, effectiveFilters, statuses, myAnswers),
+        filterAnswerLearningCards(
+          cards,
+          effectiveFilters,
+          statuses,
+          myAnswers,
+          favoriteCardIds,
+        ),
         effectiveFilters.order,
         attemptCounts,
       ),
-    [attemptCounts, cards, effectiveFilters, myAnswers, statuses],
+    [attemptCounts, cards, effectiveFilters, favoriteCardIds, myAnswers, statuses],
   );
   const selected = new Set(session.selectedCardIds);
   const selectionState = getAnswerLearningSelectionState(visibleCards, session.selectedCardIds);
@@ -184,10 +192,13 @@ export function AnswerLearningSetup({
         <div className="answer-learning-filter-grid">
           <label className={session.filters.deck !== "all" ? "is-filter-active" : ""}>
             <span>덱</span>
-            <select value={session.filters.deck} onChange={(event) => updateFilters({ deck: event.target.value })}>
-              <option value="all">전체 덱</option>
-              {decks.map((deck) => <option key={deck} value={deck}>{deck}</option>)}
-            </select>
+            <span className="filter-select-control">
+              <select value={session.filters.deck} onChange={(event) => updateFilters({ deck: event.target.value })}>
+                <option value="all">전체 덱</option>
+                {decks.map((deck) => <option key={deck} value={deck}>{deck}</option>)}
+              </select>
+              <span className="filter-select-chevron" aria-hidden="true">⌄</span>
+            </span>
           </label>
           <CardTagDimensionFilters
             tags={tags}
@@ -209,33 +220,58 @@ export function AnswerLearningSetup({
           )}
           <label className={session.filters.answerPresence !== "all" ? "is-filter-active" : ""}>
             <span>나만의 답변</span>
-            <select value={session.filters.answerPresence} onChange={(event) => updateFilters({ answerPresence: event.target.value as AnswerLearningFilters["answerPresence"] })}>
-              <option value="all">전체</option>
-              <option value="with">있음</option>
-              <option value="without">없음</option>
-            </select>
+            <span className="filter-select-control">
+              <select value={session.filters.answerPresence} onChange={(event) => updateFilters({ answerPresence: event.target.value as AnswerLearningFilters["answerPresence"] })}>
+                <option value="all">전체</option>
+                <option value="with">있음</option>
+                <option value="without">없음</option>
+              </select>
+              <span className="filter-select-chevron" aria-hidden="true">⌄</span>
+            </span>
           </label>
           <label className={session.filters.status !== "all" ? "is-filter-active" : ""}>
             <span>답변 익히기 상태</span>
-            <select value={session.filters.status} onChange={(event) => updateFilters({ status: event.target.value as AnswerLearningFilters["status"] })}>
-              <option value="all">전체</option>
-              <option value="unlearned">답변 연습 상태 없음</option>
-              <option value="with-status">답변 연습 상태 있음</option>
-              <option value="hard">어려움</option>
-              <option value="learning">익히는 중</option>
-              <option value="speakable">말할 수 있음</option>
-            </select>
+            <span className="filter-select-control">
+              <select value={session.filters.status} onChange={(event) => updateFilters({ status: event.target.value as AnswerLearningFilters["status"] })}>
+                <option value="all">전체</option>
+                <option value="unlearned">답변 연습 상태 없음</option>
+                <option value="with-status">답변 연습 상태 있음</option>
+                <option value="hard">어려움</option>
+                <option value="learning">익히는 중</option>
+                <option value="speakable">말할 수 있음</option>
+              </select>
+              <span className="filter-select-chevron" aria-hidden="true">⌄</span>
+            </span>
           </label>
           <label className={session.filters.order !== "default" ? "is-filter-active" : ""}>
             <span>학습 순서</span>
-            <select value={session.filters.order} onChange={(event) => updateFilters({ order: event.target.value as AnswerLearningFilters["order"] })}>
-              <option value="default">기본 순서</option>
-              <option value="random">랜덤</option>
-              <option value="least-practiced">연습 횟수 적은 순</option>
-            </select>
+            <span className="filter-select-control">
+              <select value={session.filters.order} onChange={(event) => updateFilters({ order: event.target.value as AnswerLearningFilters["order"] })}>
+                <option value="default">기본 순서</option>
+                <option value="random">랜덤</option>
+                <option value="least-practiced">연습 횟수 적은 순</option>
+              </select>
+              <span className="filter-select-chevron" aria-hidden="true">⌄</span>
+            </span>
           </label>
-          <label className={`answer-final-filter ${session.filters.finalOnly ? "is-filter-active" : ""}`}>
-            <input type="checkbox" checked={session.filters.finalOnly} onChange={(event) => updateFilters({ finalOnly: event.target.checked })} />
+        </div>
+        <div className="toggle-group answer-learning-quick-filters" aria-label="빠른 필터">
+          <label className="toggle-row">
+            <input
+              type="checkbox"
+              checked={session.filters.favoriteOnly}
+              onChange={(event) => updateFilters({ favoriteOnly: event.target.checked })}
+            />
+            <span className="toggle-switch" aria-hidden="true" />
+            <span>즐겨찾기만 보기</span>
+          </label>
+          <label className="toggle-row">
+            <input
+              type="checkbox"
+              checked={session.filters.finalOnly}
+              onChange={(event) => updateFilters({ finalOnly: event.target.checked })}
+            />
+            <span className="toggle-switch" aria-hidden="true" />
             <span>final_rep만 보기</span>
           </label>
         </div>
@@ -287,6 +323,7 @@ export function AnswerLearningSetup({
                     <span>{card.front}</span>
                     <small>
                       {status ? `답변: ${statusLabels[status]}` : "답변: 미학습"}
+                      {favoriteCardIds.includes(card.id) ? " · 즐겨찾기" : ""}
                       {myAnswers[card.id] ? " · 내 답변" : ""}
                       {memoCount ? ` · 메모 ${memoCount}` : ""}
                     </small>

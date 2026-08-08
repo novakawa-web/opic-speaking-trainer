@@ -6,6 +6,7 @@ import {
   getPinnedMemoCount,
   type CardMemos,
 } from "../utils/cardMemoStorage";
+import { FavoriteButton } from "./FavoriteButton";
 
 type CardListProps = {
   cards: OpicCard[];
@@ -16,6 +17,8 @@ type CardListProps = {
   cardMemos: CardMemos;
   onSelect: (card: OpicCard) => void;
   archivedCardIds?: string[];
+  favoriteCardIds?: string[];
+  onToggleFavorite: (cardId: string) => void;
 };
 
 const statusLabels = {
@@ -24,7 +27,7 @@ const statusLabels = {
   hard: "첫 문장 어려움",
 } as const;
 
-export function CardList({ cards, totalCount, statuses, answerLearningStatuses = {}, myAnswers, cardMemos, onSelect, archivedCardIds = [] }: CardListProps) {
+export function CardList({ cards, totalCount, statuses, answerLearningStatuses = {}, myAnswers, cardMemos, onSelect, archivedCardIds = [], favoriteCardIds = [], onToggleFavorite }: CardListProps) {
   if (cards.length === 0) {
     return (
       <section className="empty-state">
@@ -55,13 +58,21 @@ export function CardList({ cards, totalCount, statuses, answerLearningStatuses =
           const memoCount = getMemoCount(cardMemos, card.id);
           const pinnedMemoCount = getPinnedMemoCount(cardMemos, card.id);
           return (
-            <button
+            <article
               className="study-card"
-              type="button"
               key={card.id}
-              onClick={() => onSelect(card)}
             >
-              <div className="card-topline">
+              <FavoriteButton
+                className="card-list-favorite"
+                isFavorite={favoriteCardIds.includes(card.id)}
+                onToggle={() => onToggleFavorite(card.id)}
+              />
+              <button
+                className="study-card-main"
+                type="button"
+                onClick={() => onSelect(card)}
+              >
+                <div className="card-topline">
                 <span className="card-number">
                   {String(index + 1).padStart(2, "0")}
                 </span>
@@ -89,25 +100,26 @@ export function CardList({ cards, totalCount, statuses, answerLearningStatuses =
                 {archivedCardIds.includes(card.id) && (
                   <span className="archive-card-badge">보관됨</span>
                 )}
-              </div>
+                </div>
 
-              <p className="deck-name">{card.deck}</p>
-              <h3>{card.hint.title}</h3>
-              <p className="card-question">{card.front}</p>
+                <p className="deck-name">{card.deck}</p>
+                <h3>{card.hint.title}</h3>
+                <p className="card-question">{card.front}</p>
 
-              <div className="tag-row" aria-label="카드 태그">
-                {card.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className={`tag-badge ${tag === "final_rep" ? "tag-final" : ""}`}
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
+                <div className="tag-row" aria-label="카드 태그">
+                  {card.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className={`tag-badge ${tag === "final_rep" ? "tag-final" : ""}`}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
 
-              <span className="open-card-label">카드 열기 →</span>
-            </button>
+                <span className="open-card-label">카드 열기 →</span>
+              </button>
+            </article>
           );
         })}
       </div>

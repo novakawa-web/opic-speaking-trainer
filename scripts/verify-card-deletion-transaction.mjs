@@ -142,6 +142,7 @@ function createState(overrides = {}) {
       [other.id]: [{ id: "other-memo", cardId: other.id, content: "other memo", pinned: false, createdAt: NOW.toISOString(), updatedAt: NOW.toISOString() }],
     },
     archivedCardIds: [target.id, other.id],
+    favoriteCardIds: [target.id, other.id],
     firstLineMockSession,
     answerLearningSession,
     cardDetailSession: null,
