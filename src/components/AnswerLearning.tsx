@@ -88,6 +88,7 @@ type Props = {
   onCardEditInputChange?: () => void;
   cardEditingBlocked?: boolean;
   registerHomeNavigationGuard?: (guard: () => boolean) => () => void;
+  registerBackNavigationHandler?: (handler: () => void) => () => void;
 };
 
 export function AnswerLearning({
@@ -124,6 +125,7 @@ export function AnswerLearning({
   onCardEditInputChange,
   cardEditingBlocked = false,
   registerHomeNavigationGuard,
+  registerBackNavigationHandler,
 }: Props) {
   const [isEditingCard, setIsEditingCard] = useState(false);
   const [isCardEditorDirty, setIsCardEditorDirty] = useState(false);
@@ -346,6 +348,7 @@ export function AnswerLearning({
         submissionError={cardEditError}
         onInputChange={onCardEditInputChange}
         savingBlocked={cardEditingBlocked}
+        registerBackNavigationHandler={registerBackNavigationHandler}
       />
     );
   }

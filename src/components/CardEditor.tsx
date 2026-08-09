@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import type { OpicCard } from "../types";
 import {
   createEmptyCardEditorDraft,
@@ -26,6 +26,7 @@ type CardEditorProps = {
   duplicateCardId?: string | null;
   onOpenDuplicate?: (cardId: string) => void;
   onInputChange?: () => void;
+  registerBackNavigationHandler?: (handler: () => void) => () => void;
 };
 
 export function CardEditor({
@@ -43,6 +44,7 @@ export function CardEditor({
   duplicateCardId,
   onOpenDuplicate,
   onInputChange,
+  registerBackNavigationHandler,
 }: CardEditorProps) {
   const initialDraft = useMemo(
     () => mode === "create"
@@ -98,7 +100,7 @@ export function CardEditor({
     setDraft((current) => ({ ...current, [field]: value }));
   }
 
-  function cancel() {
+  const cancel = useCallback(() => {
     const message = isCreate
       ? "저장하지 않은 새 카드 내용이 있습니다. 화면을 나갈까요?"
       : includeMyAnswer
@@ -106,7 +108,12 @@ export function CardEditor({
         : "저장하지 않은 카드 수정 내용을 버릴까요?";
     if (isDirty && !window.confirm(message)) return;
     onCancel();
-  }
+  }, [includeMyAnswer, isCreate, isDirty, onCancel]);
+
+  useLayoutEffect(() => {
+    if (!registerBackNavigationHandler) return;
+    return registerBackNavigationHandler(cancel);
+  }, [cancel, registerBackNavigationHandler]);
 
   function save() {
     if (savingBlocked) return;

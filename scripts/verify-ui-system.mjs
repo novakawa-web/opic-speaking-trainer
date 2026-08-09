@@ -16,6 +16,7 @@ const quickStart = await readFile(new URL("../src/components/HomeQuickStart.tsx"
 const dashboard = await readFile(new URL("../src/components/HomeCardDashboard.tsx", import.meta.url), "utf8");
 const personalMemos = await readFile(new URL("../src/components/PersonalMemoManager.tsx", import.meta.url), "utf8");
 const answerLearning = await readFile(new URL("../src/components/AnswerLearning.tsx", import.meta.url), "utf8");
+const cardEditor = await readFile(new URL("../src/components/CardEditor.tsx", import.meta.url), "utf8");
 const answerLearningSpeech = await readFile(new URL("../src/hooks/useAnswerLearningSpeech.ts", import.meta.url), "utf8");
 const firstLineDrill = await readFile(new URL("../src/components/FirstLineDrill.tsx", import.meta.url), "utf8");
 const firstLineSetup = await readFile(new URL("../src/components/FirstLineSetup.tsx", import.meta.url), "utf8");
@@ -368,6 +369,10 @@ test("답변 익히기는 현재 학습 위치 안에서 공통 CardEditor를 �
   assert.doesNotMatch(answerLearning, /카드와 답변 수정/);
   assert.match(answerLearning, /<CardEditor[\s\S]*?includeMyAnswer[\s\S]*?returnLabel="답변 익히기로 돌아가기"/);
   assert.match(answerLearning, /registerHomeNavigationGuard\(confirmNavigation\)/);
+  assert.match(answerLearning, /registerBackNavigationHandler=\{registerBackNavigationHandler\}/);
+  assert.match(cardEditor, /registerBackNavigationHandler\(cancel\)/);
+  assert.match(app, /consumeAppBackHandler\(appBackHandlerRef\.current\)/);
+  assert.match(app, /registerBackNavigationHandler=\{registerAppBackHandler\}/);
   assert.doesNotMatch(app, /pushHistoryView\("cardEdit"\)/);
   assert.match(app, /onSaveCardEdit=\{saveCardEdit\}/);
 });

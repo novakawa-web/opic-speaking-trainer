@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   APP_HISTORY_STATE_KEY,
+  consumeAppBackHandler,
   createAppHistoryState,
   getAppBackView,
   getNextAppHistoryDepth,
@@ -163,6 +164,37 @@ test("홈 화면 이탈은 편집 초안 가드를 확인", () => {
 
 test("저장하지 않고 연습은 편집 초안을 보존", () => {
   assert.equal(shouldCheckHomeNavigationGuard("list", true), false);
+});
+
+test("중첩 화면이 없으면 앱 뒤로가기를 소비하지 않음", () => {
+  assert.equal(consumeAppBackHandler(null), false);
+});
+
+test("중첩 카드 수정은 앱 뒤로가기를 한 번 소비", () => {
+  let closeCount = 0;
+  assert.equal(consumeAppBackHandler(() => { closeCount += 1; }), true);
+  assert.equal(closeCount, 1);
+});
+
+test("시스템 뒤로가기로 카드 수정을 닫으면 현재 답변 익히기 history를 복구", () => {
+  const history = {
+    state: createAppHistoryState({}, "answerSetup", 1),
+    pushState(state) {
+      this.state = state;
+    },
+    replaceState(state) {
+      this.state = state;
+    },
+  };
+  let editorClosed = false;
+  const consumed = consumeAppBackHandler(() => { editorClosed = true; });
+  if (consumed) pushAppHistoryView(history, "answerLearning");
+  assert.equal(editorClosed, true);
+  assert.deepEqual(readAppHistoryEntry(history.state), {
+    version: 1,
+    view: "answerLearning",
+    depth: 2,
+  });
 });
 
 console.log(`App history verification passed: ${passed}/${passed}`);

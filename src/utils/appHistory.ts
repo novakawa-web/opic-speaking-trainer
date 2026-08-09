@@ -33,6 +33,8 @@ type HistoryWriter = {
   replaceState: (data: unknown, unused: string, url?: string | URL | null) => void;
 };
 
+export type AppBackHandler = () => void;
+
 const appViews = new Set<AppView>([
   "list",
   "library",
@@ -109,6 +111,12 @@ export function pushAppHistoryView(history: HistoryWriter, view: AppView) {
 
 export function isCurrentAppHistoryView(state: unknown, view: AppView) {
   return readAppHistoryEntry(state)?.view === view;
+}
+
+export function consumeAppBackHandler(handler: AppBackHandler | null) {
+  if (!handler) return false;
+  handler();
+  return true;
 }
 
 export function shouldCheckHomeNavigationGuard(

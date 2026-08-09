@@ -110,6 +110,7 @@ import {
   type NavigationSession,
 } from "./utils/navigationSession";
 import {
+  consumeAppBackHandler,
   getAppBackView,
   pushAppHistoryView,
   readAppHistoryEntry,
@@ -402,6 +403,7 @@ function App() {
     useState<CardEditFailureNotice | null>(null);
   const cardManagementNoticeIdRef = useRef(0);
   const homeNavigationGuardRef = useRef<(() => boolean) | null>(null);
+  const appBackHandlerRef = useRef<(() => void) | null>(null);
   const historyInitializedRef = useRef(false);
   const historyDepthRef = useRef(0);
   const historyExitApprovedRef = useRef(false);
@@ -410,6 +412,12 @@ function App() {
     homeNavigationGuardRef.current = guard;
     return () => {
       if (homeNavigationGuardRef.current === guard) homeNavigationGuardRef.current = null;
+    };
+  }, []);
+  const registerAppBackHandler = useCallback((handler: () => void) => {
+    appBackHandlerRef.current = handler;
+    return () => {
+      if (appBackHandlerRef.current === handler) appBackHandlerRef.current = null;
     };
   }, []);
   const [initialNavigation] = useState(() =>
@@ -1123,6 +1131,7 @@ function App() {
   }
 
   function requestAppBack(exitApproved = false) {
+    if (consumeAppBackHandler(appBackHandlerRef.current)) return;
     const target = getCurrentBackView();
     if (!target) return;
     if (!exitApproved && !canLeaveCurrentView()) return;
@@ -1152,6 +1161,13 @@ function App() {
 
       const exitApproved = historyExitApprovedRef.current;
       historyExitApprovedRef.current = false;
+
+      if (!exitApproved && consumeAppBackHandler(appBackHandlerRef.current)) {
+        pushAppHistoryView(window.history, view);
+        historyDepthRef.current = readAppHistoryEntry(window.history.state)?.depth ?? 0;
+        return;
+      }
+
       const target = pendingHistoryTargetRef.current ?? getCurrentBackView() ?? "list";
       pendingHistoryTargetRef.current = null;
 
@@ -2612,6 +2628,7 @@ function App() {
           onCardEditInputChange={() => setCardEditFailure(null)}
           cardEditingBlocked={destructiveActionsBlocked}
           registerHomeNavigationGuard={registerHomeNavigationGuard}
+          registerBackNavigationHandler={registerAppBackHandler}
         />
       </div>
     );
