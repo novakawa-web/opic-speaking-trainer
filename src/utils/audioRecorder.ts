@@ -264,6 +264,31 @@ export function isRecordingBusy(status: RecordingStatus) {
   return status === "requesting" || status === "recording";
 }
 
+export function hasTemporaryRecording(status: RecordingStatus) {
+  return (
+    status === "recording" ||
+    status === "stopped" ||
+    status === "playing"
+  );
+}
+
+export function getTemporaryAudioDiscardMessage(
+  actionLabel: string,
+  recordingStatus: RecordingStatus,
+  hasUnsavedSpeechDraft: boolean,
+) {
+  const hasRecording = hasTemporaryRecording(recordingStatus);
+  if (!hasRecording && !hasUnsavedSpeechDraft) return null;
+
+  const discardedContent = hasRecording && hasUnsavedSpeechDraft
+    ? "현재 녹음과 저장하지 않은 음성 초안이"
+    : hasRecording
+      ? "현재 녹음이"
+      : "저장하지 않은 음성 초안이";
+
+  return `${actionLabel.trim()} ${discardedContent} 사라집니다. 계속할까요?`;
+}
+
 export function shouldStopRecorderWhenHidden(
   status: RecordingStatus,
   visibilityState: DocumentVisibilityState,

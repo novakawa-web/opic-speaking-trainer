@@ -5,6 +5,11 @@ export type SpeechDraftStatus =
   | "stopped"
   | "error";
 
+// Browser speech recognition is retained for a future compatibility review,
+// but the user-facing control stays locked until target Galaxy browsers and
+// long-form recognition are reliable enough for normal study use.
+export const SPEECH_DRAFT_FEATURE_ENABLED = false;
+
 export type SpeechRecognitionAlternativeLike = {
   transcript: string;
 };

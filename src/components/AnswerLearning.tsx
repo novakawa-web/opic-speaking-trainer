@@ -32,7 +32,12 @@ import {
 } from "../utils/ttsSettings";
 import { isFirstLineOnlyCard } from "../utils/cardContent";
 import { formatAnswerLearningTag } from "../utils/cardTagFilters";
-import { isRecordingBusy, type RecordingStatus } from "../utils/audioRecorder";
+import {
+  getTemporaryAudioDiscardMessage,
+  isRecordingBusy,
+  type RecordingStatus,
+} from "../utils/audioRecorder";
+import { SPEECH_DRAFT_FEATURE_ENABLED } from "../utils/speechDraft";
 import {
   ANSWER_LEARNING_STATUS_OPTIONS,
   FIRST_LINE_STATUS_OPTIONS,
@@ -182,8 +187,21 @@ export function AnswerLearning({
     stop();
     answerSpeech.stop();
     setSentenceSelection(null);
+    setRecordingStatus("idle");
+    setIsSpeechDraftDirty(false);
     recorderRef.current?.clearRecording();
   }, [answerSpeech.stop, stop]);
+
+  const confirmTemporaryAudioDiscard = useCallback((actionLabel: string) => {
+    const warning = getTemporaryAudioDiscardMessage(
+      actionLabel,
+      recordingStatus,
+      isSpeechDraftDirty,
+    );
+    if (warning && !window.confirm(warning)) return false;
+    clearCurrentAudio();
+    return true;
+  }, [clearCurrentAudio, isSpeechDraftDirty, recordingStatus]);
 
   const confirmNavigation = useCallback(() => {
     if (
@@ -193,15 +211,8 @@ export function AnswerLearning({
     ) {
       return false;
     }
-    if (
-      isSpeechDraftDirty &&
-      !window.confirm("나만의 답변에 저장하지 않은 음성 초안이 있습니다. 현재 화면을 나갈까요?")
-    ) {
-      return false;
-    }
-    clearCurrentAudio();
-    return true;
-  }, [clearCurrentAudio, isCardEditorDirty, isEditingCard, isSpeechDraftDirty]);
+    return confirmTemporaryAudioDiscard("현재 화면을 나가면");
+  }, [confirmTemporaryAudioDiscard, isCardEditorDirty, isEditingCard]);
 
   useLayoutEffect(() => {
     if (!registerHomeNavigationGuard) return;
@@ -216,6 +227,10 @@ export function AnswerLearning({
     if (!confirmNavigation()) return;
     onNext();
   }, [confirmNavigation, onNext]);
+  const goBack = useCallback(() => {
+    if (!confirmNavigation()) return;
+    onBack();
+  }, [confirmNavigation, onBack]);
   const swipeHandlers = useSwipeNavigation({
     onSwipeLeft: canGoNext ? goNext : undefined,
     onSwipeRight: canGoPrevious ? goPrevious : undefined,
@@ -236,7 +251,7 @@ export function AnswerLearning({
 
   function changeAnswerSource(source: AnswerLearningAnswerSource) {
     if (source === resolvedSource) return;
-    clearCurrentAudio();
+    if (!confirmTemporaryAudioDiscard("답변을 바꾸면")) return;
     onAnswerSourceChange(source);
   }
 
@@ -299,9 +314,15 @@ export function AnswerLearning({
     : null;
 
   function openCardEditor() {
-    clearCurrentAudio();
+    if (!confirmTemporaryAudioDiscard("카드 수정으로 이동하면")) return;
     onCardEditInputChange?.();
     setIsEditingCard(true);
+  }
+
+  function startShadowing() {
+    if (!shadowingSource) return;
+    if (!confirmTemporaryAudioDiscard("쉐도잉을 시작하면")) return;
+    onStartShadowing(shadowingSource);
   }
 
   function saveCard(nextCard: OpicCard, nextMyAnswer = "") {
@@ -333,7 +354,7 @@ export function AnswerLearning({
     <main className="answer-learning-page" {...swipeHandlers}>
       <section className="answer-learning-question">
         <div className="answer-learning-progress" aria-live="polite">
-          <button type="button" className="answer-learning-inline-back" onClick={onBack}>← 준비 화면으로</button>
+          <button type="button" className="answer-learning-inline-back" onClick={goBack}>← 준비 화면으로</button>
           <strong>{currentPosition} / {totalCards} 카드</strong>
           <span>{card.deck}</span>
         </div>
@@ -584,7 +605,7 @@ export function AnswerLearning({
           </button>
           <button type="button" className="text-button utility-action" disabled={!status} onClick={onReset}>현재 상태 초기화</button>
         </div>
-        <button type="button" className="secondary-button answer-learning-shadowing" disabled={!shadowingSource || recorderBusy} aria-describedby={!shadowingSource ? `shadowing-unavailable-${card.id}` : undefined} onClick={() => { if (!shadowingSource) return; clearCurrentAudio(); onStartShadowing(shadowingSource); }}>
+        <button type="button" className="secondary-button answer-learning-shadowing" disabled={!shadowingSource || recorderBusy} aria-describedby={!shadowingSource ? `shadowing-unavailable-${card.id}` : undefined} onClick={startShadowing}>
           이 답변 쉐도잉하기
         </button>
         {!shadowingSource && <p id={`shadowing-unavailable-${card.id}`} className="disabled-reason">전체 답변이 없어 쉐도잉을 시작할 수 없습니다.</p>}
@@ -614,11 +635,13 @@ export function AnswerLearning({
           }}
           onStatusChange={setRecordingStatus}
           onSpeechDraftDirtyChange={setIsSpeechDraftDirty}
-          speechDraft={{
-            existingAnswer: myAnswer,
-            disabled: cardEditingBlocked,
-            onApply: onSaveSpeechDraft,
-          }}
+          speechDraft={SPEECH_DRAFT_FEATURE_ENABLED
+            ? {
+                existingAnswer: myAnswer,
+                disabled: cardEditingBlocked,
+                onApply: onSaveSpeechDraft,
+              }
+            : undefined}
         />
       )}
 

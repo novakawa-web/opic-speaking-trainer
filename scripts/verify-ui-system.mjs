@@ -292,7 +292,8 @@ test("답변 익히기 세로 밀도는 설명 범위와 safe-area·터치 계�
   );
   assert.equal((answerLearning.match(/className="answer-learning-navigation"/g) ?? []).length, 1);
   assert.match(answerLearning, /const clearCurrentAudio = useCallback\(\(\) => \{[\s\S]*?stop\(\);[\s\S]*?answerSpeech\.stop\(\);[\s\S]*?clearRecording\(\)/);
-  assert.match(answerLearning, /const confirmNavigation = useCallback\(\(\) => \{[\s\S]*?clearCurrentAudio\(\);[\s\S]*?return true/);
+  assert.match(answerLearning, /const confirmTemporaryAudioDiscard = useCallback\(\(actionLabel: string\) => \{[\s\S]*?clearCurrentAudio\(\);[\s\S]*?return true/);
+  assert.match(answerLearning, /const confirmNavigation = useCallback\(\(\) => \{[\s\S]*?return confirmTemporaryAudioDiscard\("현재 화면을 나가면"\)/);
   assert.match(answerLearning, /const goPrevious = useCallback\(\(\) => \{[\s\S]*?if \(!confirmNavigation\(\)\) return;[\s\S]*?onPrevious\(\)/);
   assert.match(answerLearning, /const goNext = useCallback\(\(\) => \{[\s\S]*?if \(!confirmNavigation\(\)\) return;[\s\S]*?onNext\(\)/);
   assert.match(answerLearning, /onSwipeLeft:\s*canGoNext \? goNext : undefined/);

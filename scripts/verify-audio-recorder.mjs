@@ -11,9 +11,11 @@ import {
   RecorderTimeoutError,
   chooseAudioRecorderMimeType,
   formatRecordingTime,
+  getTemporaryAudioDiscardMessage,
   getAudioRecorderSupport,
   getAudioRecorderErrorMessage,
   hasMediaRecorderStarted,
+  hasTemporaryRecording,
   isConstraintCompatibilityError,
   isCurrentRecorderRequest,
   isLocalMicrophoneHost,
@@ -26,6 +28,7 @@ import {
   appendSpeechDraftText,
   collectSpeechRecognitionText,
   getSpeechDraftErrorMessage,
+  SPEECH_DRAFT_FEATURE_ENABLED,
 } from "../src/utils/speechDraft.ts";
 
 const tests = [];
@@ -140,6 +143,38 @@ test("negative recording time is clamped", () => assert.equal(formatRecordingTim
 test("requesting is busy", () => assert.equal(isRecordingBusy("requesting"), true));
 test("recording is busy", () => assert.equal(isRecordingBusy("recording"), true));
 test("recorded playback is not microphone busy", () => assert.equal(isRecordingBusy("playing"), false));
+test("only valuable temporary recording states require discard confirmation", () => {
+  assert.equal(hasTemporaryRecording("idle"), false);
+  assert.equal(hasTemporaryRecording("requesting"), false);
+  assert.equal(hasTemporaryRecording("error"), false);
+  assert.equal(hasTemporaryRecording("recording"), true);
+  assert.equal(hasTemporaryRecording("stopped"), true);
+  assert.equal(hasTemporaryRecording("playing"), true);
+});
+test("discard confirmation is omitted when nothing temporary exists", () => {
+  assert.equal(
+    getTemporaryAudioDiscardMessage("카드 수정으로 이동하면", "idle", false),
+    null,
+  );
+});
+test("discard confirmation describes a temporary recording", () => {
+  assert.equal(
+    getTemporaryAudioDiscardMessage("카드 수정으로 이동하면", "stopped", false),
+    "카드 수정으로 이동하면 현재 녹음이 사라집니다. 계속할까요?",
+  );
+});
+test("discard confirmation describes an unsaved speech draft", () => {
+  assert.equal(
+    getTemporaryAudioDiscardMessage("답변을 바꾸면", "idle", true),
+    "답변을 바꾸면 저장하지 않은 음성 초안이 사라집니다. 계속할까요?",
+  );
+});
+test("discard confirmation combines recording and draft loss", () => {
+  assert.equal(
+    getTemporaryAudioDiscardMessage("현재 화면을 나가면", "playing", true),
+    "현재 화면을 나가면 현재 녹음과 저장하지 않은 음성 초안이 사라집니다. 계속할까요?",
+  );
+});
 test("hidden recording must stop", () => assert.equal(shouldStopRecorderWhenHidden("recording", "hidden"), true));
 test("hidden requesting must cancel", () => assert.equal(shouldStopRecorderWhenHidden("requesting", "hidden"), true));
 test("hidden playback must pause", () => assert.equal(shouldStopRecorderWhenHidden("playing", "hidden"), true));
@@ -343,12 +378,17 @@ test("recorder does not use persistent browser storage", () => {
   const combined = `${hookSource}\n${componentSource}`;
   assert.doesNotMatch(combined, /localStorage|sessionStorage|indexedDB|download\s*=|fetch\(/i);
 });
-test("speech draft is explicit opt-in and does not replace replayable recording", () => {
+test("speech draft implementation stays explicit and does not replace replayable recording", () => {
   assert.match(componentSource, /녹음하면서 영어 음성 초안 만들기/);
   assert.match(componentSource, /speechDraftRequestedRef/);
   assert.match(componentSource, /recorder\.startRecording\(\)/);
   assert.match(componentSource, /speechDraft\.start\(\)/);
   assert.match(componentSource, /녹음과 다시 듣기는 그대로 사용할 수 있습니다/);
+});
+test("speech draft control is temporarily locked at the answer learning boundary", () => {
+  assert.equal(SPEECH_DRAFT_FEATURE_ENABLED, false);
+  assert.match(answerLearningSource, /SPEECH_DRAFT_FEATURE_ENABLED/);
+  assert.match(answerLearningSource, /speechDraft=\{SPEECH_DRAFT_FEATURE_ENABLED/);
 });
 test("speech draft discloses possible recognition service transfer", () => {
   assert.match(componentSource, /음성을 인식 서비스로 전송할 수 있습니다/);
@@ -356,8 +396,22 @@ test("speech draft discloses possible recognition service transfer", () => {
 test("unsaved speech drafts report dirty state and navigation asks before clearing", () => {
   assert.match(componentSource, /onSpeechDraftDirtyChange/);
   assert.match(componentSource, /savedSpeechDraft/);
-  assert.match(answerLearningSource, /저장하지 않은 음성 초안/);
+  assert.match(answerLearningSource, /getTemporaryAudioDiscardMessage/);
   assert.match(answerLearningSource, /if \(!confirmNavigation\(\)\) return/);
+});
+test("all answer learning exits that discard temporary audio use the common guard", () => {
+  for (const actionLabel of [
+    "현재 화면을 나가면",
+    "답변을 바꾸면",
+    "카드 수정으로 이동하면",
+    "쉐도잉을 시작하면",
+  ]) {
+    assert.match(answerLearningSource, new RegExp(actionLabel));
+  }
+  assert.match(answerLearningSource, /onClick=\{goBack\}/);
+  assert.match(answerLearningSource, /onClick=\{startShadowing\}/);
+  assert.match(answerLearningSource, /setRecordingStatus\("idle"\)/);
+  assert.match(answerLearningSource, /setIsSpeechDraftDirty\(false\)/);
 });
 test("speech recognition is English and clears on unmount", () => {
   assert.match(speechHookSource, /lang = "en-US"/);
