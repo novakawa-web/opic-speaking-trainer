@@ -487,8 +487,9 @@ test("세 카드 선택 화면은 공통 다중 차원 필터와 동일한 상�
   assert.match(cardLibrary, /selectedWeeks=\{selectedWeeks\}[\s\S]*?onTagDimensionsChange=\{onTagDimensionsChange\}/);
   assert.match(answerLearningSetup, /<span>덱<\/span>[\s\S]*?<CardTagDimensionFilters[\s\S]*?label="기타 태그"[\s\S]*?<span>나만의 답변<\/span>/);
   assert.match(tagFilter, /<span>덱<\/span>[\s\S]*?<CardTagDimensionFilterFields[\s\S]*?<span>기타 태그<\/span>[\s\S]*?answerContentFilter/);
-  assert.match(cardTagDimensionFilters, /label: "학습 세트"[\s\S]*?label: "주제"[\s\S]*?label: "질문 유형"/);
+  assert.match(cardTagDimensionFilters, /label: "학습 세트"[\s\S]*?label: "주제"[\s\S]*?label: "문제 유형"/);
   assert.match(cardTagDimensionFilters, /emptyLabel: "전체 학습 세트"/);
+  assert.match(cardTagDimensionFilters, /emptyLabel: "전체 문제 유형"/);
 });
 test("다중 차원 필터는 disclosure checkbox와 선택 요약을 제공한다", () => {
   assert.match(cardTagDimensionFilters, /<details>/);
@@ -740,9 +741,14 @@ test("답변 상태 필터 전환은 선택을 보존하고 N M과 실제 시작
   assert.equal(clearedState.hiddenSelectedCount, 0);
   assert.equal(clearedState.clearDisabled, true);
 });
-test("답변 익히기 상태 select는 46px와 모바일 1열 계약을 유지한다", () => {
+test("답변 익히기 상태 select는 46px와 모바일 2열·초소형 1열 계약을 유지한다", () => {
   assert.match(css, /\.answer-learning-filter-grid select\s*\{[\s\S]*?min-height:\s*46px/);
-  assert.match(css, /@media \(max-width:\s*700px\)[\s\S]*?\.answer-learning-filter-grid\s*\{[\s\S]*?grid-template-columns:\s*1fr/);
+  assert.match(css, /@media \(max-width:\s*700px\)[\s\S]*?\.answer-learning-filter-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /@media \(max-width:\s*359px\)[\s\S]*?\.answer-learning-filter-grid,[\s\S]*?\.answer-learning-quick-filters\s*\{[\s\S]*?grid-template-columns:\s*1fr/);
+});
+test("답변 익히기 빠른 필터는 모바일에서 높이가 늘어나지 않는 2열 행이다", () => {
+  assert.match(css, /@media \(max-width:\s*700px\)[\s\S]*?\.answer-learning-quick-filters\s*\{[\s\S]*?display:\s*grid[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /\.answer-learning-quick-filters > label\s*\{[\s\S]*?min-height:\s*44px[\s\S]*?flex:\s*none/);
 });
 test("답변 익히기 숨겨진 선택 안내는 강조 박스가 아닌 보조 설명이다", () => {
   const hiddenNoteRule = css.match(/\.answer-selection-hidden-note\s*\{([^}]+)\}/)?.[1] ?? "";
