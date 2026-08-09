@@ -750,6 +750,12 @@ test("답변 익히기 빠른 필터는 모바일에서 높이가 늘어나지 �
   assert.match(css, /@media \(max-width:\s*700px\)[\s\S]*?\.answer-learning-quick-filters\s*\{[\s\S]*?display:\s*grid[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(css, /\.answer-learning-quick-filters > label\s*\{[\s\S]*?min-height:\s*44px[\s\S]*?flex:\s*none/);
 });
+test("답변 익히기 다중 필터는 같은 행을 상단 정렬하고 선택지 스크롤을 배경과 분리한다", () => {
+  assert.match(css, /\.answer-learning-filter-grid\s*\{[\s\S]*?align-items:\s*start/);
+  assert.match(css, /\.answer-learning-filter-grid > label,[\s\S]*?\.answer-learning-filter-grid > \.card-tag-dimension-filter\s*\{[\s\S]*?align-self:\s*start[\s\S]*?align-content:\s*start/);
+  assert.match(css, /\.answer-learning-filter-grid \.card-tag-dimension-options\s*\{[\s\S]*?overscroll-behavior-y:\s*contain[\s\S]*?touch-action:\s*pan-y[\s\S]*?-webkit-overflow-scrolling:\s*touch/);
+  assert.match(css, /@media \(max-width:\s*960px\)[\s\S]*?\.card-tag-dimension-options\s*\{[\s\S]*?position:\s*static/);
+});
 test("답변 익히기 숨겨진 선택 안내는 강조 박스가 아닌 보조 설명이다", () => {
   const hiddenNoteRule = css.match(/\.answer-selection-hidden-note\s*\{([^}]+)\}/)?.[1] ?? "";
   assert.match(hiddenNoteRule, /color:\s*var\(--muted\)/);

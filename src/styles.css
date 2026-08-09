@@ -8710,8 +8710,21 @@ input:focus-visible + .toggle-switch {
 .answer-learning-filter-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
   gap: 14px;
   margin-top: 18px;
+}
+
+.answer-learning-filter-grid > label,
+.answer-learning-filter-grid > .card-tag-dimension-filter {
+  align-self: start;
+  align-content: start;
+}
+
+.answer-learning-filter-grid .card-tag-dimension-options {
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 .answer-learning-filter .section-title-row {
