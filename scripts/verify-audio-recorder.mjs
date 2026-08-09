@@ -22,6 +22,11 @@ import {
   recordingStateReducer,
   shouldStopRecorderWhenHidden,
 } from "../src/utils/audioRecorder.ts";
+import {
+  appendSpeechDraftText,
+  collectSpeechRecognitionText,
+  getSpeechDraftErrorMessage,
+} from "../src/utils/speechDraft.ts";
 
 const tests = [];
 function test(name, fn) {
@@ -231,12 +236,38 @@ test("missing microphone message", () => assert.match(getAudioRecorderErrorMessa
 test("busy microphone message", () => assert.match(getAudioRecorderErrorMessage({ name: "NotReadableError" }), /다른 앱/));
 test("aborted microphone message", () => assert.match(getAudioRecorderErrorMessage({ name: "AbortError" }), /중단/));
 test("generic recorder error message", () => assert.match(getAudioRecorderErrorMessage(new Error("x")), /다시 시도/));
+test("speech recognition separates final and interim text", () => {
+  const results = [
+    { isFinal: true, 0: { transcript: "I like music." }, length: 1 },
+    { isFinal: false, 0: { transcript: "It is relaxing" }, length: 1 },
+  ];
+  assert.deepEqual(collectSpeechRecognitionText(results, 0), {
+    finalText: "I like music.",
+    interimText: "It is relaxing",
+  });
+});
+test("speech recognition only reads changed results", () => {
+  const results = [
+    { isFinal: true, 0: { transcript: "Old." }, length: 1 },
+    { isFinal: true, 0: { transcript: "New." }, length: 1 },
+  ];
+  assert.deepEqual(collectSpeechRecognitionText(results, 1), {
+    finalText: "New.",
+    interimText: "",
+  });
+});
+test("speech draft joins recognized phrases without exposing raw errors", () => {
+  assert.equal(appendSpeechDraftText("I like", "music."), "I like music.");
+  assert.match(getSpeechDraftErrorMessage("network"), /네트워크/);
+  assert.doesNotMatch(getSpeechDraftErrorMessage("private raw error"), /private raw error/);
+});
 
 const hookSource = await readFile(new URL("../src/hooks/useAudioRecorder.ts", import.meta.url), "utf8");
 const componentSource = await readFile(new URL("../src/components/AudioRecorder.tsx", import.meta.url), "utf8");
 const playerSource = await readFile(new URL("../src/components/ShadowingPlayer.tsx", import.meta.url), "utf8");
 const detailSource = await readFile(new URL("../src/components/CardDetail.tsx", import.meta.url), "utf8");
 const answerLearningSource = await readFile(new URL("../src/components/AnswerLearning.tsx", import.meta.url), "utf8");
+const speechHookSource = await readFile(new URL("../src/hooks/useSpeechDraft.ts", import.meta.url), "utf8");
 
 test("stream tracks are stopped", () => assert.match(hookSource, /track\.stop\(\)/));
 test("object URLs are revoked", () => assert.match(hookSource, /URL\.revokeObjectURL/));
@@ -311,6 +342,27 @@ test("recorder component states that audio is not saved", () => assert.match(com
 test("recorder does not use persistent browser storage", () => {
   const combined = `${hookSource}\n${componentSource}`;
   assert.doesNotMatch(combined, /localStorage|sessionStorage|indexedDB|download\s*=|fetch\(/i);
+});
+test("speech draft is explicit opt-in and does not replace replayable recording", () => {
+  assert.match(componentSource, /녹음하면서 영어 음성 초안 만들기/);
+  assert.match(componentSource, /speechDraftRequestedRef/);
+  assert.match(componentSource, /recorder\.startRecording\(\)/);
+  assert.match(componentSource, /speechDraft\.start\(\)/);
+  assert.match(componentSource, /녹음과 다시 듣기는 그대로 사용할 수 있습니다/);
+});
+test("speech draft discloses possible recognition service transfer", () => {
+  assert.match(componentSource, /음성을 인식 서비스로 전송할 수 있습니다/);
+});
+test("unsaved speech drafts report dirty state and navigation asks before clearing", () => {
+  assert.match(componentSource, /onSpeechDraftDirtyChange/);
+  assert.match(componentSource, /savedSpeechDraft/);
+  assert.match(answerLearningSource, /저장하지 않은 음성 초안/);
+  assert.match(answerLearningSource, /if \(!confirmNavigation\(\)\) return/);
+});
+test("speech recognition is English and clears on unmount", () => {
+  assert.match(speechHookSource, /lang = "en-US"/);
+  assert.match(speechHookSource, /detachAndAbort/);
+  assert.doesNotMatch(speechHookSource, /console\.|fetch\(|localStorage|sessionStorage/);
 });
 test("shadowing player pauses TTS before recording", () => {
   assert.match(playerSource, /interruptForExternalSpeech/);

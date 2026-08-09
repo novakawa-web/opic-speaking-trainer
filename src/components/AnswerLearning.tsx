@@ -39,7 +39,11 @@ import {
 } from "../utils/studyStatusOptions";
 import { createAnswerLearningSentenceCheckIds } from "../utils/answerLearningSentenceChecks";
 import { CardEditor } from "./CardEditor";
-import { AudioRecorder, type AudioRecorderHandle } from "./AudioRecorder";
+import {
+  AudioRecorder,
+  type AudioRecorderHandle,
+  type AudioRecorderSpeechDraftConfig,
+} from "./AudioRecorder";
 import { FavoriteButton } from "./FavoriteButton";
 
 type Props = {
@@ -74,6 +78,7 @@ type Props = {
   onStartShadowing: (source: ShadowingSource) => void;
   onBack: () => void;
   onSaveCardEdit: (card: OpicCard, myAnswer: string) => boolean;
+  onSaveSpeechDraft: AudioRecorderSpeechDraftConfig["onApply"];
   cardEditError?: string | null;
   onCardEditInputChange?: () => void;
   cardEditingBlocked?: boolean;
@@ -109,6 +114,7 @@ export function AnswerLearning({
   onStartShadowing,
   onBack,
   onSaveCardEdit,
+  onSaveSpeechDraft,
   cardEditError,
   onCardEditInputChange,
   cardEditingBlocked = false,
@@ -116,6 +122,7 @@ export function AnswerLearning({
 }: Props) {
   const [isEditingCard, setIsEditingCard] = useState(false);
   const [isCardEditorDirty, setIsCardEditorDirty] = useState(false);
+  const [isSpeechDraftDirty, setIsSpeechDraftDirty] = useState(false);
   const [ttsRate, setTtsRate] = useState(readTtsRate);
   const [sentenceSelection, setSentenceSelection] =
     useState<AnswerLearningSentenceSelection | null>(null);
@@ -186,9 +193,15 @@ export function AnswerLearning({
     ) {
       return false;
     }
+    if (
+      isSpeechDraftDirty &&
+      !window.confirm("나만의 답변에 저장하지 않은 음성 초안이 있습니다. 현재 화면을 나갈까요?")
+    ) {
+      return false;
+    }
     clearCurrentAudio();
     return true;
-  }, [clearCurrentAudio, isCardEditorDirty, isEditingCard]);
+  }, [clearCurrentAudio, isCardEditorDirty, isEditingCard, isSpeechDraftDirty]);
 
   useLayoutEffect(() => {
     if (!registerHomeNavigationGuard) return;
@@ -196,13 +209,13 @@ export function AnswerLearning({
   }, [confirmNavigation, registerHomeNavigationGuard]);
 
   const goPrevious = useCallback(() => {
-    clearCurrentAudio();
+    if (!confirmNavigation()) return;
     onPrevious();
-  }, [clearCurrentAudio, onPrevious]);
+  }, [confirmNavigation, onPrevious]);
   const goNext = useCallback(() => {
-    clearCurrentAudio();
+    if (!confirmNavigation()) return;
     onNext();
-  }, [clearCurrentAudio, onNext]);
+  }, [confirmNavigation, onNext]);
   const swipeHandlers = useSwipeNavigation({
     onSwipeLeft: canGoNext ? goNext : undefined,
     onSwipeRight: canGoPrevious ? goPrevious : undefined,
@@ -320,7 +333,7 @@ export function AnswerLearning({
     <main className="answer-learning-page" {...swipeHandlers}>
       <section className="answer-learning-question">
         <div className="answer-learning-progress" aria-live="polite">
-          <button type="button" className="answer-learning-inline-back" onClick={() => { clearCurrentAudio(); onBack(); }}>← 준비 화면으로</button>
+          <button type="button" className="answer-learning-inline-back" onClick={onBack}>← 준비 화면으로</button>
           <strong>{currentPosition} / {totalCards} 카드</strong>
           <span>{card.deck}</span>
         </div>
@@ -600,6 +613,12 @@ export function AnswerLearning({
             setSentenceSelection(null);
           }}
           onStatusChange={setRecordingStatus}
+          onSpeechDraftDirtyChange={setIsSpeechDraftDirty}
+          speechDraft={{
+            existingAnswer: myAnswer,
+            disabled: cardEditingBlocked,
+            onApply: onSaveSpeechDraft,
+          }}
         />
       )}
 

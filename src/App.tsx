@@ -149,6 +149,12 @@ import {
   setMyAnswer,
 } from "./utils/myAnswerStorage";
 import {
+  createAnswerDraftPlan,
+  describeAnswerDraftFailure,
+  executeAnswerDraftTransaction,
+  type AnswerDraftSaveMode,
+} from "./utils/answerDraft";
+import {
   createCardMemo,
   deleteCardMemo,
   readCardMemos,
@@ -1796,6 +1802,46 @@ function App() {
     setMyAnswers((current) => setMyAnswer(current, cardId, answer));
   }
 
+  function saveAnswerLearningSpeechDraft(
+    draft: string,
+    mode: AnswerDraftSaveMode,
+  ) {
+    if (destructiveActionsBlocked || !selectedCard) {
+      return {
+        ok: false,
+        message: "현재 저장 상태를 확인할 때까지 나만의 답변을 변경할 수 없습니다.",
+      };
+    }
+
+    try {
+      const plan = createAnswerDraftPlan({
+        cardId: selectedCard.id,
+        draft,
+        mode,
+        currentMyAnswers: myAnswers,
+        localStorage,
+      });
+      executeAnswerDraftTransaction({
+        plan,
+        commit: setMyAnswers,
+      });
+      setCardEditFailure(null);
+      return {
+        ok: true,
+        message:
+          mode === "append" && myAnswers[selectedCard.id]
+            ? "음성 초안을 기존 나만의 답변 뒤에 추가했습니다."
+            : "음성 초안을 나만의 답변에 저장했습니다.",
+      };
+    } catch (error) {
+      const notice = describeAnswerDraftFailure(error);
+      if (notice.blockDestructiveActions) {
+        setDestructiveActionsBlocked(true);
+      }
+      return { ok: false, message: notice.message };
+    }
+  }
+
   function removeMyAnswer(cardId: string) {
     setMyAnswers((current) => deleteMyAnswer(current, cardId));
   }
@@ -2561,6 +2607,7 @@ function App() {
           onStartShadowing={startAnswerLearningShadowing}
           onBack={leaveAnswerLearning}
           onSaveCardEdit={saveCardEdit}
+          onSaveSpeechDraft={saveAnswerLearningSpeechDraft}
           cardEditError={cardEditFailure?.message ?? null}
           onCardEditInputChange={() => setCardEditFailure(null)}
           cardEditingBlocked={destructiveActionsBlocked}

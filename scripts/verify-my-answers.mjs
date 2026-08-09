@@ -17,6 +17,13 @@ import {
   selectHasMyAnswer,
   setMyAnswer,
 } from "../src/utils/myAnswerStorage.ts";
+import {
+  AnswerDraftError,
+  combineAnswerDraft,
+  createAnswerDraftPlan,
+  executeAnswerDraftTransaction,
+} from "../src/utils/answerDraft.ts";
+import { StorageTransactionError } from "../src/utils/storageTransaction.ts";
 
 class MemoryStorage {
   values = new Map();
@@ -154,6 +161,89 @@ test("답변 있음 selector", () => {
   const answers = saveMyAnswers({ [defaultCards[0].id]: "Answer." });
   assert.equal(selectHasMyAnswer(answers, defaultCards[0].id), true);
   assert.equal(selectHasMyAnswer(answers, defaultCards[1].id), false);
+});
+
+test("음성 초안으로 기존 답변 바꾸기", () => {
+  assert.equal(
+    combineAnswerDraft("Old answer.", "  New answer.  ", "replace"),
+    "New answer.",
+  );
+});
+
+test("음성 초안을 기존 답변 뒤에 문단으로 추가", () => {
+  assert.equal(
+    combineAnswerDraft("Old answer.", "New answer.", "append"),
+    "Old answer.\n\nNew answer.",
+  );
+});
+
+test("음성 초안 저장은 저장소 성공 후에만 화면 상태 반영", () => {
+  resetStorage();
+  const plan = createAnswerDraftPlan({
+    cardId: "home-001",
+    draft: "Spoken answer.",
+    mode: "replace",
+    currentMyAnswers: {},
+    localStorage,
+  });
+  let committed = null;
+  executeAnswerDraftTransaction({ plan, commit: (answers) => { committed = answers; } });
+  assert.equal(readMyAnswers()["home-001"], "Spoken answer.");
+  assert.equal(committed["home-001"], "Spoken answer.");
+});
+
+test("음성 초안 저장 실패 시 화면 상태와 기존 저장값 유지", () => {
+  const storage = new MemoryStorage();
+  storage.values.set(MY_ANSWERS_STORAGE_KEY, JSON.stringify({ "home-001": "Old." }));
+  const originalSetItem = storage.setItem.bind(storage);
+  let failNextWrite = true;
+  storage.setItem = (key, value) => {
+    if (failNextWrite) {
+      failNextWrite = false;
+      const error = new Error("quota");
+      error.name = "QuotaExceededError";
+      throw error;
+    }
+    originalSetItem(key, value);
+  };
+  const plan = createAnswerDraftPlan({
+    cardId: "home-001",
+    draft: "New.",
+    mode: "replace",
+    currentMyAnswers: { "home-001": "Old." },
+    localStorage: storage,
+  });
+  let committed = false;
+  assert.throws(
+    () => executeAnswerDraftTransaction({ plan, commit: () => { committed = true; } }),
+    (error) => error instanceof StorageTransactionError && error.rollbackSucceeded,
+  );
+  assert.equal(committed, false);
+  assert.equal(JSON.parse(storage.getItem(MY_ANSWERS_STORAGE_KEY))["home-001"], "Old.");
+});
+
+test("빈 음성 초안과 위험한 카드 ID 거부", () => {
+  resetStorage();
+  assert.throws(
+    () => createAnswerDraftPlan({
+      cardId: "home-001",
+      draft: "   ",
+      mode: "replace",
+      currentMyAnswers: {},
+      localStorage,
+    }),
+    AnswerDraftError,
+  );
+  assert.throws(
+    () => createAnswerDraftPlan({
+      cardId: "__proto__",
+      draft: "Answer.",
+      mode: "replace",
+      currentMyAnswers: {},
+      localStorage,
+    }),
+    AnswerDraftError,
+  );
 });
 
 let passed = 0;

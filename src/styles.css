@@ -6237,6 +6237,100 @@ input:focus-visible + .toggle-switch {
   font-weight: 700;
 }
 
+.audio-recorder-speech-draft {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.audio-recorder-speech-option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--heading);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.audio-recorder-speech-option input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--blue);
+}
+
+.audio-recorder-speech-option:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: .65;
+}
+
+.audio-recorder-speech-help,
+.audio-recorder-speech-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: .8rem;
+  line-height: 1.5;
+}
+
+.audio-recorder-speech-editor {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.audio-recorder-speech-editor > label {
+  color: var(--heading);
+  font-weight: 800;
+}
+
+.audio-recorder-speech-editor textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 116px;
+  padding: 11px 12px;
+  resize: vertical;
+  color: var(--body-copy);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface);
+  font: inherit;
+  line-height: 1.55;
+}
+
+.audio-recorder-speech-editor textarea:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.audio-recorder-speech-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.audio-recorder-speech-actions button {
+  min-height: 42px;
+  padding: 8px 12px;
+  color: var(--body-copy);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  font: inherit;
+  font-weight: 750;
+}
+
+.audio-recorder-speech-actions button:first-child {
+  color: #fff;
+  border-color: var(--blue);
+  background: var(--blue);
+}
+
+.audio-recorder-speech-actions button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
 .shadowing-audio-recorder {
   margin-top: 0;
 }
@@ -6274,6 +6368,21 @@ input:focus-visible + .toggle-switch {
     display: grid;
     min-height: 44px;
     place-items: center;
+  }
+
+  .audio-recorder-speech-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .audio-recorder-speech-actions button {
+    min-width: 0;
+    padding-inline: 8px;
+  }
+
+  .audio-recorder-speech-actions button:only-child,
+  .audio-recorder-speech-actions .text-button:last-child {
+    grid-column: 1 / -1;
   }
 }
 
@@ -6764,6 +6873,7 @@ input:focus-visible + .toggle-switch {
     letter-spacing: -0.02em;
     text-align: center;
   }
+
 }
 
 .shadowing-main {
