@@ -107,6 +107,27 @@ test("답변 듣기 버튼은 사용 가능 상태와 실제 비활성 상태를
   assert.match(stylesSource, /\.answer-listen-button\.is-playing\s*\{[^}]*background:\s*var\(--blue-soft\)/s);
   assert.match(stylesSource, /\.speech-button:disabled[\s\S]*?opacity:\s*0\.48/s);
 });
+test("카드 상세 첫 문장은 훈련 화면 대신 현재 카드 안에서 열림", () => {
+  assert.match(cardDetailSource, /const \[showFirstLine, setShowFirstLine\] = useState\(false\)/);
+  assert.match(cardDetailSource, /aria-label=\{showFirstLine \? "첫 문장 숨기기" : "첫 문장 보기"\}/);
+  assert.match(cardDetailSource, /className="detail-first-line-preview"[\s\S]*?\{card\.firstLine\}/);
+  assert.doesNotMatch(cardDetailSource, /onStartDrill/);
+});
+test("카드 상세 swipe는 기존 이전·다음 이탈 확인 handler를 재사용", () => {
+  assert.match(cardDetailSource, /useSwipeNavigation/);
+  assert.match(cardDetailSource, /onSwipeLeft:\s*canGoNext \? goNext : undefined/);
+  assert.match(cardDetailSource, /onSwipeRight:\s*canGoPrevious \? goPrevious : undefined/);
+  assert.match(cardDetailSource, /<main className="detail-page" \{\.\.\.swipeHandlers\}>/);
+});
+test("녹음 안내는 recorder 제목 아래 scope에 보통 굵기로 표시", () => {
+  assert.match(answerLearningSource, /scopeLabel="녹음 시작을 누르면 질문이 한 번 나오고, 3초를 센 뒤 자동으로 녹음을 시작합니다\."/);
+  assert.doesNotMatch(answerLearningSource, /answer-learning-recording-guide/);
+  assert.match(stylesSource, /\.answer-learning-audio-recorder \.audio-recorder-scope\s*\{[^}]*font-weight:\s*400/s);
+});
+test("카드 상세 전체 답변 글씨는 desktop과 mobile에서 한 단계 큼", () => {
+  assert.match(stylesSource, /\.answer-lines p\s*\{[^}]*font:\s*500 19px\/1\.7/s);
+  assert.match(stylesSource, /@media \(max-width:\s*700px\)[\s\S]*?\.answer-lines p\s*\{[^}]*font-size:\s*18px/s);
+});
 test("나의 첫 문장 듣기는 공통 상태 스타일과 기존 동작을 유지", () => {
   const firstLineTargetIndex = cardDetailSource.indexOf('activeTarget === "myFirstLine"');
   const firstLineButton = cardDetailSource.slice(

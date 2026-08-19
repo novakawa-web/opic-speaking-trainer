@@ -278,12 +278,12 @@ test("답변 익히기 전체 답변은 중간 장식 테두리 없이 기능 �
   assert.match(sentenceButton, /font-weight:\s*650/);
   assert.match(sentenceButton, /line-height:\s*1\.6/);
   assert.match(sentenceButton, /border:\s*0/);
-  assert.match(sentenceButton, /border-radius:\s*10px/);
-  assert.match(sentenceButton, /background:\s*var\(--surface\)/);
+  assert.match(sentenceButton, /border-radius:\s*0/);
+  assert.match(sentenceButton, /background:\s*transparent/);
 
   const currentSentence = extractOnlyCssRuleBody(css, ".answer-learning-sentence-playback.is-current");
-  assert.match(currentSentence, /background:\s*var\(--blue-soft\)/);
-  assert.match(currentSentence, /box-shadow:\s*inset 0 0 0 2px var\(--blue\)/);
+  assert.match(currentSentence, /background:\s*transparent/);
+  assert.match(currentSentence, /box-shadow:\s*inset 3px 0 0 var\(--blue\)/);
 });
 test("답변 익히기 세로 밀도는 설명 범위와 safe-area·터치 계약을 보존한다", () => {
   assert.equal((answerLearning.match(/className="answer-learning-rating-description"/g) ?? []).length, 1);
@@ -412,7 +412,7 @@ test("답변 익히기 녹음기는 평가 아래와 카드 이동 위에 있고
 });
 test("답변 익히기 오디오 조작은 모바일 터치와 현재 문장 표시 계약을 유지한다", () => {
   assert.match(css, /\.answer-learning-tts-rate\s*\{[\s\S]*?min-height:\s*44px/);
-  assert.match(css, /\.answer-learning-sentence-playback\.is-current\s*\{[^}]*var\(--blue-soft\)/);
+  assert.match(css, /\.answer-learning-sentence-playback\.is-current\s*\{[^}]*box-shadow:\s*inset 3px 0 0 var\(--blue\)/);
   assert.match(css, /\.answer-learning-audio-recorder\s*\{[\s\S]*?var\(--app-content-max\)/);
   const mobileAnswerLearningBlocks = extractCssAtRuleBlocks(
     css,
@@ -857,7 +857,8 @@ test("answer-learning sentence checks are separate accessible controls", () => {
   assert.match(css, /\.answer-learning-sentence-row\s*\{[^}]*grid-template-columns:\s*24px minmax\(0, 1fr\)/);
   assert.match(css, /\.answer-learning-sentence-meta\s*\{[^}]*flex-direction:\s*column[^}]*gap:\s*1px/);
   assert.match(css, /\.answer-learning-sentence-check\s*\{[^}]*width:\s*20px[^}]*min-height:\s*20px[^}]*border:\s*1px solid var\(--line\)[^}]*color:\s*transparent[^}]*background:\s*transparent/);
-  assert.match(css, /\.answer-learning-sentence-check\[aria-pressed="true"\]\s*\{[^}]*color:\s*var\(--white\)[^}]*border-color:\s*var\(--blue\)[^}]*background:\s*var\(--blue\)/);
+  assert.match(css, /\.answer-learning-sentence-check\[aria-pressed="true"\]\s*\{[^}]*color:\s*var\(--blue\)[^}]*border-color:\s*var\(--blue\)[^}]*background:\s*var\(--white\)/);
+  assert.match(css, /\[data-theme="dark"\] \.answer-learning-sentence-check\[aria-pressed="true"\]\s*\{[^}]*color:\s*var\(--white\)[^}]*background:\s*var\(--blue\)/);
   assert.match(css, /@media \(hover:\s*hover\) and \(pointer:\s*fine\)[\s\S]*?\.answer-learning-sentence-check:hover\s*\{[^}]*border-color:\s*var\(--blue\)[^}]*\}/);
   assert.doesNotMatch(css, /\.answer-learning-sentence-check:hover\s*\{[^}]*background:/);
   assert.match(app, /saveAnswerLearningSentenceChecks\(next\)[\s\S]*?setAnswerLearningSentenceChecks\(next\)/);

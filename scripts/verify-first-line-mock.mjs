@@ -19,6 +19,7 @@ import {
 import {
   filterCardsByAnswerLearningStatusPresence,
 } from "../src/utils/answerLearningSelectors.ts";
+import { getSwipeDirection } from "../src/hooks/useSwipeNavigation.ts";
 
 class MemoryStorage {
   values = new Map();
@@ -413,6 +414,12 @@ test("모바일 카드 이동은 기존 이전 다음 handler를 재사용", () 
     source.indexOf('className="first-line-box"')
       < source.indexOf('className="mobile-drill-navigation"'),
   );
+});
+test("가로 swipe 판정은 충분한 좌우 이동만 카드 전환으로 처리", () => {
+  assert.equal(getSwipeDirection(-90, 8), "left");
+  assert.equal(getSwipeDirection(90, 8), "right");
+  assert.equal(getSwipeDirection(40, 2), null);
+  assert.equal(getSwipeDirection(90, 80), null);
 });
 test("모바일 이동 행은 700px 이하에서만 2열로 표시", () => {
   const styles = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");

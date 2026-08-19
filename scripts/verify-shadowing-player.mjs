@@ -681,6 +681,16 @@ test("phone landscape keeps five controls and speed on one 40px row", () => {
   assert.match(shortLandscape, /\.shadowing-rate-control\s*{[^}]*grid-template-columns:\s*auto minmax\(76px,\s*1fr\)[^}]*margin:\s*0[^}]*}/);
   assert.match(shortLandscape, /\.shadowing-rate-control select\s*{[^}]*min-width:\s*76px[^}]*height:\s*40px[^}]*}/);
 });
+test("phone portrait reserves the browser scroll affordance lane in fixed controls", () => {
+  const portrait = stylesSource.slice(
+    stylesSource.indexOf("@media (orientation: portrait) and (max-width: 700px)"),
+    stylesSource.indexOf("@media (orientation: landscape) and (max-height: 700px)"),
+  );
+  assert.match(portrait, /\.shadowing-control-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*44px\s*minmax\(0,\s*0\.8fr\)\s*repeat\(2,\s*minmax\(0,\s*0\.6fr\)\)/);
+  assert.match(portrait, /\.shadowing-control-grid \.shadowing-play-button\s*\{[^}]*grid-column:\s*4/);
+  assert.match(portrait, /\.shadowing-rate-control\s*\{[^}]*width:\s*calc\(50% - 30px\)[^}]*margin-right:\s*auto/);
+  assert.match(portrait, /\.shadowing-rate-control select\s*\{[^}]*grid-column:\s*2[^}]*min-width:\s*0/);
+});
 test("short landscape visually hides only the duplicated resume note", () => {
   const shortLandscape = stylesSource.slice(
     stylesSource.indexOf("@media (orientation: landscape) and (max-height: 700px)"),

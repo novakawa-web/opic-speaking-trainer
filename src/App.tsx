@@ -2916,21 +2916,6 @@ function App() {
           onBack={closeCardDetail}
           onPrevious={() => navigateCard(-1)}
           onNext={() => navigateCard(1)}
-          onStartDrill={() => {
-            const nextDrillCardIds = createDrillCardIds(orderedFilteredCards);
-            if (!nextDrillCardIds.includes(selectedCard.id)) {
-              nextDrillCardIds.unshift(selectedCard.id);
-            }
-            setLastUndo(null);
-            clearFirstLineMockSession();
-            setMockSession(null);
-            setFeedbackMessage(null);
-            setMemoFocus(null);
-            setDrillCardIds(nextDrillCardIds);
-            setDrillReturnView("detail");
-            pushHistoryView("drill");
-            setView("drill");
-          }}
           onStartAnswerLearning={() => startSingleCardAnswerLearning(selectedCard)}
           onSaveMyAnswer={saveMyAnswer}
           onDeleteMyAnswer={removeMyAnswer}

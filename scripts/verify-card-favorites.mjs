@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   FAVORITE_CARD_IDS_STORAGE_KEY,
   createNextFavoriteCardIds,
@@ -79,5 +80,18 @@ assert.deepEqual(
   ).map((card) => card.id),
   ["card-1"],
 );
+
+const answerLearningSource = readFileSync(
+  new URL("../src/components/AnswerLearning.tsx", import.meta.url),
+  "utf8",
+);
+const stylesSource = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+const progressStart = answerLearningSource.indexOf('className="answer-learning-progress"');
+const progressEnd = answerLearningSource.indexOf("</div>", progressStart);
+const progressSource = answerLearningSource.slice(progressStart, progressEnd);
+assert.match(progressSource, /className="answer-learning-progress-end"/);
+assert.match(progressSource, /className="answer-learning-favorite-button"/);
+assert.doesNotMatch(answerLearningSource, /answer-learning-favorite-row/);
+assert.match(stylesSource, /\.favorite-button\.answer-learning-favorite-button,[\s\S]*?border-color:\s*transparent;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none/);
 
 console.log("CARD_FAVORITES_VERIFY=PASS");

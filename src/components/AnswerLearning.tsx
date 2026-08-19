@@ -381,13 +381,14 @@ export function AnswerLearning({
         <div className="answer-learning-progress" aria-live="polite">
           <button type="button" className="answer-learning-inline-back" onClick={goBack}>← 준비 화면으로</button>
           <strong>{currentPosition} / {totalCards} 카드</strong>
-          <span>{card.deck}</span>
-        </div>
-        <div className="answer-learning-favorite-row">
-          <FavoriteButton
-            isFavorite={isFavorite}
-            onToggle={onToggleFavorite}
-          />
+          <div className="answer-learning-progress-end">
+            <span>{card.deck}</span>
+            <FavoriteButton
+              isFavorite={isFavorite}
+              onToggle={onToggleFavorite}
+              className="answer-learning-favorite-button"
+            />
+          </div>
         </div>
         <h1>{card.front}</h1>
         <div className="answer-learning-question-actions">
@@ -647,11 +648,7 @@ export function AnswerLearning({
           className="answer-learning-audio-recorder"
           eyebrow="SPEAK & CHECK"
           title="말한 답변 바로 확인하기"
-          scopeLabel={
-            resolvedSource === "my-answer"
-              ? "현재 선택한 나만의 답변 전체를 말해 보세요."
-              : "현재 선택한 기본 답변 전체를 말해 보세요."
-          }
+          scopeLabel="녹음 시작을 누르면 질문이 한 번 나오고, 3초를 센 뒤 자동으로 녹음을 시작합니다."
           onBeforeRecord={() => {
             stop();
             answerSpeech.stop();
@@ -689,7 +686,6 @@ export function AnswerLearning({
               }
             : undefined}
         />
-        <p className="answer-learning-recording-guide">녹음 시작을 누르면 질문을 한 번 읽고, 3초를 센 뒤 자동으로 녹음을 시작합니다.</p>
         </>
       )}
 

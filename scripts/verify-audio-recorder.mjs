@@ -432,11 +432,11 @@ test("card detail no longer renders a duplicate recorder", () => {
   assert.doesNotMatch(detailSource, /<AudioRecorder/);
   assert.doesNotMatch(detailSource, /detail-audio-recorder/);
 });
-test("answer learning supplies context-specific recorder copy", () => {
+test("answer learning places the recording flow guide in the recorder scope", () => {
   assert.match(answerLearningSource, /eyebrow="SPEAK & CHECK"/);
   assert.match(answerLearningSource, /title="말한 답변 바로 확인하기"/);
-  assert.match(answerLearningSource, /현재 선택한 기본 답변 전체를 말해 보세요/);
-  assert.match(answerLearningSource, /현재 선택한 나만의 답변 전체를 말해 보세요/);
+  assert.match(answerLearningSource, /scopeLabel="녹음 시작을 누르면 질문이 한 번 나오고, 3초를 센 뒤 자동으로 녹음을 시작합니다\."/);
+  assert.doesNotMatch(answerLearningSource, /answer-learning-recording-guide/);
 });
 test("answer learning prepares recording with question speech and a three second countdown", () => {
   assert.match(componentSource, /onPrepareRecord/);

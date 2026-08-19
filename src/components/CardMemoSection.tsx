@@ -18,6 +18,7 @@ import {
   updateCardDetailUiSession,
   type MemoEditorSession,
 } from "../utils/uiSessionStorage";
+import { SimpleMarkdown } from "./SimpleMarkdown";
 
 export type CardMemoSectionHandle = {
   confirmDiscardAndClose: () => boolean;
@@ -276,6 +277,9 @@ export const CardMemoSection = forwardRef<CardMemoSectionHandle, CardMemoSection
                 <div className="memo-editor-meta">
                   <span>{draft.length.toLocaleString()} / {CARD_MEMO_MAX_LENGTH.toLocaleString()}자</span>
                 </div>
+                <p className="memo-markdown-help">
+                  간단한 Markdown: # 제목 · **굵게** · `코드` · - 목록 · &gt; 인용
+                </p>
                 <div className="memo-editor-actions">
                   <button type="button" className="primary-button" disabled={!canSave} onClick={saveMemo}>저장</button>
                   <button type="button" className="secondary-button" onClick={cancelEdit}>취소</button>
@@ -304,7 +308,7 @@ export const CardMemoSection = forwardRef<CardMemoSectionHandle, CardMemoSection
                       <span>{memo.pinned ? "📌 고정됨" : "메모"}</span>
                       <time dateTime={memo.updatedAt}>{formatMemoDate(memo.updatedAt)}</time>
                     </div>
-                    <div className="memo-content-text">{memo.content}</div>
+                    <SimpleMarkdown content={memo.content} className="memo-content-text" />
                     <div className="memo-item-actions">
                       <button
                         type="button"

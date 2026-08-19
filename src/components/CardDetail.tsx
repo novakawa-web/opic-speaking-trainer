@@ -7,6 +7,7 @@ import {
 } from "react";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useSpeechSynthesis } from "../hooks/useSpeechSynthesis";
+import { useSwipeNavigation } from "../hooks/useSwipeNavigation";
 import type { AnswerLearningStatus, FirstLineStatus, OpicCard } from "../types";
 import { activateButton } from "../utils/buttonFocus";
 import { extractMyFirstLine } from "../utils/myAnswerStorage";
@@ -48,7 +49,6 @@ type CardDetailProps = {
   onBack: () => void;
   onPrevious: () => void;
   onNext: () => void;
-  onStartDrill: () => void;
   onStartAnswerLearning: () => void;
   onSaveMyAnswer: (cardId: string, answer: string) => void;
   onDeleteMyAnswer: (cardId: string) => void;
@@ -98,7 +98,6 @@ export function CardDetail({
   onBack,
   onPrevious,
   onNext,
-  onStartDrill,
   onStartAnswerLearning,
   onSaveMyAnswer,
   onDeleteMyAnswer,
@@ -123,6 +122,7 @@ export function CardDetail({
   );
   const [showHint, setShowHint] = useState(initialUiSession.showHint);
   const [showAnswer, setShowAnswer] = useState(initialUiSession.showAnswer);
+  const [showFirstLine, setShowFirstLine] = useState(false);
   const [answerTab, setAnswerTab] = useState<AnswerTab>(initialUiSession.answerTab);
   const [message, setMessage] = useState("");
   const [deletedAnswer, setDeletedAnswer] = useState<string | null>(null);
@@ -189,6 +189,7 @@ export function CardDetail({
     const restored = readCardDetailUiSession(card.id, Boolean(myAnswer));
     setShowHint(restored.showHint);
     setShowAnswer(restored.showAnswer);
+    setShowFirstLine(false);
     setAnswerTab(restored.answerTab);
     setIsEditingCard(false);
     setIsCardEditorDirty(false);
@@ -216,6 +217,10 @@ export function CardDetail({
     () => runAfterDiscardCheck(onNext),
     [onNext, runAfterDiscardCheck],
   );
+  const swipeHandlers = useSwipeNavigation({
+    onSwipeLeft: canGoNext ? goNext : undefined,
+    onSwipeRight: canGoPrevious ? goPrevious : undefined,
+  });
 
   useKeyboardShortcuts({
     q: canGoPrevious ? goPrevious : undefined,
@@ -312,7 +317,7 @@ export function CardDetail({
   }
 
   return (
-    <main className="detail-page">
+    <main className="detail-page" {...swipeHandlers}>
       <StudyNavigation
         currentPosition={currentPosition}
         totalCards={totalCards}
@@ -362,10 +367,12 @@ export function CardDetail({
             <button
               className="primary-button"
               type="button"
-              aria-label="첫 문장 훈련 시작"
-              onClick={(event) =>
-                activateButton(event, () => runAfterDiscardCheck(onStartDrill))
-              }
+              aria-expanded={showFirstLine}
+              aria-pressed={showFirstLine}
+              aria-label={showFirstLine ? "첫 문장 숨기기" : "첫 문장 보기"}
+              onClick={(event) => activateButton(event, () => {
+                setShowFirstLine((value) => !value);
+              })}
             >
               첫 문장
             </button>
@@ -395,6 +402,11 @@ export function CardDetail({
               답변
             </button>
           </div>
+          {showFirstLine && (
+            <div className="detail-first-line-preview" aria-label="첫 문장">
+              <p>{card.firstLine}</p>
+            </div>
+          )}
           <button
             type="button"
             className="secondary-button detail-answer-learning-entry"

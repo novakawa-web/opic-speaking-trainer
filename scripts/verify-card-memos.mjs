@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { cards as defaultCards } from "../src/data/cards.ts";
 import {
   createAppBackup,
@@ -229,6 +230,14 @@ test("날짜 표시", () => {
   const memoDate = new Date(2026, 6, 17, 12, 30);
   const sameLocalDay = new Date(2026, 6, 17, 15, 0);
   assert.match(formatMemoDate(memoDate.toISOString(), sameLocalDay), /^오늘/);
+});
+
+test("카드 메모는 개인 학습 메모와 같은 안전한 Markdown renderer를 사용", () => {
+  const source = readFileSync(new URL("../src/components/CardMemoSection.tsx", import.meta.url), "utf8");
+  assert.match(source, /import \{ SimpleMarkdown \} from "\.\/SimpleMarkdown"/);
+  assert.match(source, /<SimpleMarkdown content=\{memo\.content\} className="memo-content-text" \/>/);
+  assert.match(source, /간단한 Markdown/);
+  assert.doesNotMatch(source, /dangerouslySetInnerHTML/);
 });
 
 let passed = 0;
