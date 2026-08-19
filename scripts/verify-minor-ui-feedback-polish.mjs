@@ -16,6 +16,7 @@ const appSource = readFileSync("./src/App.tsx", "utf8");
 const cardSearchSource = readFileSync("./src/utils/cardSearch.ts", "utf8");
 const backupSource = readFileSync("./src/components/BackupManager.tsx", "utf8");
 const toastSource = readFileSync("./src/components/TransientToast.tsx", "utf8");
+const swipeNavigationSource = readFileSync("./src/hooks/useSwipeNavigation.ts", "utf8");
 const stylesSource = readFileSync("./src/styles.css", "utf8");
 
 const tests = [];
@@ -118,6 +119,13 @@ test("카드 상세 swipe는 기존 이전·다음 이탈 확인 handler를 재�
   assert.match(cardDetailSource, /onSwipeLeft:\s*canGoNext \? goNext : undefined/);
   assert.match(cardDetailSource, /onSwipeRight:\s*canGoPrevious \? goPrevious : undefined/);
   assert.match(cardDetailSource, /<main className="detail-page" \{\.\.\.swipeHandlers\}>/);
+  assert.match(
+    stylesSource,
+    /\.detail-page\s*\{[^}]*overscroll-behavior-x:\s*none;[^}]*touch-action:\s*pan-y;/s,
+  );
+  assert.match(swipeNavigationSource, /onTouchStart:\s*TouchEventHandler<HTMLElement>/);
+  assert.match(swipeNavigationSource, /onTouchEnd:\s*TouchEventHandler<HTMLElement>/);
+  assert.match(swipeNavigationSource, /event\.pointerType !== "pen"/);
 });
 test("녹음 안내는 recorder 제목 아래 scope에 보통 굵기로 표시", () => {
   assert.match(answerLearningSource, /scopeLabel="녹음 시작을 누르면 질문이 한 번 나오고, 3초를 센 뒤 자동으로 녹음을 시작합니다\."/);
@@ -127,6 +135,8 @@ test("녹음 안내는 recorder 제목 아래 scope에 보통 굵기로 표시",
 test("카드 상세 전체 답변 글씨는 desktop과 mobile에서 한 단계 큼", () => {
   assert.match(stylesSource, /\.answer-lines p\s*\{[^}]*font:\s*500 19px\/1\.7/s);
   assert.match(stylesSource, /@media \(max-width:\s*700px\)[\s\S]*?\.answer-lines p\s*\{[^}]*font-size:\s*18px/s);
+  assert.match(stylesSource, /\.answer-lines p > span:first-child\s*\{[^}]*font-size:\s*10px/s);
+  assert.doesNotMatch(stylesSource, /\.answer-lines p > span\s*\{/);
 });
 test("나의 첫 문장 듣기는 공통 상태 스타일과 기존 동작을 유지", () => {
   const firstLineTargetIndex = cardDetailSource.indexOf('activeTarget === "myFirstLine"');

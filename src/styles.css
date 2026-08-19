@@ -382,6 +382,11 @@ input:focus-visible + .toggle-switch {
   margin: 0 auto;
 }
 
+.detail-page {
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
+}
+
 .home-layout-shell {
   width: 100%;
   padding-inline:
@@ -3473,7 +3478,7 @@ input:focus-visible + .toggle-switch {
   border-bottom: 0;
 }
 
-.answer-lines p > span {
+.answer-lines p > span:first-child {
   color: #b2bac7;
   font-size: 10px;
   font-weight: 700;

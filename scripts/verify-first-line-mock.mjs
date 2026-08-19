@@ -19,7 +19,10 @@ import {
 import {
   filterCardsByAnswerLearningStatusPresence,
 } from "../src/utils/answerLearningSelectors.ts";
-import { getSwipeDirection } from "../src/hooks/useSwipeNavigation.ts";
+import {
+  getSwipeDirection,
+  resolveTouchSwipeEnd,
+} from "../src/hooks/useSwipeNavigation.ts";
 
 class MemoryStorage {
   values = new Map();
@@ -420,6 +423,27 @@ test("가로 swipe 판정은 충분한 좌우 이동만 카드 전환으로 처�
   assert.equal(getSwipeDirection(90, 8), "right");
   assert.equal(getSwipeDirection(40, 2), null);
   assert.equal(getSwipeDirection(90, 80), null);
+});
+test("손가락 swipe 종료는 같은 touch 식별자의 가로 이동만 처리", () => {
+  const activeTouch = { id: 7, startX: 300, startY: 200 };
+  assert.deepEqual(
+    resolveTouchSwipeEnd(activeTouch, [
+      { identifier: 7, clientX: 180, clientY: 206 },
+    ]),
+    { matched: true, direction: "left" },
+  );
+  assert.deepEqual(
+    resolveTouchSwipeEnd(activeTouch, [
+      { identifier: 8, clientX: 180, clientY: 206 },
+    ]),
+    { matched: false, direction: null },
+  );
+  assert.deepEqual(
+    resolveTouchSwipeEnd(activeTouch, [
+      { identifier: 7, clientX: 270, clientY: 206 },
+    ]),
+    { matched: true, direction: null },
+  );
 });
 test("모바일 이동 행은 700px 이하에서만 2열로 표시", () => {
   const styles = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
