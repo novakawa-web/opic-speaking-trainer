@@ -35,6 +35,7 @@ type CardMemoSectionProps = {
   onTogglePinned: (memoId: string) => void;
   onDelete: (memoId: string) => void;
   onRestore: (memo: CardMemo, index: number) => void;
+  persistUiSession?: boolean;
 };
 
 type EditorState = { mode: "new"; original: "" } | { mode: "edit"; memo: CardMemo; original: string };
@@ -63,11 +64,14 @@ export const CardMemoSection = forwardRef<CardMemoSectionHandle, CardMemoSection
       onTogglePinned,
       onDelete,
       onRestore,
+      persistUiSession = true,
     },
     ref,
   ) {
     const [initialUiSession] = useState(() =>
-      readCardDetailUiSession(cardId, hasMyAnswer),
+      persistUiSession
+        ? readCardDetailUiSession(cardId, hasMyAnswer)
+        : { memoExpanded: false, memoEditor: null },
     );
     const [expanded, setExpanded] = useState(
       Boolean(focusMemoId) || initialUiSession.memoExpanded,
@@ -115,7 +119,9 @@ export const CardMemoSection = forwardRef<CardMemoSectionHandle, CardMemoSection
     }, [isDirty]);
 
     useEffect(() => {
-      const restored = readCardDetailUiSession(cardId, hasMyAnswer);
+      const restored = persistUiSession
+        ? readCardDetailUiSession(cardId, hasMyAnswer)
+        : { memoExpanded: false, memoEditor: null };
       const restoredEditor = focusMemoId
         ? null
         : restoreEditor(restored.memoEditor, memos);
@@ -124,9 +130,10 @@ export const CardMemoSection = forwardRef<CardMemoSectionHandle, CardMemoSection
       setDraft(restoredEditor ? restored.memoEditor?.draft ?? "" : "");
       setMessage("");
       setDeletedMemo(null);
-    }, [cardId, focusMemoId]);
+    }, [cardId, focusMemoId, hasMyAnswer, persistUiSession]);
 
     useEffect(() => {
+      if (!persistUiSession) return;
       updateCardDetailUiSession(cardId, hasMyAnswer, {
         memoExpanded: expanded,
         memoEditor: editor
@@ -137,7 +144,7 @@ export const CardMemoSection = forwardRef<CardMemoSectionHandle, CardMemoSection
             }
           : null,
       });
-    }, [cardId, draft, editor, expanded, hasMyAnswer]);
+    }, [cardId, draft, editor, expanded, hasMyAnswer, persistUiSession]);
 
     useEffect(() => {
       if (!focusMemoId || !expanded) return;

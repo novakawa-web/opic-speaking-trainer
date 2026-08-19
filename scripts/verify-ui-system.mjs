@@ -158,10 +158,10 @@ test("360px compact tile full width", () => {
 test("빠른 시작 카드 동일 폭과 리듬", () => {
   assert.match(css, /\.home-learning-action\.compact-learning-tile[\s\S]*?width:\s*100%[\s\S]*?gap:\s*var\(--space-sm\)/);
 });
-test("홈 안내 문구는 현재 제공하는 세 학습 흐름과 실제 이동 동작을 설명한다", () => {
+test("홈 안내 문구는 현재 제공하는 네 학습 흐름과 실제 이동 동작을 설명한다", () => {
   assert.match(app, /OPIc SPEAKING ROUTINE/);
   assert.match(app, /오늘 필요한 방식으로 말하기를 연습해 보세요\./);
-  assert.match(app, /첫 문장 연습, 답변 익히기, 쉐도잉 중 지금 필요한 연습을 선택할 수 있어요\./);
+  assert.match(app, /첫 문장 연습, 답변 익히기, 쉐도잉, 체크 문장 복습 중 지금 필요한 연습을 선택할 수 있어요\./);
   assert.doesNotMatch(app, /WEEK 6|3초 안에 첫 문장|Local MVP/);
   assert.match(quickStart, />질문에 첫 문장을 바로 말해요\.<\/span>/);
   assert.match(quickStart, />쉐도잉 지문 열기<\/strong>/);

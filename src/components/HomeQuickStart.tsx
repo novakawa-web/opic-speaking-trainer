@@ -3,6 +3,8 @@ type Props = {
   onStartFirstLine: () => void;
   onStartAnswerLearning: () => void;
   onOpenShadowing: () => void;
+  checkedSentenceCount: number;
+  onOpenCheckedSentences: () => void;
 };
 
 export function HomeQuickStart({
@@ -10,6 +12,8 @@ export function HomeQuickStart({
   onStartFirstLine,
   onStartAnswerLearning,
   onOpenShadowing,
+  checkedSentenceCount,
+  onOpenCheckedSentences,
 }: Props) {
   return (
     <section className="home-quick-start" aria-labelledby="home-quick-start-title">
@@ -31,6 +35,10 @@ export function HomeQuickStart({
         <button type="button" className="home-learning-action compact-learning-tile" onClick={onOpenShadowing}>
           <strong>쉐도잉 지문 열기</strong>
           <span className="home-card-description">지문을 고르거나 작성한 뒤 문장별로 따라 말해요.</span>
+        </button>
+        <button type="button" className="home-learning-action compact-learning-tile" onClick={onOpenCheckedSentences}>
+          <strong>체크 문장 모아보기</strong>
+          <span className="home-card-description">체크한 문장 {checkedSentenceCount}개를 세로로 모아 들어요.</span>
         </button>
       </div>
     </section>

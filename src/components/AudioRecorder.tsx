@@ -41,6 +41,9 @@ type AudioRecorderProps = {
   title?: string;
   scopeLabel: string;
   onBeforeRecord?: () => void;
+  onPrepareRecord?: (signal: AbortSignal) => Promise<void>;
+  preparationStatus?: string | null;
+  onPreparingChange?: (preparing: boolean) => void;
   onBeforePlayback?: () => void;
   onStatusChange?: (status: RecordingStatus) => void;
   speechDraft?: AudioRecorderSpeechDraftConfig;
@@ -64,6 +67,9 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
       title = "녹음 후 바로 듣기",
       scopeLabel,
       onBeforeRecord,
+      onPrepareRecord,
+      preparationStatus,
+      onPreparingChange,
       onBeforePlayback,
       onStatusChange,
       speechDraft: speechDraftConfig,
@@ -74,19 +80,27 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
     const recorder = useAudioRecorder();
     const speechDraft = useSpeechDraft();
     const [message, setMessage] = useState("");
+    const [isPreparing, setIsPreparing] = useState(false);
     const [speechDraftEnabled, setSpeechDraftEnabled] = useState(false);
     const [savedSpeechDraft, setSavedSpeechDraft] = useState("");
+    const preparationControllerRef = useRef<AbortController | null>(null);
     const speechDraftRequestedRef = useRef(false);
     const speechDraftStartedRef = useRef(false);
-    const busy = isRecordingBusy(recorder.recordingStatus);
+    const busy = isPreparing || isRecordingBusy(recorder.recordingStatus);
 
     function stopRecording() {
+      preparationControllerRef.current?.abort();
+      preparationControllerRef.current = null;
+      setIsPreparing(false);
       speechDraft.stop();
       speechDraftStartedRef.current = false;
       recorder.stopRecording();
     }
 
     function clearRecording() {
+      preparationControllerRef.current?.abort();
+      preparationControllerRef.current = null;
+      setIsPreparing(false);
       speechDraftRequestedRef.current = false;
       speechDraftStartedRef.current = false;
       speechDraft.clear();
@@ -115,6 +129,10 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
     }, [onStatusChange, recorder.recordingStatus]);
 
     useEffect(() => {
+      onPreparingChange?.(isPreparing);
+    }, [isPreparing, onPreparingChange]);
+
+    useEffect(() => {
       const draft = speechDraft.draftText.trim();
       onSpeechDraftDirtyChange?.(
         Boolean(draft) && draft !== savedSpeechDraft.trim(),
@@ -140,7 +158,10 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
       }
     }, [recorder.recordingStatus, speechDraft.start, speechDraft.stop]);
 
+    useEffect(() => () => preparationControllerRef.current?.abort(), []);
+
     async function start() {
+      if (isPreparing) return;
       onBeforeRecord?.();
       setMessage("");
       speechDraft.clear();
@@ -152,7 +173,24 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
         speechDraft.isSupported &&
         !speechDraftConfig.disabled,
       );
-      await recorder.startRecording();
+      try {
+        if (onPrepareRecord) {
+          const controller = new AbortController();
+          preparationControllerRef.current?.abort();
+          preparationControllerRef.current = controller;
+          setIsPreparing(true);
+          await onPrepareRecord(controller.signal);
+          if (controller.signal.aborted) return;
+          preparationControllerRef.current = null;
+        }
+        await recorder.startRecording();
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setMessage("녹음 준비를 완료하지 못했습니다. 다시 시도해 주세요.");
+        }
+      } finally {
+        setIsPreparing(false);
+      }
     }
 
     async function play() {
@@ -187,14 +225,18 @@ export const AudioRecorder = forwardRef<AudioRecorderHandle, AudioRecorderProps>
             className={recorder.recordingStatus === "recording" ? "is-recording" : ""}
             aria-live="polite"
           >
-            {statusLabels[recorder.recordingStatus]}
+            {isPreparing ? preparationStatus || "녹음 준비 중" : statusLabels[recorder.recordingStatus]}
           </strong>
         </div>
 
         <p className="audio-recorder-scope">{scopeLabel}</p>
 
         <div className="audio-recorder-controls">
-          {(recorder.recordingStatus === "idle" ||
+          {isPreparing ? (
+            <button type="button" disabled aria-label="질문 재생과 녹음 시작 준비 중">
+              {preparationStatus || "녹음 준비 중…"}
+            </button>
+          ) : (recorder.recordingStatus === "idle" ||
             recorder.recordingStatus === "error") && (
             <button
               type="button"

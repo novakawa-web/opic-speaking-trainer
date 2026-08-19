@@ -10,6 +10,7 @@ export type AppView =
   | "answerSetup"
   | "answerLearning"
   | "shadowing"
+  | "sentenceReview"
   | "savedPassages"
   | "personalMemos";
 
@@ -45,6 +46,7 @@ const appViews = new Set<AppView>([
   "answerSetup",
   "answerLearning",
   "shadowing",
+  "sentenceReview",
   "savedPassages",
   "personalMemos",
 ]);
@@ -134,6 +136,7 @@ export function getAppBackView(
     case "list":
       return null;
     case "library":
+    case "sentenceReview":
     case "savedPassages":
     case "personalMemos":
       return "list";

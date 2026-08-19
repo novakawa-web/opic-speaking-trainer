@@ -145,6 +145,7 @@ export function CardDetail({
   const myFirstLine = myAnswer ? extractMyFirstLine(myAnswer) : "";
   const modelAnswerText = joinAnswerLines(card.back);
   const modelAnswerRows = createAnswerDisplayRows(modelAnswerText);
+  const myAnswerRows = myAnswer ? createAnswerDisplayRows(myAnswer) : [];
   const firstLineOnly = isFirstLineOnlyCard(card);
   const shadowingSource =
     answerTab === "model"
@@ -647,7 +648,18 @@ export function CardDetail({
                         : "나의 첫 문장 듣기"}
                     </button>
                   </div>
-                  <div className="my-answer-text">{myAnswer}</div>
+                  <div className="answer-lines my-answer-lines">
+                    {myAnswerRows.map((row, index) =>
+                      row.kind === "paragraph-break" ? (
+                        <div key={`my-answer-paragraph-${index}`} className="answer-paragraph-break" aria-hidden="true" />
+                      ) : (
+                        <p key={`my-answer-line-${row.number}-${index}`}>
+                          <span>{row.number}</span>
+                          <span className="answer-line-text">{row.text}</span>
+                        </p>
+                      ),
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="my-answer-empty">

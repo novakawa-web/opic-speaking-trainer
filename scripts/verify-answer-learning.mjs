@@ -58,6 +58,10 @@ import {
   serializeAnswerLearningSentenceChecks,
   toggleAnswerLearningSentenceCheck,
 } from "../src/utils/answerLearningSentenceChecks.ts";
+import {
+  countCheckedSentenceReviewSentences,
+  createCheckedSentenceReviewCards,
+} from "../src/utils/checkedSentenceReview.ts";
 
 class MemoryStorage {
   values = new Map();
@@ -157,6 +161,38 @@ test("문장 체크 localStorage round trip과 빈 값 key 제거", () => {
   assert.deepEqual(readAnswerLearningSentenceChecks(storage), checks);
   saveAnswerLearningSentenceChecks({}, storage);
   assert.equal(storage.getItem(ANSWER_LEARNING_SENTENCE_CHECKS_STORAGE_KEY), null);
+});
+
+test("체크 문장 모아보기는 유효한 기본·나만의 답변 문장만 카드별로 묶음", () => {
+  const modelText = cardA.back.join("\n");
+  const modelSentences = modelText.split(/(?<=[.!?])\s+/).filter(Boolean);
+  const modelIds = createAnswerLearningSentenceCheckIds(modelSentences);
+  const myAnswer = "My first checked sentence. My second checked sentence.";
+  const mySentences = ["My first checked sentence.", "My second checked sentence."];
+  const myIds = createAnswerLearningSentenceCheckIds(mySentences);
+  const reviewCards = createCheckedSentenceReviewCards(
+    [cardA, cardB],
+    { [cardA.id]: myAnswer },
+    {
+      [cardA.id]: {
+        default: [modelIds[0]],
+        "my-answer": [myIds[1]],
+      },
+      removed: { default: [modelIds[0]] },
+    },
+  );
+  assert.equal(reviewCards.length, 1);
+  assert.equal(reviewCards[0].card.id, cardA.id);
+  assert.deepEqual(reviewCards[0].sentences.map(({ source }) => source), ["default", "my-answer"]);
+  assert.equal(countCheckedSentenceReviewSentences(reviewCards), 2);
+});
+
+test("체크 문장 모아보기는 답변 변경으로 남은 오래된 ID를 제외", () => {
+  const [staleId] = createAnswerLearningSentenceCheckIds(["Old sentence."]);
+  assert.deepEqual(
+    createCheckedSentenceReviewCards([cardA], {}, { [cardA.id]: { default: [staleId] } }),
+    [],
+  );
 });
 
 test("문장 체크 저장 실패는 호출자에게 전달되어 낙관적 UI 반영을 막음", () => {

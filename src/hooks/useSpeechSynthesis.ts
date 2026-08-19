@@ -22,6 +22,7 @@ type SpeechRequest = {
   text: string;
   target: SpeechTarget;
   source: SpeechSource;
+  onComplete?: (completed: boolean) => void;
 };
 
 type SpeechDiagnosticContext = () => Record<string, unknown>;
@@ -40,6 +41,7 @@ export function useSpeechSynthesis(
   const requestIdRef = useRef(0);
   const voiceRequestRef = useRef<EnglishVoiceRequest | null>(null);
   const diagnosticContextRef = useRef(getDiagnosticContext);
+  const completionRef = useRef<((completed: boolean) => void) | null>(null);
 
   rateRef.current = rate;
   diagnosticContextRef.current = getDiagnosticContext;
@@ -53,6 +55,8 @@ export function useSpeechSynthesis(
     requestIdRef.current += 1;
     cancelVoiceRequest();
     if (isSupported) window.speechSynthesis.cancel();
+    completionRef.current?.(false);
+    completionRef.current = null;
     setActiveTarget(null);
   }, [cancelVoiceRequest, isSupported]);
   const clearMessage = useCallback(() => setMessage(null), []);
@@ -113,11 +117,17 @@ export function useSpeechSynthesis(
           }
         };
         utterance.onend = () => {
-          if (request.id === requestIdRef.current) setActiveTarget(null);
+          if (request.id === requestIdRef.current) {
+            setActiveTarget(null);
+            completionRef.current?.(true);
+            completionRef.current = null;
+          }
         };
         utterance.onerror = (event) => {
           if (request.id !== requestIdRef.current) return;
           setActiveTarget(null);
+          completionRef.current?.(false);
+          completionRef.current = null;
           if (event.error === "canceled" || event.error === "interrupted") return;
 
           const wasBlocked =
@@ -145,15 +155,23 @@ export function useSpeechSynthesis(
   );
 
   const speak = useCallback(
-    (text: string, target: SpeechTarget, source: SpeechSource = "manual") => {
+    (
+      text: string,
+      target: SpeechTarget,
+      source: SpeechSource = "manual",
+      onComplete?: (completed: boolean) => void,
+    ) => {
       if (!isSupported || !text.trim()) return false;
 
+      completionRef.current?.(false);
+      completionRef.current = onComplete ?? null;
       requestIdRef.current += 1;
       const request: SpeechRequest = {
         id: requestIdRef.current,
         text: text.trim(),
         target,
         source,
+        onComplete,
       };
 
       window.speechSynthesis.cancel();
@@ -211,6 +229,8 @@ export function useSpeechSynthesis(
           setMessage(
             "이 실행 환경에서는 영어 음성을 사용할 수 없어요. Chrome이나 Edge에서 다시 열어 주세요.",
           );
+          completionRef.current?.(false);
+          completionRef.current = null;
           return;
         }
         if (!playWithCurrentVoice(request, result.voice)) {
@@ -218,11 +238,21 @@ export function useSpeechSynthesis(
           setMessage(
             "이 실행 환경에서는 영어 음성을 사용할 수 없어요. Chrome이나 Edge에서 다시 열어 주세요.",
           );
+          completionRef.current?.(false);
+          completionRef.current = null;
         }
       });
       return true;
     },
     [cancelVoiceRequest, isSupported, playWithCurrentVoice],
+  );
+
+  const speakAndWait = useCallback(
+    (text: string, target: SpeechTarget) =>
+      new Promise<boolean>((resolve) => {
+        if (!speak(text, target, "manual", resolve)) resolve(false);
+      }),
+    [speak],
   );
 
   useEffect(
@@ -239,6 +269,7 @@ export function useSpeechSynthesis(
     activeTarget,
     message,
     speak,
+    speakAndWait,
     stop,
     clearMessage,
   };

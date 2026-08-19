@@ -29,6 +29,7 @@ import { FirstLineMockResult } from "./components/FirstLineMockResult";
 import { HomeCardDashboard } from "./components/HomeCardDashboard";
 import { HomeManagement } from "./components/HomeManagement";
 import { HomeQuickStart } from "./components/HomeQuickStart";
+import { CheckedSentenceReview } from "./components/CheckedSentenceReview";
 import { formatHomeFilterSummary } from "./utils/homeFilterSummary";
 import {
   matchesCardTagDimensionFilters,
@@ -68,6 +69,10 @@ import {
   toggleAnswerLearningSentenceCheck,
   type AnswerLearningSentenceChecks,
 } from "./utils/answerLearningSentenceChecks";
+import {
+  countCheckedSentenceReviewSentences,
+  createCheckedSentenceReviewCards,
+} from "./utils/checkedSentenceReview";
 import {
   DEFAULT_ANSWER_LEARNING_FILTERS,
   createStartedAnswerLearningSession,
@@ -267,6 +272,7 @@ function toNavigationView(
   if (
     view === "list" ||
     view === "drillSetup" ||
+    view === "sentenceReview" ||
     view === "savedPassages" ||
     view === "personalMemos" ||
     view === "answerSetup" ||
@@ -1945,6 +1951,14 @@ function App() {
     window.scrollTo({ top: 0, behavior: "auto" });
   }
 
+  function openCheckedSentenceReview() {
+    if (!canNavigateFromHome()) return;
+    setSelectedCardId(null);
+    pushHistoryView("sentenceReview");
+    setView("sentenceReview");
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+
   function closePersonalMemos() {
     requestAppBack(true);
   }
@@ -2426,6 +2440,26 @@ function App() {
     );
   }
 
+  if (view === "sentenceReview") {
+    return (
+      <div className="app-shell">
+        <AppHeader
+          theme={theme}
+          studyTitle="체크 문장 모아보기"
+          onBack={() => requestAppBack(true)}
+          onHome={navigateHome}
+          onToggleTheme={toggleTheme}
+        />
+        <CheckedSentenceReview
+          cards={cardCatalog}
+          myAnswers={myAnswers}
+          checks={answerLearningSentenceChecks}
+          onBack={() => requestAppBack(true)}
+        />
+      </div>
+    );
+  }
+
   if (view === "drillSetup") {
     return (
       <div className="app-shell">
@@ -2624,6 +2658,12 @@ function App() {
           onBack={leaveAnswerLearning}
           onSaveCardEdit={saveCardEdit}
           onSaveSpeechDraft={saveAnswerLearningSpeechDraft}
+          memos={cardMemos[selectedCard.id] ?? []}
+          onCreateMemo={addMemo}
+          onUpdateMemo={editMemo}
+          onToggleMemoPinned={toggleMemoPinned}
+          onDeleteMemo={removeMemo}
+          onRestoreMemo={restoreMemo}
           cardEditError={cardEditFailure?.message ?? null}
           onCardEditInputChange={() => setCardEditFailure(null)}
           cardEditingBlocked={destructiveActionsBlocked}
@@ -2946,7 +2986,7 @@ function App() {
                 <span className="hero-label">OPIc SPEAKING ROUTINE</span>
                 <h2>오늘 필요한 방식으로 말하기를 연습해 보세요.</h2>
                 <p>
-                  첫 문장 연습, 답변 익히기, 쉐도잉 중 지금 필요한 연습을 선택할 수 있어요.
+                  첫 문장 연습, 답변 익히기, 쉐도잉, 체크 문장 복습 중 지금 필요한 연습을 선택할 수 있어요.
                 </p>
               </div>
               <div className="hero-rule compact-learning-tile">
@@ -2960,6 +3000,14 @@ function App() {
               onStartFirstLine={openFirstLineSetup}
               onStartAnswerLearning={openAnswerLearningSetup}
               onOpenShadowing={() => openSavedPassages(false)}
+              checkedSentenceCount={countCheckedSentenceReviewSentences(
+                createCheckedSentenceReviewCards(
+                  cardCatalog,
+                  myAnswers,
+                  answerLearningSentenceChecks,
+                ),
+              )}
+              onOpenCheckedSentences={openCheckedSentenceReview}
             />
 
             <TodayStats stats={todayStats} answerStats={answerLearningTodayStats} />

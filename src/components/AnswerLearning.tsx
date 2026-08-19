@@ -50,6 +50,11 @@ import {
   type AudioRecorderSpeechDraftConfig,
 } from "./AudioRecorder";
 import { FavoriteButton } from "./FavoriteButton";
+import {
+  CardMemoSection,
+  type CardMemoSectionHandle,
+} from "./CardMemoSection";
+import type { CardMemo } from "../utils/cardMemoStorage";
 
 type Props = {
   card: OpicCard;
@@ -84,6 +89,12 @@ type Props = {
   onBack: () => void;
   onSaveCardEdit: (card: OpicCard, myAnswer: string) => boolean;
   onSaveSpeechDraft: AudioRecorderSpeechDraftConfig["onApply"];
+  memos: CardMemo[];
+  onCreateMemo: (cardId: string, content: string) => void;
+  onUpdateMemo: (cardId: string, memoId: string, content: string) => void;
+  onToggleMemoPinned: (cardId: string, memoId: string) => void;
+  onDeleteMemo: (cardId: string, memoId: string) => void;
+  onRestoreMemo: (memo: CardMemo, index: number) => void;
   cardEditError?: string | null;
   onCardEditInputChange?: () => void;
   cardEditingBlocked?: boolean;
@@ -121,6 +132,12 @@ export function AnswerLearning({
   onBack,
   onSaveCardEdit,
   onSaveSpeechDraft,
+  memos,
+  onCreateMemo,
+  onUpdateMemo,
+  onToggleMemoPinned,
+  onDeleteMemo,
+  onRestoreMemo,
   cardEditError,
   onCardEditInputChange,
   cardEditingBlocked = false,
@@ -134,9 +151,12 @@ export function AnswerLearning({
   const [sentenceSelection, setSentenceSelection] =
     useState<AnswerLearningSentenceSelection | null>(null);
   const recorderRef = useRef<AudioRecorderHandle | null>(null);
+  const memoSectionRef = useRef<CardMemoSectionHandle | null>(null);
+  const [recordingCountdown, setRecordingCountdown] = useState<number | null>(null);
   const [recordingStatus, setRecordingStatus] =
     useState<RecordingStatus>("idle");
-  const { isSupported, activeTarget, message, speak, stop } = useSpeechSynthesis(ttsRate);
+  const [recordingPreparing, setRecordingPreparing] = useState(false);
+  const { isSupported, activeTarget, message, speak, speakAndWait, stop } = useSpeechSynthesis(ttsRate);
   const modelText = joinAnswerLines(card.back);
   const resolvedSource = answerSource === "my-answer" && myAnswer ? "my-answer" : "default";
   const missingFullAnswer = isFirstLineOnlyCard(card) && resolvedSource === "default";
@@ -162,7 +182,7 @@ export function AnswerLearning({
     stop();
     recorderRef.current?.stopPlayback();
   });
-  const recorderBusy = isRecordingBusy(recordingStatus);
+  const recorderBusy = recordingPreparing || isRecordingBusy(recordingStatus);
   const shadowingSource = missingFullAnswer ? null : resolvedSource === "my-answer"
     ? createMyAnswerSource(card, answerText)
     : createModelAnswerSource(card);
@@ -189,6 +209,7 @@ export function AnswerLearning({
     stop();
     answerSpeech.stop();
     setSentenceSelection(null);
+    setRecordingCountdown(null);
     setRecordingStatus("idle");
     setIsSpeechDraftDirty(false);
     recorderRef.current?.clearRecording();
@@ -213,6 +234,7 @@ export function AnswerLearning({
     ) {
       return false;
     }
+    if (!memoSectionRef.current?.confirmDiscardAndClose()) return false;
     return confirmTemporaryAudioDiscard("현재 화면을 나가면");
   }, [confirmTemporaryAudioDiscard, isCardEditorDirty, isEditingCard]);
 
@@ -397,13 +419,30 @@ export function AnswerLearning({
           </div>
         </div>
         <div className="answer-learning-reveal-buttons">
-          <button type="button" aria-expanded={reveal.hint} aria-pressed={reveal.hint} onClick={() => toggle("hint")}>힌트</button>
           <button type="button" aria-expanded={reveal.firstLine} aria-pressed={reveal.firstLine} onClick={() => toggle("firstLine")}>첫 문장</button>
+          <button type="button" aria-expanded={reveal.hint} aria-pressed={reveal.hint} onClick={() => toggle("hint")}>힌트</button>
           <button type="button" aria-expanded={reveal.answer} aria-pressed={reveal.answer} disabled={missingFullAnswer} onClick={() => toggle("answer")}>전체 답변</button>
         </div>
 
         {missingFullAnswer && <p className="first-line-only-notice" role="note">전체 답변이 아직 없어요. 첫 문장은 첫 문장 연습에서 그대로 사용할 수 있습니다.</p>}
 
+        {reveal.firstLine && (
+          <div className="answer-learning-first-line">
+            <div className="answer-learning-first-line-content">
+              <p>{firstLine}</p>
+              <button type="button" disabled={!isSupported || recorderBusy} onClick={() => toggleSpeech(firstLine, "firstLine")}>
+                {activeTarget === "firstLine" ? "첫 문장 듣기 중지" : "첫 문장 듣기"}
+              </button>
+            </div>
+            <div className="answer-learning-first-line-status" role="group" aria-label="첫 문장 상태">
+              {FIRST_LINE_STATUS_OPTIONS.map((option) => (
+                <button key={option.value} type="button" className={`status-button status-button-${option.value} ${firstLineStatus === option.value ? "is-selected" : ""}`} aria-pressed={firstLineStatus === option.value} onClick={() => onFirstLineStatusChange(option.value)}>
+                  <span className="status-button-content"><span className="status-button-icon" aria-hidden="true">{option.symbol}</span><span className="status-button-label">{option.label}</span></span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {reveal.hint && (
           <div className="answer-learning-hint-box">
             <h3>{card.hint.title}</h3>
@@ -422,34 +461,6 @@ export function AnswerLearning({
                 ))}
               </div>
             )}
-          </div>
-        )}
-        {reveal.firstLine && (
-          <div className="answer-learning-first-line">
-            <div className="answer-learning-first-line-content">
-              <p>{firstLine}</p>
-              <button type="button" disabled={!isSupported || recorderBusy} onClick={() => toggleSpeech(firstLine, "firstLine")}>
-                {activeTarget === "firstLine" ? "첫 문장 듣기 중지" : "첫 문장 듣기"}
-              </button>
-            </div>
-            <div className="answer-learning-first-line-status" role="group" aria-label="첫 문장 상태">
-              {FIRST_LINE_STATUS_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  className={`status-button status-button-${option.value} ${
-                    firstLineStatus === option.value ? "is-selected" : ""
-                  }`}
-                  aria-pressed={firstLineStatus === option.value}
-                  onClick={() => onFirstLineStatusChange(option.value)}
-                >
-                  <span className="status-button-content">
-                    <span className="status-button-icon" aria-hidden="true">{option.symbol}</span>
-                    <span className="status-button-label">{option.label}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
           </div>
         )}
         {reveal.answer && (
@@ -616,6 +627,21 @@ export function AnswerLearning({
       </section>
 
       {!missingFullAnswer && (
+        <>
+        <CardMemoSection
+          ref={memoSectionRef}
+          cardId={card.id}
+          cardTitle={card.hint.title}
+          hasMyAnswer={Boolean(myAnswer)}
+          memos={memos}
+          onBeforeStartEditing={() => confirmTemporaryAudioDiscard("메모를 작성하면")}
+          onCreate={(content) => onCreateMemo(card.id, content)}
+          onUpdate={(memoId, content) => onUpdateMemo(card.id, memoId, content)}
+          onTogglePinned={(memoId) => onToggleMemoPinned(card.id, memoId)}
+          onDelete={(memoId) => onDeleteMemo(card.id, memoId)}
+          onRestore={onRestoreMemo}
+          persistUiSession={false}
+        />
         <AudioRecorder
           ref={recorderRef}
           className="answer-learning-audio-recorder"
@@ -631,6 +657,23 @@ export function AnswerLearning({
             answerSpeech.stop();
             setSentenceSelection(null);
           }}
+          onPrepareRecord={async (signal) => {
+            await speakAndWait(stripQuestionPrefix(card.front), "question");
+            if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+            for (let seconds = 3; seconds >= 1; seconds -= 1) {
+              setRecordingCountdown(seconds);
+              await new Promise<void>((resolve, reject) => {
+                const timeoutId = window.setTimeout(resolve, 1000);
+                signal.addEventListener("abort", () => {
+                  window.clearTimeout(timeoutId);
+                  reject(new DOMException("Aborted", "AbortError"));
+                }, { once: true });
+              });
+            }
+            setRecordingCountdown(null);
+          }}
+          preparationStatus={recordingCountdown === null ? "질문 읽는 중" : `${recordingCountdown}초 뒤 녹음`}
+          onPreparingChange={setRecordingPreparing}
           onBeforePlayback={() => {
             stop();
             answerSpeech.stop();
@@ -646,6 +689,8 @@ export function AnswerLearning({
               }
             : undefined}
         />
+        <p className="answer-learning-recording-guide">녹음 시작을 누르면 질문을 한 번 읽고, 3초를 센 뒤 자동으로 녹음을 시작합니다.</p>
+        </>
       )}
 
       <nav className="answer-learning-navigation" aria-label="답변 익히기 카드 이동">

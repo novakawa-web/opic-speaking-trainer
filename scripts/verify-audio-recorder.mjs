@@ -438,6 +438,12 @@ test("answer learning supplies context-specific recorder copy", () => {
   assert.match(answerLearningSource, /현재 선택한 기본 답변 전체를 말해 보세요/);
   assert.match(answerLearningSource, /현재 선택한 나만의 답변 전체를 말해 보세요/);
 });
+test("answer learning prepares recording with question speech and a three second countdown", () => {
+  assert.match(componentSource, /onPrepareRecord/);
+  assert.match(answerLearningSource, /speakAndWait\(stripQuestionPrefix\(card\.front\), "question"\)/);
+  assert.match(answerLearningSource, /let seconds = 3/);
+  assert.match(answerLearningSource, /3초를 센 뒤 자동으로 녹음을 시작합니다/);
+});
 
 let passed = 0;
 for (const { name, fn } of tests) {

@@ -33,7 +33,7 @@ test("홈은 앱 내부 뒤로가기 목표가 없음", () => {
 });
 
 test("홈 직속 화면은 홈으로 복귀", () => {
-  for (const view of ["library", "savedPassages", "personalMemos"]) {
+  for (const view of ["library", "sentenceReview", "savedPassages", "personalMemos"]) {
     assert.equal(getAppBackView(view, baseContext), "list");
   }
 });
